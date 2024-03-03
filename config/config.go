@@ -62,6 +62,7 @@ func Load() (Value, error) {
 		return defCfg, err
 	}
 
+	cfg.Debug = *debug
 	cfg.Version = versionVal
 	return cfg, nil
 }
