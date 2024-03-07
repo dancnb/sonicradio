@@ -60,6 +60,7 @@ func (a *Api) TopStations() []Station {
 	}
 	return stations
 }
+
 func (a *Api) doServerRequest(method string, path string, body []byte) ([]byte, error) {
 	ix := rand.IntN(len(a.servers))
 	ip := a.servers[ix]

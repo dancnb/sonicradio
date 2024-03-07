@@ -31,6 +31,7 @@ func Test_doRrequest(t *testing.T) {
 	}
 	t.Log(res)
 }
+
 func Test_topStations(t *testing.T) {
 	a := NewApi(config.Value{Version: "", Debug: true})
 	res := a.TopStations()
