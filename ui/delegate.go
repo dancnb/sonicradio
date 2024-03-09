@@ -11,9 +11,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dancnb/sonicradio/browser"
+	"github.com/dancnb/sonicradio/player"
 )
 
-func newStationDelegate(keymap *delegateKeyMap) stationDelegate {
+func newStationDelegate(keymap *delegateKeyMap, p player.Player) stationDelegate {
 	help := []key.Binding{keymap.play}
 
 	d := list.NewDefaultDelegate()
@@ -26,6 +27,7 @@ func newStationDelegate(keymap *delegateKeyMap) stationDelegate {
 	}
 
 	return stationDelegate{
+		p:               p,
 		keymap:          keymap,
 		DefaultDelegate: d,
 		descStyle:       descStyle,
@@ -33,6 +35,7 @@ func newStationDelegate(keymap *delegateKeyMap) stationDelegate {
 }
 
 type stationDelegate struct {
+	p      player.Player
 	keymap *delegateKeyMap
 	list.DefaultDelegate
 
@@ -56,7 +59,14 @@ func (d stationDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, d.keymap.play):
-			slog.Info("Playing station " + station.Name)
+
+			err := d.p.Play(station.URL)
+			if err != nil {
+				errMsg := fmt.Sprintf("error playing station %s: %s", station.Name, err.Error())
+				slog.Error(errMsg)
+				return nil
+			}
+
 			return m.NewStatusMessage(statusMessageStyle("Playing " + title))
 
 			// case key.Matches(msg, keys.remove):

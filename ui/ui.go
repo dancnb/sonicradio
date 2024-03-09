@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"log/slog"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -8,16 +9,19 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/dancnb/sonicradio/browser"
 	"github.com/dancnb/sonicradio/config"
+	"github.com/dancnb/sonicradio/player"
 )
 
-func NewProgram(cfg config.Value, b *browser.Api) *tea.Program {
-	m := initialModel(cfg, b)
+func NewProgram(cfg config.Value, b *browser.Api, p player.Player) *tea.Program {
+	m := initialModel(cfg, b, p)
 	return tea.NewProgram(m, tea.WithAltScreen())
 }
 
-func initialModel(cfg config.Value, b *browser.Api) model {
+func initialModel(cfg config.Value, b *browser.Api, p player.Player) model {
 	m := model{
+		cfg:     cfg,
 		browser: b,
+		player:  p,
 	}
 
 	stations := m.browser.TopStations()
@@ -28,9 +32,9 @@ func initialModel(cfg config.Value, b *browser.Api) model {
 
 	x := 0
 	y := 0
-	l := list.New(items, newStationDelegate(newDelegateKeyMap()), x, y)
+	l := list.New(items, newStationDelegate(newDelegateKeyMap(), p), x, y)
 	l.InfiniteScrolling = true
-	// uiList.Paginator.PerPage = 50
+	// l.Paginator.PerPage = 50
 	// l.Paginator.SetTotalPages(len(items))
 	l.SetShowStatusBar(true)
 	l.Title = "Stations"
@@ -47,6 +51,7 @@ func initialModel(cfg config.Value, b *browser.Api) model {
 type model struct {
 	list    list.Model
 	browser *browser.Api
+	player  player.Player
 	cfg     config.Value
 }
 
@@ -70,6 +75,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if msg.String() == "q" {
 			slog.Info("----Quitting----")
+			err := m.player.Stop()
+			if err != nil {
+				errMsg := fmt.Sprintf("error stopping station at exit", err.Error())
+				slog.Error(errMsg)
+			}
+
 			return m, tea.Quit
 		}
 		switch {
