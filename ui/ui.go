@@ -26,25 +26,28 @@ func initialModel(cfg config.Value, b *browser.Api) model {
 		items[i] = stations[i]
 	}
 
-	delegate := newItemDelegate()
-	uiList := list.New(items, delegate, 0, 0)
-	uiList.SetShowStatusBar(true)
-	uiList.Title = "Stations"
-	uiList.Styles.Title = titleStyle
-	uiList.AdditionalFullHelpKeys = func() []key.Binding {
+	x := 0
+	y := 0
+	l := list.New(items, newStationDelegate(newDelegateKeyMap()), x, y)
+	l.InfiniteScrolling = true
+	// uiList.Paginator.PerPage = 50
+	// l.Paginator.SetTotalPages(len(items))
+	l.SetShowStatusBar(true)
+	l.Title = "Stations"
+	l.Styles.Title = titleStyle
+	l.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
 			//
 		}
 	}
-	m.list = uiList
+	m.list = l
 	return m
 }
 
 type model struct {
-	cfg     config.Value
 	list    list.Model
 	browser *browser.Api
-	// delegateKeys  *delegateKeyMap
+	cfg     config.Value
 }
 
 func (m model) Init() tea.Cmd {
@@ -95,7 +98,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// This will also call our delegate's update function.
 	newListModel, cmd := m.list.Update(msg)
 	m.list = newListModel
 	cmds = append(cmds, cmd)

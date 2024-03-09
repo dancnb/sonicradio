@@ -1,20 +1,23 @@
 package ui
 
 import (
+	"fmt"
+	"io"
 	"log/slog"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/dancnb/sonicradio/browser"
 )
 
-func newItemDelegate() list.DefaultDelegate {
-	keys := newDelegateKeyMap()
-	help := []key.Binding{keys.play}
+func newStationDelegate(keymap *delegateKeyMap) stationDelegate {
+	help := []key.Binding{keymap.play}
 
 	d := list.NewDefaultDelegate()
-	d.UpdateFunc = udpateStation(keys)
+	descStyle := d.Styles.NormalDesc.Copy().PaddingLeft(4)
 	d.ShortHelpFunc = func() []key.Binding {
 		return help
 	}
@@ -22,38 +25,81 @@ func newItemDelegate() list.DefaultDelegate {
 		return [][]key.Binding{help}
 	}
 
-	return d
+	return stationDelegate{
+		keymap:          keymap,
+		DefaultDelegate: d,
+		descStyle:       descStyle,
+	}
 }
 
-func udpateStation(keys *delegateKeyMap) func(tea.Msg, *list.Model) tea.Cmd {
-	return func(msg tea.Msg, m *list.Model) tea.Cmd {
-		var title string
-		sta, ok := m.SelectedItem().(browser.Station)
-		if ok {
-			title = sta.Title()
-		} else {
-			return nil
-		}
+type stationDelegate struct {
+	keymap *delegateKeyMap
+	list.DefaultDelegate
 
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch {
-			case key.Matches(msg, keys.play):
-				slog.Info("Playing station " + sta.Name)
-				return m.NewStatusMessage(statusMessageStyle("Playing " + title))
+	descStyle lipgloss.Style
+}
 
-				// case key.Matches(msg, keys.remove):
-				// 	index := m.Index()
-				// 	m.RemoveItem(index)
-				// 	if len(m.Items()) == 0 {
-				// 		keys.remove.SetEnabled(false)
-				// 	}
-				// 	return m.NewStatusMessage(statusMessageStyle("Deleted " + title))
-				// }
-			}
+// func (d stationDelegate) Height() int { return  }
 
-		}
+// func (d stationDelegate) Spacing() int { return 0 }
+
+func (d stationDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
+	var title string
+	station, ok := m.SelectedItem().(browser.Station)
+	if ok {
+		title = station.Name
+	} else {
 		return nil
+	}
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, d.keymap.play):
+			slog.Info("Playing station " + station.Name)
+			return m.NewStatusMessage(statusMessageStyle("Playing " + title))
+
+			// case key.Matches(msg, keys.remove):
+			// 	index := m.Index()
+			// 	m.RemoveItem(index)
+			// 	if len(m.Items()) == 0 {
+			// 		keys.remove.SetEnabled(false)
+			// 	}
+			// 	return m.NewStatusMessage(statusMessageStyle("Deleted " + title))
+			// }
+		}
+	}
+	return nil
+}
+
+func (d stationDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+	s, ok := listItem.(browser.Station)
+	if !ok {
+		return
+	}
+
+	str := fmt.Sprintf("%d. %s", index+1, s.Name)
+
+	fn := itemStyle.Render
+	if index == m.Index() {
+		fn = func(s ...string) string {
+			return selectedItemStyle.Render("> " + strings.Join(s, " "))
+		}
+	}
+	str = fn(str) + "\n"
+	str += d.descStyle.Render(s.Description())
+
+	fmt.Fprint(w, str)
+
+	// d.DefaultDelegate.Render(w, m, index, listItem)
+}
+
+func newDelegateKeyMap() *delegateKeyMap {
+	return &delegateKeyMap{
+		play: key.NewBinding(
+			key.WithKeys(" ", "enter"),
+			key.WithHelp("space/enter", "play/pause"),
+		),
 	}
 }
 
@@ -76,14 +122,5 @@ func (d delegateKeyMap) FullHelp() [][]key.Binding {
 		{
 			d.play,
 		},
-	}
-}
-
-func newDelegateKeyMap() *delegateKeyMap {
-	return &delegateKeyMap{
-		play: key.NewBinding(
-			key.WithKeys(" ", "enter"),
-			key.WithHelp("space/enter", "play/pause"),
-		),
 	}
 }

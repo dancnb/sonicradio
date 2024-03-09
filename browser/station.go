@@ -1,5 +1,10 @@
 package browser
 
+import (
+	"fmt"
+	"strings"
+)
+
 type Station struct {
 	// A globally unique identifier for the change of the station information
 	Changeuuid string `json:"changeuuid"`
@@ -89,6 +94,12 @@ type Station struct {
 	HasExtendedInfo bool `json:"has_extended_info"`
 }
 
-func (i Station) Title() string       { return i.Name }
-func (i Station) Description() string { return i.Tags }
+func (i Station) Title() string { return i.Name }
+func (i Station) Description() string {
+	desc := fmt.Sprintf("%s |  %d kbps | %s", i.Country, i.Bitrate, i.Tags)
+	desc = strings.TrimSpace(desc)
+	desc = strings.Trim(desc, "|")
+	desc = strings.TrimSpace(desc)
+	return desc
+}
 func (i Station) FilterValue() string { return i.Name }
