@@ -58,15 +58,31 @@ func (m *Mpv) Stop() error {
 	}
 
 	if m.cmd.Process != nil {
-		// m.cmd.Process.Kill()
-		slog.Info("killing process", "pid", m.cmd.Process.Pid)
-		pid := m.cmd.Process.Pid
-		err := syscall.Kill(-pid, syscall.SIGKILL)
+		slog.Debug("killing process", "pid", m.cmd.Process.Pid)
+
+		// err := m.cmd.Process.Kill()
+		// if err != nil {
+		// 	return err
+		// }
+
+		// pid := m.cmd.Process.Pid
+		pid, err := syscall.Getpgid(m.cmd.Process.Pid)
 		if err != nil {
 			slog.Error("error getting process group", "pid", m.cmd.Process.Pid)
 			return err
 		}
-		slog.Debug("killed process", "pid", pid)
+		// err = syscall.Kill(-m.cmd.Process.Pid, syscall.SIGCHLD)
+		// if err != nil {
+		// 	slog.Error("error killing process group", "pgid", pid)
+		// 	return err
+		// }
+		err = syscall.Kill(-pid, syscall.SIGKILL)
+		if err != nil {
+			slog.Error("error killing process children", "pgid", pid)
+			return err
+		}
+
+		slog.Debug("killed process group", "pgid", pid)
 	}
 
 	return nil
