@@ -47,13 +47,13 @@ func (m *Mpv) Play(url string) error {
 	}
 
 	m.cmd = cmd
-	slog.Info("mpv cmd started", "pid", m.cmd.Process.Pid)
+	slog.Debug("mpv cmd started", "pid", m.cmd.Process.Pid)
 	return nil
 }
 
 func (m *Mpv) Stop() error {
 	if m.cmd == nil {
-		slog.Info("no current station playing")
+		slog.Debug("no current station playing")
 		return nil
 	}
 
@@ -63,7 +63,7 @@ func (m *Mpv) Stop() error {
 		pid := m.cmd.Process.Pid
 		err := syscall.Kill(-pid, syscall.SIGKILL)
 		if err != nil {
-			slog.Error("error killing process", "pid", pid)
+			slog.Error("error getting process group", "pid", m.cmd.Process.Pid)
 			return err
 		}
 		slog.Debug("killed process", "pid", pid)
