@@ -14,7 +14,8 @@ import (
 	"github.com/dancnb/sonicradio/player"
 )
 
-func newStationDelegate(keymap *delegateKeyMap, p player.Player) *stationDelegate {
+func newStationDelegate(p player.Player) *stationDelegate {
+	keymap := newDelegateKeyMap()
 	help := []key.Binding{keymap.play}
 
 	d := list.NewDefaultDelegate()
@@ -109,8 +110,24 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 	str += d.descStyle.Render(s.Description())
 
 	fmt.Fprint(w, str)
+}
 
-	// d.DefaultDelegate.Render(w, m, index, listItem)
+// Additional short help entries. This satisfies the help.KeyMap interface and
+// is entirely optional.
+func (d *stationDelegate) ShortHelp() []key.Binding {
+	return []key.Binding{
+		d.keymap.play,
+	}
+}
+
+// Additional full help entries. This satisfies the help.KeyMap interface and
+// is entirely optional.
+func (d *stationDelegate) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{
+			d.keymap.play,
+		},
+	}
 }
 
 func newDelegateKeyMap() *delegateKeyMap {
@@ -124,22 +141,6 @@ func newDelegateKeyMap() *delegateKeyMap {
 
 type delegateKeyMap struct {
 	play key.Binding
-}
-
-// Additional short help entries. This satisfies the help.KeyMap interface and
-// is entirely optional.
-func (d delegateKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{
-		d.play,
-	}
-}
-
-// Additional full help entries. This satisfies the help.KeyMap interface and
-// is entirely optional.
-func (d delegateKeyMap) FullHelp() [][]key.Binding {
-	return [][]key.Binding{
-		{
-			d.play,
-		},
-	}
+	// station info
+	// add/remove favorite
 }
