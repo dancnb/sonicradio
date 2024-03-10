@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"log/slog"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -18,10 +17,12 @@ func NewProgram(cfg config.Value, b *browser.Api, p player.Player) *tea.Program 
 }
 
 func initialModel(cfg config.Value, b *browser.Api, p player.Player) model {
+	k := newKeymap()
 	m := model{
 		cfg:     cfg,
 		browser: b,
 		player:  p,
+		keymap:  k,
 	}
 
 	stations := m.browser.TopStations()
@@ -39,12 +40,18 @@ func initialModel(cfg config.Value, b *browser.Api, p player.Player) model {
 	l.SetShowStatusBar(true)
 	l.Title = "Stations"
 	l.Styles.Title = titleStyle
+	l.AdditionalShortHelpKeys = func() []key.Binding {
+		return []key.Binding{
+			k.search,
+		}
+	}
 	l.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
-			//
+			k.search,
 		}
 	}
 	m.list = l
+
 	return m
 }
 
@@ -53,6 +60,7 @@ type model struct {
 	browser *browser.Api
 	player  player.Player
 	cfg     config.Value
+	keymap  keymap
 }
 
 func (m model) Init() tea.Cmd {
@@ -73,39 +81,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			break
 		}
 
-		if msg.String() == "q" {
-			slog.Info("----Quitting----")
-			err := m.player.Stop()
-			if err != nil {
-				errMsg := fmt.Sprintf("error stopping station at exit", err.Error())
-				slog.Error(errMsg)
-			}
-
-			return m, tea.Quit
-		}
 		switch {
-		// case key.Matches(msg, m.keys.toggleSpinner):
-		// 	cmd := m.list.ToggleSpinner()
-		// 	return m, cmd
+		case key.Matches(msg, m.list.KeyMap.Quit):
+			if m.list.FilterState() == list.FilterApplied && msg.String() == "esc" {
+				break
+			}
+			m.stop()
 
-		// case key.Matches(msg, m.keys.toggleTitleBar):
-		// 	v := !m.list.ShowTitle()
-		// 	m.list.SetShowTitle(v)
-		// 	m.list.SetShowFilter(v)
-		// 	m.list.SetFilteringEnabled(v)
-		// 	return m, nil
+		case key.Matches(msg, m.list.KeyMap.ForceQuit):
+			m.stop()
 
-		// case key.Matches(msg, m.keys.toggleStatusBar):
-		// 	m.list.SetShowStatusBar(!m.list.ShowStatusBar())
-		// 	return m, nil
+		case key.Matches(msg, m.keymap.search):
+			// TODO search stations; use cmd and msg
+			cmd := m.list.NewStatusMessage(statusWarnMessageStyle("Not implemented yet!"))
+			cmds = append(cmds, cmd)
 
-		// case key.Matches(msg, m.keys.togglePagination):
-		// 	m.list.SetShowPagination(!m.list.ShowPagination())
-		// 	return m, nil
-
-		// case key.Matches(msg, m.keys.toggleHelpMenu):
-		// 	m.list.SetShowHelp(!m.list.ShowHelp())
-		// 	return m, nil
 		}
 	}
 
@@ -114,6 +104,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
+}
+
+func (m model) stop() {
+	slog.Info("----------------------Quitting----------------------")
+	err := m.player.Stop()
+	if err != nil {
+		slog.Error("error stopping station at exit", "error", err.Error())
+	}
 }
 
 func (m model) View() string {

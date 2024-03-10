@@ -13,6 +13,12 @@ var (
 			Background(lipgloss.Color("#25A065")).
 			Padding(0, 1)
 
+	statusWarnMessageStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.AdaptiveColor{Light: "#eab676", Dark: "#eab676"}).
+				Render
+	statusErrMessageStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.AdaptiveColor{Light: "#fc2c03", Dark: "#fc2c03"}).
+				Render
 	statusMessageStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.AdaptiveColor{Light: "#04B575", Dark: "#04B575"}).
 				Render

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"log"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -38,10 +39,11 @@ func run() {
 	opts := &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	}
-	handler := slog.NewJSONHandler(logW, opts)
+	handler := slog.NewTextHandler(logW, opts)
 	logger := slog.New(handler)
+	log.SetFlags(log.Flags() &^ (log.Ldate))
 	slog.SetDefault(logger)
-	slog.Info("----Starting----")
+	slog.Info("----------------------Starting----------------------")
 
 	b := browser.NewApi(cfg)
 	p := player.NewMPV()
