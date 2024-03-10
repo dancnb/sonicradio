@@ -10,13 +10,15 @@ import (
 	"math/rand/v2"
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/dancnb/sonicradio/config"
 )
 
 const (
-	HOST          = "all.api.radio-browser.info"
-	backup_server = "https://de1.api.radio-browser.info/json/servers"
+	HOST           = "all.api.radio-browser.info"
+	backup_server  = "https://de1.api.radio-browser.info/json/servers"
+	serverMaxRetry = 5
 )
 
 func NewApi(cfg config.Value) *Api {
@@ -31,7 +33,7 @@ func NewApi(cfg config.Value) *Api {
 			slog.Info(msg.Error())
 		}
 	}
-
+	slog.Debug("browser servers " + strings.Join(res, "; "))
 	api.servers = append(api.servers, res...)
 
 	return &api
@@ -45,20 +47,28 @@ type Api struct {
 func (a *Api) TopStations() []Station {
 	s := SearchParams{
 		Offset: 0,
-		Limit:  100,
+		Limit:  30,
 		Order:  Votes,
 	}
 	body := s.toFormData()
-	res, err := a.doServerRequest(http.MethodPost, urlStations, []byte(body))
-	if err != nil {
-		return nil
+
+	for i := 0; i < serverMaxRetry; i++ {
+		res, err := a.doServerRequest(http.MethodPost, urlStations, []byte(body))
+		if err != nil {
+			return nil
+		}
+		var stations []Station
+		err = json.Unmarshal(res, &stations)
+		if err != nil {
+			slog.Error("top stations", "unmarshal error", err)
+			slog.Error("top stations", "response", string(res))
+			continue
+		}
+		slog.Info("top stations", "length", len(stations))
+		return stations
 	}
-	var stations []Station
-	err = json.Unmarshal(res, &stations)
-	if err != nil {
-		return nil
-	}
-	return stations
+	slog.Warn("top stations exceeded max retries")
+	return nil
 }
 
 func (a *Api) doServerRequest(method string, path string, body []byte) ([]byte, error) {
@@ -105,6 +115,7 @@ func (a *Api) getServerMirrors() ([]string, error) {
 func (a *Api) doRequest(method string, url string, body []byte) ([]byte, error) {
 	req, err := http.NewRequest(method, url, bytes.NewReader(body))
 	if err != nil {
+		slog.Error("create browser request", slog.String("error", err.Error()))
 		return nil, err
 	}
 	ua := fmt.Sprintf("sonicradio/%s", a.cfg.Version)
@@ -113,12 +124,14 @@ func (a *Api) doRequest(method string, url string, body []byte) ([]byte, error) 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
+		slog.Error("do browser request", slog.String("error", err.Error()))
 		return nil, err
 	}
 	defer res.Body.Close()
 
 	b, err := io.ReadAll(res.Body)
 	if err != nil {
+		slog.Error("read browser response", slog.String("error", err.Error()))
 		return nil, err
 	}
 	return b, nil
