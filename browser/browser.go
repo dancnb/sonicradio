@@ -71,6 +71,31 @@ func (a *Api) TopStations() []Station {
 	return nil
 }
 
+func (a *Api) GetStation(uuid string) *Station {
+	stationUrl := fmt.Sprintf(urlStationsByUUID + uuid)
+
+	for i := 0; i < serverMaxRetry; i++ {
+		res, err := a.doServerRequest(http.MethodGet, stationUrl, nil)
+		if err != nil {
+			return nil
+		}
+		var stations []Station
+		err = json.Unmarshal(res, &stations)
+		if err != nil {
+			slog.Error("get station", "unmarshal error", err)
+			slog.Error("get station", "response", string(res))
+			continue
+		} else if len(stations) == 0 {
+			slog.Error("get station empty response")
+			continue
+		}
+		return &stations[0]
+	}
+
+	slog.Warn("get station exceeded max retries")
+	return nil
+}
+
 func (a *Api) doServerRequest(method string, path string, body []byte) ([]byte, error) {
 	ix := rand.IntN(len(a.servers))
 	ip := a.servers[ix]

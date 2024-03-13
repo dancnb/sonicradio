@@ -44,11 +44,12 @@ func run() {
 	log.SetFlags(log.Flags() &^ (log.Ldate))
 	slog.SetDefault(logger)
 	slog.Info("----------------------Starting----------------------")
+	slog.Debug("loaded", "config", fmt.Sprintf("%#v", cfg))
 
 	b := browser.NewApi(cfg)
 	p := player.NewMPV()
 
-	if _, err := ui.NewProgram(cfg, b, p).Run(); err != nil {
+	if _, err := ui.NewProgram(&cfg, b, p).Run(); err != nil {
 		slog.Info(fmt.Sprintf("Error running program: %s", err.Error()))
 		os.Exit(1)
 	}

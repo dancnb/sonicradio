@@ -16,15 +16,14 @@ import (
 
 func newStationDelegate(p player.Player) *stationDelegate {
 	keymap := newDelegateKeyMap()
-	help := []key.Binding{keymap.play}
 
 	d := list.NewDefaultDelegate()
-	d.ShortHelpFunc = func() []key.Binding {
-		return help
-	}
-	d.FullHelpFunc = func() [][]key.Binding {
-		return [][]key.Binding{help}
-	}
+	// d.ShortHelpFunc = func() []key.Binding {
+	// 	return []key.Binding{keymap.play}
+	// }
+	// d.FullHelpFunc = func() [][]key.Binding {
+	// 	return [][]key.Binding{{keymap.play, keymap.info, keymap.toggleFavorite}}
+	// }
 
 	descStyle := d.Styles.NormalDesc.Copy().PaddingLeft(4)
 
@@ -84,8 +83,6 @@ func (d *stationDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 
 			d.nowPlaying = &station
 			return m.NewStatusMessage(statusMessageStyle("Playing " + title))
-
-			// case key.Matches(msg, m.KeyMap.Quit)
 		}
 	}
 
@@ -125,7 +122,7 @@ func (d *stationDelegate) ShortHelp() []key.Binding {
 func (d *stationDelegate) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{
-			d.keymap.play,
+			d.keymap.play, d.keymap.info, d.keymap.toggleFavorite,
 		},
 	}
 }
@@ -136,11 +133,19 @@ func newDelegateKeyMap() *delegateKeyMap {
 			key.WithKeys(" ", "enter"),
 			key.WithHelp("space/enter", "play/pause"),
 		),
+		info: key.NewBinding(
+			key.WithKeys("i"),
+			key.WithHelp("i", "info"),
+		),
+		toggleFavorite: key.NewBinding(
+			key.WithKeys("f"),
+			key.WithHelp("f", "toggle favorite"),
+		),
 	}
 }
 
 type delegateKeyMap struct {
-	play key.Binding
-	// station info
-	// add/remove favorite
+	play           key.Binding
+	info           key.Binding
+	toggleFavorite key.Binding
 }

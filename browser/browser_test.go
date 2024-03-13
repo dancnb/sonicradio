@@ -1,6 +1,7 @@
 package browser
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -39,4 +40,15 @@ func Test_topStations(t *testing.T) {
 		t.Error("missing stations response")
 	}
 	t.Log(res)
+}
+
+func Test_getStation(t *testing.T) {
+	a := NewApi(config.Value{Version: "", Debug: true})
+	uuid := "748d830c-d934-41e8-bd14-870add931e1d"
+	res := a.GetStation(uuid)
+	if res == nil {
+		t.Error("missing station response")
+	}
+	t.Log(res)
+	fmt.Printf("%#v", *res)
 }

@@ -12,6 +12,14 @@ func newKeymap() keymap {
 			key.WithKeys("esc"),
 			key.WithHelp("esc", "now playing"),
 		),
+		toFavorites: key.NewBinding(
+			key.WithKeys("1"),
+			key.WithHelp("1", "favorites"),
+		),
+		toBrowser: key.NewBinding(
+			key.WithKeys("2"),
+			key.WithHelp("2", "browser"),
+		),
 	}
 	return m
 }
@@ -19,4 +27,6 @@ func newKeymap() keymap {
 type keymap struct {
 	search       key.Binding
 	toNowPlaying key.Binding
+	toFavorites  key.Binding
+	toBrowser    key.Binding
 }
