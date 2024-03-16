@@ -9,7 +9,6 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/dancnb/sonicradio/browser"
 	"github.com/dancnb/sonicradio/player"
 )
@@ -25,13 +24,10 @@ func newStationDelegate(p player.Player) *stationDelegate {
 	// 	return [][]key.Binding{{keymap.play, keymap.info, keymap.toggleFavorite}}
 	// }
 
-	descStyle := d.Styles.NormalDesc.Copy().PaddingLeft(4)
-
 	return &stationDelegate{
 		p:               p,
 		keymap:          keymap,
 		defaultDelegate: d,
-		descStyle:       descStyle,
 	}
 }
 
@@ -39,7 +35,6 @@ type stationDelegate struct {
 	p          player.Player
 	nowPlaying *browser.Station
 	keymap     *delegateKeyMap
-	descStyle  lipgloss.Style
 
 	defaultDelegate list.DefaultDelegate
 }
@@ -95,17 +90,44 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		return
 	}
 
-	str := fmt.Sprintf("%d. %s", index+1, s.Name)
-
-	fn := itemStyle.Render
+	itStyle := itemStyle
+	descStyle := descStyle
 	if index == m.Index() {
-		fn = func(s ...string) string {
-			return selectedItemStyle.Render("> " + strings.Join(s, " "))
-		}
+		itStyle = selItemStyle
+		descStyle = selDescStyle
 	}
-	str = fn(str) + "\n"
-	str += d.descStyle.Render(s.Description())
+	var res strings.Builder
+	prefix := fmt.Sprintf("%d. ", index+1)
 
+	if d.nowPlaying != nil && d.nowPlaying.Stationuuid == s.Stationuuid {
+		res.WriteString(itStyle.Render(prefix))
+
+		npItStyle := nowPlayingStyle
+		npDescStyle := nowPlayingDescStyle
+		if index == m.Index() {
+			npItStyle = selNowPlayingStyle
+			npDescStyle = selNowPlayingDescStyle
+		}
+
+		res.WriteString(npItStyle.Render(s.Name))
+		w := m.Width()
+		hFill := max(w-len(prefix)-len(s.Name), 0)
+		res.WriteString(npItStyle.Render(strings.Repeat(" ", hFill)))
+		res.WriteString("\n")
+		res.WriteString(descStyle.Render(strings.Repeat(" ", len(prefix))))
+		res.WriteString(npDescStyle.Render(s.Description()))
+		hFill = max(w-len(prefix)-len(s.Description()), 0)
+		res.WriteString(npItStyle.Render(strings.Repeat(" ", hFill)))
+	} else {
+		res.WriteString(itStyle.Render(prefix + s.Name))
+		res.WriteString("\n")
+		res.WriteString(descStyle.Render(strings.Repeat(" ", len(prefix)) + s.Description()))
+	}
+
+	str := res.String()
+	if index == m.Index() {
+		str = selectedBorderStyle.Render(str)
+	}
 	fmt.Fprint(w, str)
 }
 

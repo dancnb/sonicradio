@@ -1,16 +1,21 @@
 package ui
 
 import (
-	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
+)
+
+const (
+	tabGapDistance = 2
 )
 
 var (
-	titleStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFFDF5")).
-			Background(lipgloss.Color("#25A065")).
-			Padding(0, 1)
+	// list items
+	baseColor    = lipgloss.Color("#ffb641")
+	selColor     = lipgloss.Color("#12100d")
+	selDescColor = lipgloss.Color("#4a4133")
 
+	// TODO replace list status
 	statusWarnMessageStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.AdaptiveColor{Light: "#eab676", Dark: "#eab676"}).
 				Render
@@ -20,68 +25,37 @@ var (
 	statusMessageStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.AdaptiveColor{Light: "#04B575", Dark: "#04B575"}).
 				Render
-	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
-	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
-	paginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
-	helpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(4).PaddingBottom(1)
-	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
-)
 
-func tabBorderWithBottom(left, middle, right string) lipgloss.Border {
-	border := lipgloss.RoundedBorder()
-	border.BottomLeft = left
-	border.Bottom = middle
-	border.BottomRight = right
-	return border
-}
+	nowPlayingStyle        = lipgloss.NewStyle().Background(baseColor).Foreground(selColor)
+	nowPlayingDescStyle    = lipgloss.NewStyle().Background(baseColor).Foreground(selDescColor)
+	selNowPlayingStyle     = lipgloss.NewStyle().Background(baseColor).Foreground(selColor)
+	selNowPlayingDescStyle = lipgloss.NewStyle().Background(baseColor).Foreground(selDescColor)
 
-var (
-	inactiveTabBorder = tabBorderWithBottom("┴", "─", "┴")
-	// activeTabBorder   = tabBorderWithBottom("┘", " ", "└")
-	// docStyle          = lipgloss.NewStyle().Padding(1, 2, 1, 2)
-	highlightColor   = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7D56F4"}
-	inactiveTabStyle = lipgloss.NewStyle().Border(inactiveTabBorder, true).BorderForeground(highlightColor).Padding(0, 1)
-	activeTabStyle   = inactiveTabStyle.Copy().Border(activeTabBorder, true)
-	windowStyle      = lipgloss.NewStyle().BorderForeground(highlightColor).Padding(2, 0).Align(lipgloss.Center).Border(lipgloss.NormalBorder()).UnsetBorderTop()
-)
+	itemStyle    = lipgloss.NewStyle().Foreground(baseColor).PaddingLeft(4)
+	descStyle    = itemStyle.Copy().Faint(true)
+	selItemStyle = lipgloss.NewStyle().Foreground(baseColor).PaddingLeft(3)
+	selDescStyle = selItemStyle.Copy().Faint(true)
 
-// Describes the styles for the plugins page
-// Could be re-used by other pages in the future to keep a consisten look
-var (
-	activeTabBorder = lipgloss.Border{
-		Top:         "─",
-		Bottom:      " ",
-		Left:        "│",
-		Right:       "│",
-		TopLeft:     "╭",
-		TopRight:    "╮",
-		BottomLeft:  "┘",
-		BottomRight: "└",
-	}
-	highlight = lipgloss.AdaptiveColor{Light: "#13002D", Dark: "#22ADF6"}
-	tabBorder = lipgloss.Border{
-		Top:         "─",
-		Bottom:      "─",
-		Left:        "│",
-		Right:       "│",
-		TopLeft:     "╭",
-		TopRight:    "╮",
-		BottomLeft:  "┴",
-		BottomRight: "┴",
-	}
-	tab = lipgloss.NewStyle().
-		Border(tabBorder, true).
-		BorderForeground(highlight).
-		Padding(0, 1)
-	activeTab = tab.Copy().Border(activeTabBorder, true)
+	selectedBorderStyle = lipgloss.NewStyle().Border(lipgloss.BlockBorder(), false, false, false, true).BorderForeground(baseColor)
 
-	tabGap = tab.Copy().
-		BorderTop(false).
-		BorderLeft(false).
-		BorderRight(false)
+	// tabs
+	inactiveTab = lipgloss.NewStyle().
+			Border(lipgloss.HiddenBorder(), true).
+			Foreground(baseColor).
+			Padding(0, 1).Margin(0)
+	activeTab = lipgloss.NewStyle().
+			Border(lipgloss.NormalBorder(), true).
+			BorderForeground(baseColor).
+			Foreground(baseColor).
+			Padding(0, 1).Margin(0)
+	tabGap = lipgloss.NewStyle().
+		Border(lipgloss.Border{Left: " ", Right: " "}, true, false).
+		Foreground(baseColor).
+		BorderForeground(baseColor).
+		Strikethrough(true).
+		Margin(0).Padding(0)
 
-	docStyle = lipgloss.NewStyle().Padding(1, 2, 0, 2)
-
-	special = lipgloss.AdaptiveColor{Light: "#43BF6D", Dark: "#73F59F"}
-	checked = lipgloss.NewStyle().SetString("✓").Foreground(special).PaddingRight(1).String()
+	// general
+	backgroundColor = termenv.RGBColor("#282c34")
+	docStyle        = lipgloss.NewStyle().Padding(1, 2)
 )

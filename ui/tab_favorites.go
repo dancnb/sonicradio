@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -11,8 +12,9 @@ import (
 )
 
 type favoritesTab struct {
-	list   list.Model
-	keymap keymap
+	list    list.Model
+	viewMsg string
+	keymap  keymap
 }
 
 func newFavoritesTab() *favoritesTab {
@@ -34,7 +36,6 @@ func (t *favoritesTab) createList(delegate *stationDelegate, width int, height i
 	l.SetShowPagination(false)
 	l.SetShowFilter(true)
 	l.FilterInput.ShowSuggestions = true
-	l.Styles.Title = titleStyle
 
 	l.KeyMap.Quit.SetKeys("q")
 	l.AdditionalShortHelpKeys = func() []key.Binding {
@@ -43,28 +44,35 @@ func (t *favoritesTab) createList(delegate *stationDelegate, width int, height i
 	l.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{t.keymap.toNowPlaying, t.keymap.toBrowser}
 	}
-	l.SetSize(width, height-1)
+	v, h := docStyle.GetFrameSize()
+	l.SetSize(width-h, height-v)
 
 	return l
 }
 
 func (t *favoritesTab) Init(m *model) tea.Cmd {
+	t.viewMsg = loadingMsg
 	t.list = t.createList(m.delegate, m.width, m.totHeight-m.headerHeight)
 	return m.favoritesReqCmd
 }
 
-func (t *favoritesTab) SetItems(it []list.Item) {
-	t.list.SetItems(it)
-}
-
 func (t *favoritesTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
-	slog.Debug("favorites tab", "msg", msg)
+	slog.Debug("favorites tab", "type", fmt.Sprintf("%T", msg), "value", msg)
 
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		t.list.SetSize(msg.Width, msg.Height-m.headerHeight-1)
+		v, h := docStyle.GetFrameSize()
+		t.list.SetSize(msg.Width-h, msg.Height-m.headerHeight-v)
+
+	case favoritesStationRespMsg:
+		t.viewMsg = msg.viewMsg
+		items := make([]list.Item, len(msg.stations))
+		for i := 0; i < len(msg.stations); i++ {
+			items[i] = msg.stations[i]
+		}
+		t.list.SetItems(items)
 
 	case quitMsg:
 		m.stop()
@@ -111,5 +119,9 @@ func (t *favoritesTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (t *favoritesTab) View() string {
+	if t.viewMsg != "" {
+		return itemStyle.Render(t.viewMsg)
+	}
+
 	return t.list.View()
 }

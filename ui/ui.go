@@ -8,13 +8,14 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dancnb/sonicradio/browser"
 	"github.com/dancnb/sonicradio/config"
 	"github.com/dancnb/sonicradio/player"
 )
+
+const loadingMsg = "\n  Fetching stations... \n"
 
 var ready bool
 
@@ -26,6 +27,9 @@ func NewProgram(cfg *config.Value, b *browser.Api, p player.Player) *tea.Program
 }
 
 func initialModel(cfg *config.Value, b *browser.Api, p player.Player) *model {
+	lipgloss.DefaultRenderer().SetHasDarkBackground(true)
+	// lipgloss.DefaultRenderer().Output().SetBackgroundColor(backgroundColor)
+
 	delegate := newStationDelegate(p)
 	activeIx := browseTabIx
 	if len(cfg.Favorites) > 0 {
@@ -59,11 +63,11 @@ type uiTabIndex uint8
 func (t uiTabIndex) String() string {
 	switch t {
 	case favoriteTabIx:
-		return "1. Favorites"
+		return "1.Favorites"
 	case browseTabIx:
-		return "2. Browse"
+		return "2.Browse"
 	case historyTabIx:
-		return "3. History"
+		return "3.History"
 	}
 	return ""
 }
@@ -79,7 +83,6 @@ type uiTab interface {
 	Init(m *model) tea.Cmd
 	Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd)
 	View() string
-	SetItems([]list.Item)
 }
 
 func (m *model) Init() tea.Cmd {
@@ -88,6 +91,7 @@ func (m *model) Init() tea.Cmd {
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	// messages that need to reach all tabs
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.totHeight = msg.Height
@@ -112,19 +116,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, tea.Batch(cmds...)
 
-	case topStationsResMsg:
-		items := make([]list.Item, len(msg.stations))
-		for i := 0; i < len(msg.stations); i++ {
-			items[i] = msg.stations[i]
-		}
-		m.tabs[browseTabIx].SetItems(items)
+		// messages that need to reach a particular tab
+	case topStationsRespMsg:
+		// TODO handle errMsg
+		return m.tabs[browseTabIx].Update(m, msg)
 
-	case favoritesStationResMsg:
-		items := make([]list.Item, len(msg.stations))
-		for i := 0; i < len(msg.stations); i++ {
-			items[i] = msg.stations[i]
-		}
-		m.tabs[favoriteTabIx].SetItems(items)
+	case favoritesStationRespMsg:
+		// TODO handle errMsg
+		return m.tabs[favoriteTabIx].Update(m, msg)
 	}
 
 	model, cmd := m.tabs[m.activeTab].Update(m, msg)
@@ -142,11 +141,15 @@ func (m *model) stop() {
 func (m *model) headerView(width int) string {
 	var renderedTabs []string
 
+	renderedTabs = append(renderedTabs, tabGap.Render(strings.Repeat(" ", tabGapDistance)))
 	for i := range m.tabs {
 		if i == int(m.activeTab) {
 			renderedTabs = append(renderedTabs, activeTab.Render(m.activeTab.String()))
 		} else {
-			renderedTabs = append(renderedTabs, tab.Render(uiTabIndex(i).String()))
+			renderedTabs = append(renderedTabs, inactiveTab.Render(uiTabIndex(i).String()))
+		}
+		if i < len(m.tabs)-1 {
+			renderedTabs = append(renderedTabs, tabGap.Render(strings.Repeat(" ", tabGapDistance)))
 		}
 	}
 	row := lipgloss.JoinHorizontal(
@@ -160,13 +163,12 @@ func (m *model) headerView(width int) string {
 
 func (m model) View() string {
 	if !ready {
-		return "\n  Fetching stations"
+		return loadingMsg
 	}
 
 	var doc strings.Builder
 	header := m.headerView(m.width)
 	doc.WriteString(header)
-
 	tabView := m.tabs[m.activeTab].View()
 	doc.WriteString(tabView)
 	return docStyle.Render(doc.String())
@@ -188,29 +190,50 @@ type (
 	// used for os signal quit not handled by the list model
 	quitMsg struct{}
 
-	favoritesStationResMsg struct {
+	respMsg struct {
+		viewMsg string // used for view message
+		errMsg  string // used for status error message
+	}
+
+	favoritesStationRespMsg struct {
+		respMsg
 		stations []browser.Station
 	}
-	topStationsResMsg struct {
+	topStationsRespMsg struct {
+		respMsg
 		stations []browser.Station
 	}
 )
 
 // tea.Cmd
 func (m *model) favoritesReqCmd() tea.Msg {
-	items := make([]browser.Station, 0)
-	for i := range m.cfg.Favorites {
-		slog.Debug("get station", "uuid", m.cfg.Favorites[i])
-		s := m.browser.GetStation(m.cfg.Favorites[i])
-		if s != nil {
-			items = append(items, *s)
+	if len(m.cfg.Favorites) == 0 {
+		return favoritesStationRespMsg{
+			respMsg: respMsg{viewMsg: "No favorites added"},
 		}
 	}
-	slog.Debug("favorite stations", "lenght", len(items))
-	return favoritesStationResMsg{items}
+
+	stations, err := m.browser.GetStations(m.cfg.Favorites)
+	res := respMsg{}
+	if err != nil {
+		res.viewMsg = "No stations found"
+		res.errMsg = err.Error()
+	}
+	return favoritesStationRespMsg{
+		respMsg:  res,
+		stations: stations,
+	}
 }
 
 func (m *model) topStationsCmd() tea.Msg {
-	stations := m.browser.TopStations()
-	return topStationsResMsg{stations}
+	stations, err := m.browser.TopStations()
+	res := respMsg{}
+	if err != nil {
+		res.viewMsg = "No stations found"
+		res.errMsg = err.Error()
+	}
+	return topStationsRespMsg{
+		respMsg:  res,
+		stations: stations,
+	}
 }

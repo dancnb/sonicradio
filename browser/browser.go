@@ -44,18 +44,20 @@ type Api struct {
 	servers []string
 }
 
-func (a *Api) TopStations() []Station {
+func (a *Api) TopStations() ([]Station, error) {
 	s := SearchParams{
 		Offset: 0,
 		Limit:  30,
 		Order:  Votes,
 	}
 	body := s.toFormData()
-
+	var err error
 	for i := 0; i < serverMaxRetry; i++ {
-		res, err := a.doServerRequest(http.MethodPost, urlStations, []byte(body))
+		var res []byte
+		res, err = a.doServerRequest(http.MethodPost, urlStations, []byte(body))
 		if err != nil {
-			return nil
+			slog.Error("top stations", "request error", err)
+			continue
 		}
 		var stations []Station
 		err = json.Unmarshal(res, &stations)
@@ -65,35 +67,44 @@ func (a *Api) TopStations() []Station {
 			continue
 		}
 		slog.Info("top stations", "length", len(stations))
-		return stations
+		return stations, nil
 	}
 	slog.Warn("top stations exceeded max retries")
-	return nil
+	return nil, fmt.Errorf("Server response not available.")
 }
 
-func (a *Api) GetStation(uuid string) *Station {
-	stationUrl := fmt.Sprintf(urlStationsByUUID + uuid)
-
+func (a *Api) GetStations(uuids []string) ([]Station, error) {
+	if len(uuids) == 0 {
+		return nil, nil
+	}
+	var reqBody strings.Builder
+	reqBody.WriteString(`uuids=`)
+	for i, uuid := range uuids {
+		reqBody.WriteString(uuid)
+		if i < len(uuids)-1 {
+			reqBody.WriteString(`,`)
+		}
+	}
+	x := reqBody.String()
 	for i := 0; i < serverMaxRetry; i++ {
-		res, err := a.doServerRequest(http.MethodGet, stationUrl, nil)
+		res, err := a.doServerRequest(http.MethodPost, urlStationsByUUID, []byte(x))
 		if err != nil {
-			return nil
+			slog.Error("get stations", "request error", err)
+			continue
 		}
 		var stations []Station
 		err = json.Unmarshal(res, &stations)
 		if err != nil {
-			slog.Error("get station", "unmarshal error", err)
-			slog.Error("get station", "response", string(res))
-			continue
-		} else if len(stations) == 0 {
-			slog.Error("get station empty response")
+			slog.Error("get stations", "unmarshal error", err)
+			slog.Error("get stations", "response", string(res))
 			continue
 		}
-		return &stations[0]
+		slog.Info("get stations", "length", len(stations))
+		return stations, nil
 	}
 
 	slog.Warn("get station exceeded max retries")
-	return nil
+	return nil, fmt.Errorf("Server response not available.")
 }
 
 func (a *Api) doServerRequest(method string, path string, body []byte) ([]byte, error) {
