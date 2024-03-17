@@ -3,7 +3,6 @@ package ui
 import (
 	"fmt"
 	"log/slog"
-	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -28,24 +27,14 @@ func newFavoritesTab() *favoritesTab {
 }
 
 func (t *favoritesTab) createList(delegate *stationDelegate, width int, height int) list.Model {
-	l := list.New([]list.Item{}, delegate, 0, 0)
-	l.InfiniteScrolling = true
-	l.SetShowTitle(false)
-	l.SetShowStatusBar(false)
-	l.StatusMessageLifetime = 3 * time.Second
-	l.SetShowPagination(false)
-	l.SetShowFilter(true)
-	l.FilterInput.ShowSuggestions = true
+	l := createList(delegate, width, height)
 
-	l.KeyMap.Quit.SetKeys("q")
 	l.AdditionalShortHelpKeys = func() []key.Binding {
 		return []key.Binding{t.keymap.toNowPlaying}
 	}
 	l.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{t.keymap.toNowPlaying, t.keymap.toBrowser}
 	}
-	v, h := docStyle.GetFrameSize()
-	l.SetSize(width-h, height-v)
 
 	return l
 }

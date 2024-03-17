@@ -98,6 +98,13 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 	}
 	var res strings.Builder
 	prefix := fmt.Sprintf("%d. ", index+1)
+	if index+1 < 10 {
+		prefix = fmt.Sprintf("   %s", prefix)
+	} else if index+1 < 100 {
+		prefix = fmt.Sprintf("  %s", prefix)
+	} else if index+1 < 1000 {
+		prefix = fmt.Sprintf(" %s", prefix)
+	}
 
 	if d.nowPlaying != nil && d.nowPlaying.Stationuuid == s.Stationuuid {
 		res.WriteString(itStyle.Render(prefix))

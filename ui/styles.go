@@ -6,14 +6,14 @@ import (
 )
 
 const (
-	tabGapDistance = 2
+	tabGapDistance = 5
 )
 
 var (
 	// list items
-	baseColor    = lipgloss.Color("#ffb641")
-	selColor     = lipgloss.Color("#12100d")
-	selDescColor = lipgloss.Color("#4a4133")
+	baseColor     = lipgloss.Color("#ffb641")
+	selectedColor = lipgloss.Color("#12100d")
+	selDescColor  = lipgloss.Color("#4a4133")
 
 	// TODO replace list status
 	statusWarnMessageStyle = lipgloss.NewStyle().
@@ -26,9 +26,9 @@ var (
 				Foreground(lipgloss.AdaptiveColor{Light: "#04B575", Dark: "#04B575"}).
 				Render
 
-	nowPlayingStyle        = lipgloss.NewStyle().Background(baseColor).Foreground(selColor)
+	nowPlayingStyle        = lipgloss.NewStyle().Background(baseColor).Foreground(selectedColor)
 	nowPlayingDescStyle    = lipgloss.NewStyle().Background(baseColor).Foreground(selDescColor)
-	selNowPlayingStyle     = lipgloss.NewStyle().Background(baseColor).Foreground(selColor)
+	selNowPlayingStyle     = lipgloss.NewStyle().Background(baseColor).Foreground(selectedColor)
 	selNowPlayingDescStyle = lipgloss.NewStyle().Background(baseColor).Foreground(selDescColor)
 
 	itemStyle    = lipgloss.NewStyle().Foreground(baseColor).PaddingLeft(4)
@@ -40,10 +40,12 @@ var (
 
 	// tabs
 	inactiveTab = lipgloss.NewStyle().
+			Bold(true).
 			Border(lipgloss.HiddenBorder(), true).
 			Foreground(baseColor).
 			Padding(0, 1).Margin(0)
 	activeTab = lipgloss.NewStyle().
+			Bold(true).
 			Border(lipgloss.NormalBorder(), true).
 			BorderForeground(baseColor).
 			Foreground(baseColor).
@@ -54,6 +56,18 @@ var (
 		BorderForeground(baseColor).
 		Strikethrough(true).
 		Margin(0).Padding(0)
+
+	// help
+	helpkeyStyle  = lipgloss.NewStyle().Foreground(baseColor)
+	helpDescStyle = lipgloss.NewStyle().Foreground(baseColor).Faint(true)
+	helpStyle     = lipgloss.NewStyle().
+			Padding(0, 1).Margin(0).
+			Border(lipgloss.NormalBorder()).
+			BorderForeground(baseColor)
+
+	// filter
+	filterPromptStyle = lipgloss.NewStyle().Foreground(baseColor).Bold(true)
+	filterTextStyle   = filterPromptStyle.Copy().Faint(true)
 
 	// general
 	backgroundColor = termenv.RGBColor("#282c34")
