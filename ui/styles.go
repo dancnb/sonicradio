@@ -11,9 +11,10 @@ const (
 
 var (
 	// list items
-	baseColor     = lipgloss.Color("#ffb641")
-	selectedColor = lipgloss.Color("#12100d")
-	selDescColor  = lipgloss.Color("#4a4133")
+	baseColor      = lipgloss.Color("#ffb641")
+	baseColorFaint = lipgloss.Color("#bd862d")
+	selectedColor  = lipgloss.Color("#12100d")
+	selDescColor   = lipgloss.Color("#4a4133")
 
 	// TODO replace list status
 	statusWarnMessageStyle = lipgloss.NewStyle().
@@ -32,9 +33,9 @@ var (
 	selNowPlayingDescStyle = lipgloss.NewStyle().Background(baseColor).Foreground(selDescColor)
 
 	itemStyle    = lipgloss.NewStyle().Foreground(baseColor).PaddingLeft(4)
-	descStyle    = itemStyle.Copy().Faint(true)
+	descStyle    = lipgloss.NewStyle().Foreground(baseColorFaint).PaddingLeft(4)
 	selItemStyle = lipgloss.NewStyle().Foreground(baseColor).PaddingLeft(3)
-	selDescStyle = selItemStyle.Copy().Faint(true)
+	selDescStyle = lipgloss.NewStyle().Foreground(baseColorFaint).PaddingLeft(3)
 
 	selectedBorderStyle = lipgloss.NewStyle().Border(lipgloss.BlockBorder(), false, false, false, true).BorderForeground(baseColor)
 
@@ -59,7 +60,7 @@ var (
 
 	// help
 	helpkeyStyle  = lipgloss.NewStyle().Foreground(baseColor)
-	helpDescStyle = lipgloss.NewStyle().Foreground(baseColor).Faint(true)
+	helpDescStyle = lipgloss.NewStyle().Foreground(baseColorFaint)
 	helpStyle     = lipgloss.NewStyle().
 			Padding(0, 1).Margin(0).
 			Border(lipgloss.NormalBorder()).
@@ -67,7 +68,7 @@ var (
 
 	// filter
 	filterPromptStyle = lipgloss.NewStyle().Foreground(baseColor).Bold(true)
-	filterTextStyle   = filterPromptStyle.Copy().Faint(true)
+	filterTextStyle   = lipgloss.NewStyle().Foreground(baseColorFaint).Bold(true)
 
 	// general
 	backgroundColor = termenv.RGBColor("#282c34")
