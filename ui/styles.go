@@ -10,6 +10,8 @@ const (
 )
 
 var (
+	favChar = "  ★  "
+
 	// list items
 	baseColor      = lipgloss.Color("#ffb641")
 	baseColorFaint = lipgloss.Color("#bd862d")

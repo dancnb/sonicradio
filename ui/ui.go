@@ -33,7 +33,7 @@ func initialModel(cfg *config.Value, b *browser.Api, p player.Player) *model {
 	lipgloss.DefaultRenderer().SetHasDarkBackground(true)
 	// lipgloss.DefaultRenderer().Output().SetBackgroundColor(backgroundColor)
 
-	delegate := newStationDelegate(p)
+	delegate := newStationDelegate(cfg, p)
 	activeIx := browseTabIx
 	if len(cfg.Favorites) > 0 {
 		activeIx = favoriteTabIx

@@ -10,10 +10,11 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/dancnb/sonicradio/browser"
+	"github.com/dancnb/sonicradio/config"
 	"github.com/dancnb/sonicradio/player"
 )
 
-func newStationDelegate(p player.Player) *stationDelegate {
+func newStationDelegate(cfg *config.Value, p player.Player) *stationDelegate {
 	keymap := newDelegateKeyMap()
 
 	d := list.NewDefaultDelegate()
@@ -26,6 +27,7 @@ func newStationDelegate(p player.Player) *stationDelegate {
 
 	return &stationDelegate{
 		p:               p,
+		cfg:             cfg,
 		keymap:          keymap,
 		defaultDelegate: d,
 	}
@@ -33,6 +35,7 @@ func newStationDelegate(p player.Player) *stationDelegate {
 
 type stationDelegate struct {
 	p          player.Player
+	cfg        *config.Value
 	nowPlaying *browser.Station
 	keymap     *delegateKeyMap
 
@@ -89,6 +92,10 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 	if !ok {
 		return
 	}
+	name := s.Name
+	if d.cfg.IsFavorite(s.Stationuuid) {
+		name += favChar
+	}
 
 	itStyle := itemStyle
 	descStyle := descStyle
@@ -116,9 +123,9 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 			npDescStyle = selNowPlayingDescStyle
 		}
 
-		res.WriteString(npItStyle.Render(s.Name))
+		res.WriteString(npItStyle.Render(name))
 		w := m.Width()
-		hFill := max(w-len(prefix)-len(s.Name), 0)
+		hFill := max(w-len(prefix)-len(name), 0)
 		res.WriteString(npItStyle.Render(strings.Repeat(" ", hFill)))
 		res.WriteString("\n")
 		res.WriteString(descStyle.Render(strings.Repeat(" ", len(prefix))))
@@ -126,7 +133,7 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		hFill = max(w-len(prefix)-len(s.Description()), 0)
 		res.WriteString(npItStyle.Render(strings.Repeat(" ", hFill)))
 	} else {
-		res.WriteString(itStyle.Render(prefix + s.Name))
+		res.WriteString(itStyle.Render(prefix + name))
 		res.WriteString("\n")
 		res.WriteString(descStyle.Render(strings.Repeat(" ", len(prefix)) + s.Description()))
 	}

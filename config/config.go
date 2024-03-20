@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 )
 
 var debug = flag.Bool("debug", false, "use -debug arg to log to a file")
@@ -24,6 +25,10 @@ type Value struct {
 	LogPath   string   `json:"logPath"`             //`json:"logPath"`
 	Favorites []string `json:"favorites,omitempty"` // Ordered station UUID's for user favorites
 	History   []string `json:"history,omitempty"`   // Ordered station UUID's for user listening history
+}
+
+func (v Value) IsFavorite(uuid string) bool {
+	return slices.Contains(v.Favorites, uuid)
 }
 
 func Load() (Value, error) {
@@ -96,5 +101,4 @@ func Save(cfg Value) error {
 	}
 	err = f.Close()
 	return err
-
 }
