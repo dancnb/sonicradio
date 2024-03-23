@@ -83,6 +83,7 @@ func (m *Mpv) Stop() error {
 		}
 
 		slog.Debug("killed process group", "pgid", pid)
+		m.cmd = nil
 	}
 
 	return nil

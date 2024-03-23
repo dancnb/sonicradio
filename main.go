@@ -23,7 +23,7 @@ func run() {
 	cfg, _ := config.Load()
 
 	var logW io.Writer
-	if cfg.Debug && cfg.LogPath != "" {
+	if cfg.Debug {
 		logFile := fmt.Sprintf("sonicradio-%d.log", time.Now().UnixMilli())
 		lp := filepath.Join(cfg.LogPath, logFile)
 		lp = "__debug.log" // dev only

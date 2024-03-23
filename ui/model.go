@@ -18,7 +18,10 @@ import (
 	"github.com/dancnb/sonicradio/player"
 )
 
-const loadingMsg = "\n  Fetching stations... \n"
+const (
+	loadingMsg          = "\n  Fetching stations... \n"
+	noFavoritesAddedMsg = "\n No favorites added\n"
+)
 
 var ready bool
 
@@ -86,6 +89,7 @@ type uiTab interface {
 	Init(m *model) tea.Cmd
 	Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd)
 	View() string
+	Items() []list.Item
 }
 
 func (m *model) Init() tea.Cmd {
@@ -94,7 +98,10 @@ func (m *model) Init() tea.Cmd {
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+
+	//
 	// messages that need to reach all tabs
+	//
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.totHeight = msg.Height
@@ -103,7 +110,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		slog.Debug("width", "", m.width)
 		slog.Debug("totHeight", "", m.totHeight)
 		slog.Debug("headerHeight", "", m.headerHeight)
-
 		var cmds []tea.Cmd
 		if !ready {
 			ready = true
@@ -119,7 +125,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, tea.Batch(cmds...)
 
-		// messages that need to reach a particular tab
+	case quitMsg:
+		m.stop()
+		return nil, tea.Quit
+
+	//
+	// messages that need to reach a particular tab
+	//
 	case topStationsRespMsg:
 		// TODO handle errMsg
 		return m.tabs[browseTabIx].Update(m, msg)
@@ -127,8 +139,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case favoritesStationRespMsg:
 		// TODO handle errMsg
 		return m.tabs[favoriteTabIx].Update(m, msg)
+
+	case toggleFavoriteMsg:
+		return m.tabs[favoriteTabIx].Update(m, msg)
 	}
 
+	//
+	// messages that need to reach active tab
+	//
 	model, cmd := m.tabs[m.activeTab].Update(m, msg)
 	return model, cmd
 }
@@ -138,6 +156,10 @@ func (m *model) stop() {
 	err := m.player.Stop()
 	if err != nil {
 		slog.Error("error stopping station at exit", "error", err.Error())
+	}
+	err = config.Save(*m.cfg)
+	if err != nil {
+		slog.Error("error saving config", "error", err.Error())
 	}
 }
 
@@ -188,31 +210,11 @@ func trapSignal(p *tea.Program) {
 	}()
 }
 
-// tea.Msg
-type (
-	// used for os signal quit not handled by the list model
-	quitMsg struct{}
-
-	respMsg struct {
-		viewMsg string // used for view message
-		errMsg  string // used for status error message
-	}
-
-	favoritesStationRespMsg struct {
-		respMsg
-		stations []browser.Station
-	}
-	topStationsRespMsg struct {
-		respMsg
-		stations []browser.Station
-	}
-)
-
 // tea.Cmd
 func (m *model) favoritesReqCmd() tea.Msg {
 	if len(m.cfg.Favorites) == 0 {
 		return favoritesStationRespMsg{
-			respMsg: respMsg{viewMsg: "No favorites added"},
+			respMsg: respMsg{viewMsg: noFavoritesAddedMsg},
 		}
 	}
 
@@ -220,7 +222,7 @@ func (m *model) favoritesReqCmd() tea.Msg {
 	res := respMsg{}
 	if err != nil {
 		res.viewMsg = "No stations found"
-		res.errMsg = err.Error()
+		res.errMsg = err
 	}
 	return favoritesStationRespMsg{
 		respMsg:  res,
@@ -233,7 +235,7 @@ func (m *model) topStationsCmd() tea.Msg {
 	res := respMsg{}
 	if err != nil {
 		res.viewMsg = "No stations found"
-		res.errMsg = err.Error()
+		res.errMsg = err
 	}
 	return topStationsRespMsg{
 		respMsg:  res,
@@ -251,6 +253,8 @@ func createList(delegate *stationDelegate, width int, height int) list.Model {
 	l.SetShowFilter(true)
 	l.FilterInput.ShowSuggestions = true
 	l.KeyMap.Quit.SetKeys("q")
+	l.KeyMap.PrevPage.SetKeys("left", "h", "pgup", "u")
+	l.KeyMap.NextPage.SetKeys("right", "l", "pgdown", "d")
 	v, h := docStyle.GetFrameSize()
 	l.SetSize(width-h, height-v)
 

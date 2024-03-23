@@ -11,17 +11,17 @@ import (
 )
 
 type favoritesTab struct {
-	list    list.Model
-	viewMsg string
-	keymap  keymap
+	list       list.Model
+	viewMsg    string
+	listKeymap listKeymap
 }
 
 func newFavoritesTab() *favoritesTab {
-	k := newKeymap()
+	k := newListKeymap()
 	k.search.SetEnabled(false)
 
 	m := &favoritesTab{
-		keymap: k,
+		listKeymap: k,
 	}
 	return m
 }
@@ -30,10 +30,10 @@ func (t *favoritesTab) createList(delegate *stationDelegate, width int, height i
 	l := createList(delegate, width, height)
 
 	l.AdditionalShortHelpKeys = func() []key.Binding {
-		return []key.Binding{t.keymap.toNowPlaying}
+		return []key.Binding{}
 	}
 	l.AdditionalFullHelpKeys = func() []key.Binding {
-		return []key.Binding{t.keymap.toNowPlaying, t.keymap.toBrowser}
+		return []key.Binding{t.listKeymap.toNowPlaying, t.listKeymap.toBrowser}
 	}
 
 	return l
@@ -51,28 +51,59 @@ func (t *favoritesTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+
 	case tea.WindowSizeMsg:
 		v, h := docStyle.GetFrameSize()
 		t.list.SetSize(msg.Width-h, msg.Height-m.headerHeight-v)
 
 	case favoritesStationRespMsg:
 		t.viewMsg = msg.viewMsg
-		items := make([]list.Item, len(msg.stations))
-		for i := 0; i < len(msg.stations); i++ {
-			items[i] = msg.stations[i]
+		items := make([]list.Item, 0)
+		var notFound []string
+		for j := 0; j < len(m.cfg.Favorites); j++ {
+			found := false
+			for i := 0; i < len(msg.stations); i++ {
+				if msg.stations[i].Stationuuid == m.cfg.Favorites[j] {
+					items = append(items, msg.stations[i])
+					found = true
+					break
+				}
+			}
+			if !found {
+				notFound = append(notFound, m.cfg.Favorites[j])
+			}
 		}
-		t.list.SetItems(items)
+		if len(notFound) > 0 {
+			// TODO status message: some stations could not be retrieved from the server
+		}
+		cmd := t.list.SetItems(items)
+		cmds = append(cmds, cmd)
 
-	case quitMsg:
-		m.stop()
-		return nil, tea.Quit
+	case toggleFavoriteMsg:
+		if msg.added {
+			cmd := t.list.InsertItem(len(t.list.Items()), msg.station)
+			cmds = append(cmds, cmd)
+		} else {
+			its := t.list.Items()
+			for i := range its {
+				s := its[i].(browser.Station)
+				if s.Stationuuid == msg.station.Stationuuid {
+					_, _ = m.delegate.stopStation(s)
+					t.list.RemoveItem(i)
+					break
+				}
+			}
+		}
+		t.viewMsg = ""
+		if len(t.list.Items()) == 0 {
+			t.viewMsg = noFavoritesAddedMsg
+		}
 
 	case tea.KeyMsg:
-		if key.Matches(msg, t.keymap.toNowPlaying) {
+		if key.Matches(msg, t.listKeymap.toNowPlaying) {
 			newListModel, cmd := t.list.Update(msg)
 			t.list = newListModel
 			cmds = append(cmds, cmd)
-
 			if m.delegate.nowPlaying != nil {
 				selIndex := 0
 				items := t.list.Items()
@@ -92,11 +123,13 @@ func (t *favoritesTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch {
+
 		case key.Matches(msg, t.list.KeyMap.Quit, t.list.KeyMap.ForceQuit):
 			m.stop()
 
-		case key.Matches(msg, t.keymap.toBrowser):
+		case key.Matches(msg, t.listKeymap.toBrowser):
 			m.activeTab = browseTabIx
+
 		}
 	}
 
@@ -114,3 +147,5 @@ func (t *favoritesTab) View() string {
 
 	return t.list.View()
 }
+
+func (t *favoritesTab) Items() []list.Item { return t.list.Items() }

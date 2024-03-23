@@ -22,13 +22,24 @@ const (
 type Value struct {
 	Version   string   `json:"-"`
 	Debug     bool     `json:"-"`
-	LogPath   string   `json:"logPath"`             //`json:"logPath"`
+	LogPath   string   `json:"-"`
 	Favorites []string `json:"favorites,omitempty"` // Ordered station UUID's for user favorites
-	History   []string `json:"history,omitempty"`   // Ordered station UUID's for user listening history
+	// History   []string `json:"history,omitempty"`   // Ordered station UUID's for user listening history
 }
 
-func (v Value) IsFavorite(uuid string) bool {
+func (v *Value) IsFavorite(uuid string) bool {
 	return slices.Contains(v.Favorites, uuid)
+}
+
+func (v *Value) ToggleFavorite(uuid string) bool {
+	l1 := len(v.Favorites)
+	v.Favorites = slices.DeleteFunc(v.Favorites, func(el string) bool { return el == uuid })
+	l2 := len(v.Favorites)
+	if l2 == l1 {
+		v.Favorites = append(v.Favorites, uuid)
+		return true
+	}
+	return false
 }
 
 func Load() (Value, error) {

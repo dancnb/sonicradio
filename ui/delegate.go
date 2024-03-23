@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -18,15 +19,9 @@ func newStationDelegate(cfg *config.Value, p player.Player) *stationDelegate {
 	keymap := newDelegateKeyMap()
 
 	d := list.NewDefaultDelegate()
-	// d.ShortHelpFunc = func() []key.Binding {
-	// 	return []key.Binding{keymap.play}
-	// }
-	// d.FullHelpFunc = func() [][]key.Binding {
-	// 	return [][]key.Binding{{keymap.play, keymap.info, keymap.toggleFavorite}}
-	// }
 
 	return &stationDelegate{
-		p:               p,
+		player:          p,
 		cfg:             cfg,
 		keymap:          keymap,
 		defaultDelegate: d,
@@ -34,7 +29,7 @@ func newStationDelegate(cfg *config.Value, p player.Player) *stationDelegate {
 }
 
 type stationDelegate struct {
-	p          player.Player
+	player     player.Player
 	cfg        *config.Value
 	nowPlaying *browser.Station
 	keymap     *delegateKeyMap
@@ -47,11 +42,9 @@ func (d *stationDelegate) Height() int { return d.defaultDelegate.Height() }
 func (d *stationDelegate) Spacing() int { return d.defaultDelegate.Spacing() }
 
 func (d *stationDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
-	var title string
+	slog.Debug("stationDelegate", "type", fmt.Sprintf("%T", msg), "value", msg)
 	station, ok := m.SelectedItem().(browser.Station)
-	if ok {
-		title = station.Name
-	} else {
+	if !ok {
 		return nil
 	}
 
@@ -59,32 +52,46 @@ func (d *stationDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, d.keymap.play):
-			if d.nowPlaying != nil && d.nowPlaying.Stationuuid == station.Stationuuid {
-				slog.Debug("stopping", "id", d.nowPlaying.Stationuuid)
-				d.nowPlaying = nil
-				err := d.p.Stop()
-				if err != nil {
-					errMsg := fmt.Sprintf("error stopping station %s: %s", station.Name, err.Error())
-					slog.Error(errMsg)
-					return m.NewStatusMessage(statusErrMessageStyle("Error stopping " + title))
-				}
-				return m.NewStatusMessage(statusMessageStyle("Stopped playing " + title))
+			wasPlaying, _ := d.stopStation(station)
+			if wasPlaying {
+				return nil
 			}
+			_ = d.playStation(station)
 
-			slog.Debug("playing", "id", station.Stationuuid)
-			err := d.p.Play(station.URL)
-			if err != nil {
-				errMsg := fmt.Sprintf("error playing station %s: %s", station.Name, err.Error())
-				slog.Error(errMsg)
-				return m.NewStatusMessage(statusErrMessageStyle("Error playing " + title))
-			}
-
-			d.nowPlaying = &station
-			return m.NewStatusMessage(statusMessageStyle("Playing " + title))
+		case key.Matches(msg, d.keymap.toggleFavorite):
+			added := d.cfg.ToggleFavorite(station.Stationuuid)
+			return func() tea.Msg { return toggleFavoriteMsg{added, station} }
 		}
 	}
 
 	return nil
+}
+
+func (d *stationDelegate) playStation(station browser.Station) error {
+	slog.Debug("playing", "id", station.Stationuuid)
+	err := d.player.Play(station.URL)
+	if err != nil {
+		errMsg := fmt.Sprintf("error playing station %s: %s", station.Name, err.Error())
+		slog.Error(errMsg)
+		return errors.New(errMsg)
+	}
+	d.nowPlaying = &station
+	return nil
+}
+
+func (d *stationDelegate) stopStation(station browser.Station) (wasPlaying bool, err error) {
+	if d.nowPlaying != nil && d.nowPlaying.Stationuuid == station.Stationuuid {
+		slog.Debug("stopping", "id", d.nowPlaying.Stationuuid)
+		d.nowPlaying = nil
+		err := d.player.Stop()
+		if err != nil {
+			errMsg := fmt.Sprintf("error stopping station %s: %s", station.Name, err.Error())
+			slog.Error(errMsg)
+			return true, errors.New(errMsg)
+		}
+		return true, nil
+	}
+	return false, nil
 }
 
 func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
@@ -149,7 +156,7 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 // is entirely optional.
 func (d *stationDelegate) ShortHelp() []key.Binding {
 	return []key.Binding{
-		d.keymap.play,
+		d.keymap.play, d.keymap.toggleFavorite,
 	}
 }
 
@@ -171,11 +178,11 @@ func newDelegateKeyMap() *delegateKeyMap {
 		),
 		info: key.NewBinding(
 			key.WithKeys("i"),
-			key.WithHelp("i", "info"),
+			key.WithHelp("i", "station info"),
 		),
 		toggleFavorite: key.NewBinding(
 			key.WithKeys("f"),
-			key.WithHelp("f", "toggle favorite"),
+			key.WithHelp("f", "toggle as favorite"),
 		),
 	}
 }
