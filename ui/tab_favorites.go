@@ -88,7 +88,7 @@ func (t *favoritesTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			for i := range its {
 				s := its[i].(browser.Station)
 				if s.Stationuuid == msg.station.Stationuuid {
-					_, _ = m.delegate.stopStation(s)
+					// _, _ = m.delegate.stopStation(s)
 					t.list.RemoveItem(i)
 					break
 				}
@@ -104,17 +104,7 @@ func (t *favoritesTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			newListModel, cmd := t.list.Update(msg)
 			t.list = newListModel
 			cmds = append(cmds, cmd)
-			if m.delegate.nowPlaying != nil {
-				selIndex := 0
-				items := t.list.Items()
-				for ix := range items {
-					if items[ix].(browser.Station).Stationuuid == m.delegate.nowPlaying.Stationuuid {
-						selIndex = ix
-						break
-					}
-				}
-				t.list.Select(selIndex)
-			}
+			toNowPlaying(m, t)
 		}
 
 		// Don't match any of the keys below if we're actively filtering.
@@ -123,7 +113,6 @@ func (t *favoritesTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch {
-
 		case key.Matches(msg, t.list.KeyMap.Quit, t.list.KeyMap.ForceQuit):
 			m.stop()
 
@@ -148,4 +137,4 @@ func (t *favoritesTab) View() string {
 	return t.list.View()
 }
 
-func (t *favoritesTab) Items() []list.Item { return t.list.Items() }
+func (t *favoritesTab) List() *list.Model { return &t.list }

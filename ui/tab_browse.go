@@ -7,7 +7,6 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/dancnb/sonicradio/browser"
 )
 
 type browseTab struct {
@@ -68,17 +67,7 @@ func (t *browseTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			newListModel, cmd := t.list.Update(msg)
 			t.list = newListModel
 			cmds = append(cmds, cmd)
-			if m.delegate.nowPlaying != nil {
-				selIndex := 0
-				items := t.list.Items()
-				for ix := range items {
-					if items[ix].(browser.Station).Stationuuid == m.delegate.nowPlaying.Stationuuid {
-						selIndex = ix
-						break
-					}
-				}
-				t.list.Select(selIndex)
-			}
+			toNowPlaying(m, t)
 		}
 
 		// Don't match any of the keys below if we're actively filtering.
@@ -96,16 +85,6 @@ func (t *browseTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 
 		case key.Matches(msg, t.listKeymap.toFavorites):
-			// favs := m.tabs[favoriteTabIx].Items()
-			//    toAdd:=make([]string, 0)
-			// for _, fav := range m.cfg.Favorites {
-			//      if !slices.ContainsFunc(favs, func (it list.Item) bool  {
-			//        s:=it.(browser.Station)
-			//        return s.Stationuuid == fav
-			//      }){
-			//        toAdd = append(toAdd, s.S)
-			//      }
-			// }
 			m.activeTab = favoriteTabIx
 		}
 	}
@@ -123,4 +102,5 @@ func (t *browseTab) View() string {
 	}
 	return t.list.View()
 }
-func (t *browseTab) Items() []list.Item { return t.list.Items() }
+
+func (t *browseTab) List() *list.Model { return &t.list }

@@ -29,10 +29,11 @@ func newStationDelegate(cfg *config.Value, p player.Player) *stationDelegate {
 }
 
 type stationDelegate struct {
-	player     player.Player
-	cfg        *config.Value
-	nowPlaying *browser.Station
-	keymap     *delegateKeyMap
+	player      player.Player
+	cfg         *config.Value
+	prevPlaying *browser.Station
+	currPlaying *browser.Station
+	keymap      *delegateKeyMap
 
 	defaultDelegate list.DefaultDelegate
 }
@@ -43,7 +44,7 @@ func (d *stationDelegate) Spacing() int { return d.defaultDelegate.Spacing() }
 
 func (d *stationDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	slog.Debug("stationDelegate", "type", fmt.Sprintf("%T", msg), "value", msg)
-	station, ok := m.SelectedItem().(browser.Station)
+	selStation, ok := m.SelectedItem().(browser.Station)
 	if !ok {
 		return nil
 	}
@@ -51,16 +52,24 @@ func (d *stationDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, d.keymap.play):
-			wasPlaying, _ := d.stopStation(station)
-			if wasPlaying {
-				return nil
+		case key.Matches(msg, d.keymap.pause):
+			if d.currPlaying != nil {
+				_, _ = d.stopStation(*d.currPlaying)
+			} else if d.prevPlaying != nil {
+				_ = d.playStation(*d.prevPlaying)
+			} else {
+				_ = d.playStation(selStation)
 			}
-			_ = d.playStation(station)
+
+		case key.Matches(msg, d.keymap.playSelected):
+			wasPlaying, _ := d.stopStation(selStation)
+			if !wasPlaying {
+				_ = d.playStation(selStation)
+			}
 
 		case key.Matches(msg, d.keymap.toggleFavorite):
-			added := d.cfg.ToggleFavorite(station.Stationuuid)
-			return func() tea.Msg { return toggleFavoriteMsg{added, station} }
+			added := d.cfg.ToggleFavorite(selStation.Stationuuid)
+			return func() tea.Msg { return toggleFavoriteMsg{added, selStation} }
 		}
 	}
 
@@ -75,14 +84,16 @@ func (d *stationDelegate) playStation(station browser.Station) error {
 		slog.Error(errMsg)
 		return errors.New(errMsg)
 	}
-	d.nowPlaying = &station
+	d.prevPlaying = d.currPlaying
+	d.currPlaying = &station
 	return nil
 }
 
 func (d *stationDelegate) stopStation(station browser.Station) (wasPlaying bool, err error) {
-	if d.nowPlaying != nil && d.nowPlaying.Stationuuid == station.Stationuuid {
-		slog.Debug("stopping", "id", d.nowPlaying.Stationuuid)
-		d.nowPlaying = nil
+	if d.currPlaying != nil && d.currPlaying.Stationuuid == station.Stationuuid {
+		slog.Debug("stopping", "id", d.currPlaying.Stationuuid)
+		d.prevPlaying = &station
+		d.currPlaying = nil
 		err := d.player.Stop()
 		if err != nil {
 			errMsg := fmt.Sprintf("error stopping station %s: %s", station.Name, err.Error())
@@ -120,7 +131,7 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		prefix = fmt.Sprintf(" %s", prefix)
 	}
 
-	if d.nowPlaying != nil && d.nowPlaying.Stationuuid == s.Stationuuid {
+	if d.currPlaying != nil && d.currPlaying.Stationuuid == s.Stationuuid {
 		res.WriteString(itStyle.Render(prefix))
 
 		npItStyle := nowPlayingStyle
@@ -156,7 +167,7 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 // is entirely optional.
 func (d *stationDelegate) ShortHelp() []key.Binding {
 	return []key.Binding{
-		d.keymap.play, d.keymap.toggleFavorite,
+		d.keymap.playSelected, d.keymap.pause, d.keymap.toggleFavorite,
 	}
 }
 
@@ -165,16 +176,20 @@ func (d *stationDelegate) ShortHelp() []key.Binding {
 func (d *stationDelegate) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{
-			d.keymap.play, d.keymap.info, d.keymap.toggleFavorite,
+			d.keymap.playSelected, d.keymap.pause, d.keymap.toggleFavorite, d.keymap.info,
 		},
 	}
 }
 
 func newDelegateKeyMap() *delegateKeyMap {
 	return &delegateKeyMap{
-		play: key.NewBinding(
+		pause: key.NewBinding(
+			key.WithKeys("p"),
+			key.WithHelp("p", "pause"),
+		),
+		playSelected: key.NewBinding(
 			key.WithKeys(" ", "enter"),
-			key.WithHelp("space/enter", "play/pause"),
+			key.WithHelp("space/enter", "play"),
 		),
 		info: key.NewBinding(
 			key.WithKeys("i"),
@@ -182,13 +197,14 @@ func newDelegateKeyMap() *delegateKeyMap {
 		),
 		toggleFavorite: key.NewBinding(
 			key.WithKeys("f"),
-			key.WithHelp("f", "toggle as favorite"),
+			key.WithHelp("f", "set favorite"),
 		),
 	}
 }
 
 type delegateKeyMap struct {
-	play           key.Binding
+	pause          key.Binding
+	playSelected   key.Binding
 	info           key.Binding
 	toggleFavorite key.Binding
 }
