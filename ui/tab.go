@@ -15,11 +15,11 @@ type uiTabIndex uint8
 func (t uiTabIndex) String() string {
 	switch t {
 	case favoriteTabIx:
-		return "1. Favorites"
+		return "Favorites"
 	case browseTabIx:
-		return "2. Browse"
+		return " Browse "
 	case historyTabIx:
-		return "3. History"
+		return " History "
 	}
 	return ""
 }
@@ -65,8 +65,12 @@ func createList(delegate *stationDelegate, width int, height int) list.Model {
 	l.SetShowFilter(true)
 	l.FilterInput.ShowSuggestions = true
 	l.KeyMap.Quit.SetKeys("q")
-	l.KeyMap.PrevPage.SetKeys("left", "h", "pgup", "u")
-	l.KeyMap.NextPage.SetKeys("right", "l", "pgdown", "d")
+	l.KeyMap.PrevPage.SetKeys("pgup", "u")
+	l.KeyMap.PrevPage.SetHelp("u/pgup", "prev page")
+	// l.KeyMap.PrevPage.SetHelp("←/h/pgup", "prev page")
+	l.KeyMap.NextPage.SetKeys("pgdown", "d")
+	l.KeyMap.NextPage.SetHelp("d/pgdn", "next page")
+	// l.KeyMap.NextPage.SetHelp("→/l/pgdn", "next page")
 	v, h := docStyle.GetFrameSize()
 	l.SetSize(width-h, height-v)
 

@@ -20,6 +20,14 @@ func newListKeymap() listKeymap {
 			key.WithKeys("2"),
 			key.WithHelp("2", "go to browser"),
 		),
+		nextTab: key.NewBinding(
+			key.WithKeys("right", "l", "tab"),
+			key.WithHelp("→/l/tab", "go to next tab"),
+		),
+		prevTab: key.NewBinding(
+			key.WithKeys("left", "h", "shift+tab"),
+			key.WithHelp("←/h/shift+tab", "go to prev tab"),
+		),
 	}
 	return m
 }
@@ -29,4 +37,6 @@ type listKeymap struct {
 	toNowPlaying key.Binding
 	toFavorites  key.Binding
 	toBrowser    key.Binding
+	nextTab      key.Binding
+	prevTab      key.Binding
 }

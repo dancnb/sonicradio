@@ -33,7 +33,7 @@ func (t *favoritesTab) createList(delegate *stationDelegate, width int, height i
 		return []key.Binding{}
 	}
 	l.AdditionalFullHelpKeys = func() []key.Binding {
-		return []key.Binding{t.listKeymap.toNowPlaying, t.listKeymap.toBrowser}
+		return []key.Binding{t.listKeymap.toNowPlaying, t.listKeymap.toBrowser, t.listKeymap.prevTab, t.listKeymap.nextTab}
 	}
 
 	return l
@@ -118,7 +118,10 @@ func (t *favoritesTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, t.listKeymap.toBrowser):
 			m.activeTab = browseTabIx
-
+		case key.Matches(msg, t.listKeymap.nextTab):
+			m.activeTab = browseTabIx
+		case key.Matches(msg, t.listKeymap.prevTab):
+			m.activeTab = browseTabIx
 		}
 	}
 
