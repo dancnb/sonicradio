@@ -20,8 +20,6 @@ const (
 	noFavoritesAddedMsg = "\n No favorites added\n"
 )
 
-var ready bool
-
 func NewProgram(cfg *config.Value, b *browser.Api, p player.Player) *tea.Program {
 	m := initialModel(cfg, b, p)
 	progr := tea.NewProgram(m, tea.WithAltScreen())
@@ -50,6 +48,7 @@ func initialModel(cfg *config.Value, b *browser.Api, p player.Player) *model {
 }
 
 type model struct {
+	ready    bool
 	cfg      *config.Value
 	browser  *browser.Api
 	player   player.Player
@@ -81,8 +80,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		slog.Debug("totHeight", "", m.totHeight)
 		slog.Debug("headerHeight", "", m.headerHeight)
 		var cmds []tea.Cmd
-		if !ready {
-			ready = true
+		if !m.ready {
+			m.ready = true
 			for i := range m.tabs {
 				tcmd := m.tabs[i].Init(m)
 				cmds = append(cmds, tcmd)
@@ -157,7 +156,7 @@ func (m *model) headerView(width int) string {
 }
 
 func (m model) View() string {
-	if !ready {
+	if !m.ready {
 		return loadingMsg
 	}
 

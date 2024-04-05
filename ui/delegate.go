@@ -115,13 +115,12 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		name += favChar
 	}
 
-	itStyle := itemStyle
-	descStyle := descStyle
-	if index == m.Index() {
-		itStyle = selItemStyle
-		descStyle = selDescStyle
-	}
+	isSel := index == m.Index()
+	isCurr := d.currPlaying != nil && d.currPlaying.Stationuuid == s.Stationuuid
+	isPrev := d.currPlaying == nil && d.prevPlaying != nil && d.prevPlaying.Stationuuid == s.Stationuuid
 	var res strings.Builder
+	var str string
+
 	prefix := fmt.Sprintf("%d. ", index+1)
 	if index+1 < 10 {
 		prefix = fmt.Sprintf("   %s", prefix)
@@ -131,35 +130,48 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		prefix = fmt.Sprintf(" %s", prefix)
 	}
 
-	if d.currPlaying != nil && d.currPlaying.Stationuuid == s.Stationuuid {
-		res.WriteString(itStyle.Render(prefix))
-
-		npItStyle := nowPlayingStyle
-		npDescStyle := nowPlayingDescStyle
-		if index == m.Index() {
-			npItStyle = selNowPlayingStyle
-			npDescStyle = selNowPlayingDescStyle
+	if isCurr || isPrev {
+		res.WriteString(nowPlayingPrefixStyle.Render(prefix))
+		itStyle := nowPlayingStyle
+		descStyle := nowPlayingDescStyle
+		if isSel {
+			itStyle = selNowPlayingStyle
+			descStyle = selNowPlayingDescStyle
 		}
 
-		res.WriteString(npItStyle.Render(name))
+		res.WriteString(itStyle.Render(name))
 		w := m.Width()
 		hFill := max(w-len(prefix)-len(name), 0)
-		res.WriteString(npItStyle.Render(strings.Repeat(" ", hFill)))
+		res.WriteString(itStyle.Render(strings.Repeat(" ", hFill)))
 		res.WriteString("\n")
-		res.WriteString(descStyle.Render(strings.Repeat(" ", len(prefix))))
-		res.WriteString(npDescStyle.Render(s.Description()))
+		res.WriteString(nowPlayingPrefixStyle.Render(strings.Repeat(" ", len(prefix))))
+		res.WriteString(descStyle.Render(s.Description()))
 		hFill = max(w-len(prefix)-len(s.Description()), 0)
-		res.WriteString(npItStyle.Render(strings.Repeat(" ", hFill)))
+		res.WriteString(descStyle.Render(strings.Repeat(" ", hFill)))
+
+		str = res.String()
+		str = selectedBorderStyle.Render(str)
 	} else {
-		res.WriteString(itStyle.Render(prefix + name))
+		res.WriteString(prefixStyle.Render(prefix))
+		itStyle := itemStyle
+		descStyle := descStyle
+		if isSel {
+			itStyle = selItemStyle
+			descStyle = selDescStyle
+		}
+		res.WriteString(itStyle.Render(name))
+
+		w := m.Width()
+		hFill := max(w-len(prefix)-len(name), 0)
+		res.WriteString(itStyle.Render(strings.Repeat(" ", hFill)))
 		res.WriteString("\n")
-		res.WriteString(descStyle.Render(strings.Repeat(" ", len(prefix)) + s.Description()))
+		res.WriteString(prefixStyle.Render(strings.Repeat(" ", len(prefix))))
+		res.WriteString(descStyle.Render(s.Description()))
+		hFill = max(w-len(prefix)-len(s.Description()), 0)
+		res.WriteString(descStyle.Render(strings.Repeat(" ", hFill)))
+		str = res.String()
 	}
 
-	str := res.String()
-	if index == m.Index() {
-		str = selectedBorderStyle.Render(str)
-	}
 	fmt.Fprint(w, str)
 }
 

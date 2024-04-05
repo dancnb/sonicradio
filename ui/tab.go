@@ -39,19 +39,25 @@ type uiTab interface {
 }
 
 func toNowPlaying(m *model, t uiTab) {
+	uuid := ""
 	if m.delegate.currPlaying != nil {
-		selIndex := -1
-		items := t.List().VisibleItems()
-		for ix := range items {
-			if items[ix].(browser.Station).Stationuuid == m.delegate.currPlaying.Stationuuid {
-				selIndex = ix
-				break
-			}
+		uuid = m.delegate.currPlaying.Stationuuid
+	} else if m.delegate.prevPlaying != nil {
+		uuid = m.delegate.prevPlaying.Stationuuid
+	} else {
+		return
+	}
+	selIndex := -1
+	items := t.List().VisibleItems()
+	for ix := range items {
+		if items[ix].(browser.Station).Stationuuid == uuid {
+			selIndex = ix
+			break
 		}
-		slog.Debug("toNowPlaying", "selIndex", selIndex)
-		if selIndex > -1 {
-			t.List().Select(selIndex)
-		}
+	}
+	slog.Debug("toNowPlaying", "selIndex", selIndex)
+	if selIndex > -1 {
+		t.List().Select(selIndex)
 	}
 }
 

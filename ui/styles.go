@@ -10,13 +10,65 @@ const (
 )
 
 var (
-	favChar = "  ★  "
+	favChar   = "  ★  "
+	playChar  = "\u23F5"
+	pauseChar = "\u23F8"
 
 	// list items
-	baseColor      = lipgloss.Color("#ffb641")
-	baseColorFaint = lipgloss.Color("#bd862d")
-	selectedColor  = lipgloss.Color("#12100d")
-	selDescColor   = lipgloss.Color("#4a4133")
+	basePrimaryColor     = lipgloss.Color("#ffb641")
+	baseSecondColor      = lipgloss.Color("#bd862d")
+	invertedPrimaryColor = lipgloss.Color("#12100d")
+	invertedSecondColor  = lipgloss.Color("#4a4133")
+
+	prefixStyle           = lipgloss.NewStyle().Foreground(basePrimaryColor).PaddingLeft(4)
+	nowPlayingPrefixStyle = lipgloss.NewStyle().Foreground(basePrimaryColor).PaddingLeft(3)
+
+	nowPlayingStyle        = lipgloss.NewStyle().Foreground(basePrimaryColor)
+	nowPlayingDescStyle    = lipgloss.NewStyle().Foreground(baseSecondColor)
+	selNowPlayingStyle     = lipgloss.NewStyle().Background(basePrimaryColor).Foreground(invertedPrimaryColor)
+	selNowPlayingDescStyle = lipgloss.NewStyle().Background(basePrimaryColor).Foreground(invertedSecondColor)
+
+	itemStyle    = lipgloss.NewStyle().Foreground(basePrimaryColor)
+	descStyle    = lipgloss.NewStyle().Foreground(baseSecondColor)
+	selItemStyle = lipgloss.NewStyle().Background(basePrimaryColor).Foreground(invertedPrimaryColor)
+	selDescStyle = lipgloss.NewStyle().Background(basePrimaryColor).Foreground(invertedSecondColor)
+
+	selectedBorderStyle = lipgloss.NewStyle().Border(lipgloss.BlockBorder(), false, false, false, true).BorderForeground(basePrimaryColor)
+
+	// tabs
+	inactiveTab = lipgloss.NewStyle().
+			Bold(true).
+			Border(lipgloss.HiddenBorder(), true).
+			Foreground(basePrimaryColor).
+			Padding(0, 1).Margin(0)
+	activeTab = lipgloss.NewStyle().
+			Bold(true).
+			Border(lipgloss.NormalBorder(), true).
+			BorderForeground(basePrimaryColor).
+			Foreground(basePrimaryColor).
+			Padding(0, 1).Margin(0)
+	tabGap = lipgloss.NewStyle().
+		Border(lipgloss.Border{Left: " ", Right: " "}, true, false).
+		Foreground(basePrimaryColor).
+		BorderForeground(basePrimaryColor).
+		Strikethrough(true).
+		Margin(0).Padding(0)
+
+	// help
+	helpkeyStyle  = lipgloss.NewStyle().Foreground(basePrimaryColor)
+	helpDescStyle = lipgloss.NewStyle().Foreground(baseSecondColor)
+	helpStyle     = lipgloss.NewStyle().
+			Padding(0, 1).Margin(0).
+			Border(lipgloss.NormalBorder()).
+			BorderForeground(basePrimaryColor)
+
+	// filter
+	filterPromptStyle = lipgloss.NewStyle().Foreground(basePrimaryColor).Bold(true)
+	filterTextStyle   = lipgloss.NewStyle().Foreground(baseSecondColor).Bold(true)
+
+	// general
+	backgroundColor = termenv.RGBColor("#282c34")
+	docStyle        = lipgloss.NewStyle().Padding(1, 2)
 
 	// TODO replace list status
 	statusWarnMessageStyle = lipgloss.NewStyle().
@@ -28,51 +80,4 @@ var (
 	statusMessageStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.AdaptiveColor{Light: "#04B575", Dark: "#04B575"}).
 				Render
-
-	nowPlayingStyle        = lipgloss.NewStyle().Background(baseColor).Foreground(selectedColor)
-	nowPlayingDescStyle    = lipgloss.NewStyle().Background(baseColor).Foreground(selDescColor)
-	selNowPlayingStyle     = lipgloss.NewStyle().Background(baseColor).Foreground(selectedColor)
-	selNowPlayingDescStyle = lipgloss.NewStyle().Background(baseColor).Foreground(selDescColor)
-
-	itemStyle    = lipgloss.NewStyle().Foreground(baseColor).PaddingLeft(4)
-	descStyle    = lipgloss.NewStyle().Foreground(baseColorFaint).PaddingLeft(4)
-	selItemStyle = lipgloss.NewStyle().Foreground(baseColor).PaddingLeft(3)
-	selDescStyle = lipgloss.NewStyle().Foreground(baseColorFaint).PaddingLeft(3)
-
-	selectedBorderStyle = lipgloss.NewStyle().Border(lipgloss.BlockBorder(), false, false, false, true).BorderForeground(baseColor)
-
-	// tabs
-	inactiveTab = lipgloss.NewStyle().
-			Bold(true).
-			Border(lipgloss.HiddenBorder(), true).
-			Foreground(baseColor).
-			Padding(0, 1).Margin(0)
-	activeTab = lipgloss.NewStyle().
-			Bold(true).
-			Border(lipgloss.NormalBorder(), true).
-			BorderForeground(baseColor).
-			Foreground(baseColor).
-			Padding(0, 1).Margin(0)
-	tabGap = lipgloss.NewStyle().
-		Border(lipgloss.Border{Left: " ", Right: " "}, true, false).
-		Foreground(baseColor).
-		BorderForeground(baseColor).
-		Strikethrough(true).
-		Margin(0).Padding(0)
-
-	// help
-	helpkeyStyle  = lipgloss.NewStyle().Foreground(baseColor)
-	helpDescStyle = lipgloss.NewStyle().Foreground(baseColorFaint)
-	helpStyle     = lipgloss.NewStyle().
-			Padding(0, 1).Margin(0).
-			Border(lipgloss.NormalBorder()).
-			BorderForeground(baseColor)
-
-	// filter
-	filterPromptStyle = lipgloss.NewStyle().Foreground(baseColor).Bold(true)
-	filterTextStyle   = lipgloss.NewStyle().Foreground(baseColorFaint).Bold(true)
-
-	// general
-	backgroundColor = termenv.RGBColor("#282c34")
-	docStyle        = lipgloss.NewStyle().Padding(1, 2)
 )
