@@ -5,6 +5,8 @@ import (
 	"strings"
 )
 
+const separator = "|"
+
 type Station struct {
 	// A globally unique identifier for the change of the station information
 	Changeuuid string `json:"changeuuid"`
@@ -96,7 +98,14 @@ type Station struct {
 
 func (i Station) Title() string { return i.Name }
 func (i Station) Description() string {
-	desc := fmt.Sprintf("%s |  %d kbps | %s", i.Country, i.Bitrate, i.Tags)
+	desc := i.Country
+	if strings.TrimSpace(i.State) != "" {
+		desc += ", " + i.State
+	}
+	if strings.TrimSpace(i.Language) != "" {
+		desc += ", " + i.Language
+	}
+	desc = fmt.Sprintf("Votes: %[2]d %[1]s %[3]d kbps %[1]s %[4]s %[1]s %[5]s", separator, i.Votes, i.Bitrate, desc, i.Tags)
 	desc = strings.TrimSpace(desc)
 	desc = strings.Trim(desc, "|")
 	desc = strings.TrimSpace(desc)

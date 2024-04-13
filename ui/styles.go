@@ -6,13 +6,15 @@ import (
 )
 
 const (
-	tabGapDistance = 5
+	tabGapDistance = 2
 )
 
 var (
 	favChar   = "  ★  "
-	playChar  = "\u23F5"
-	pauseChar = "\u23F8"
+	playChar  = "\u2877"
+	pauseChar = "\u28FF"
+	// playChar  = "\u25B6"
+	// pauseChar = "\u2225"
 
 	// list items
 	basePrimaryColor     = lipgloss.Color("#ffb641")
@@ -20,13 +22,15 @@ var (
 	invertedPrimaryColor = lipgloss.Color("#12100d")
 	invertedSecondColor  = lipgloss.Color("#4a4133")
 
-	prefixStyle           = lipgloss.NewStyle().Foreground(basePrimaryColor).PaddingLeft(4)
-	nowPlayingPrefixStyle = lipgloss.NewStyle().Foreground(basePrimaryColor).PaddingLeft(3)
+	prefixStyle           = lipgloss.NewStyle().Foreground(basePrimaryColor).PaddingLeft(1)
+	nowPlayingPrefixStyle = lipgloss.NewStyle().Foreground(basePrimaryColor).PaddingLeft(0)
 
 	nowPlayingStyle        = lipgloss.NewStyle().Foreground(basePrimaryColor)
 	nowPlayingDescStyle    = lipgloss.NewStyle().Foreground(baseSecondColor)
 	selNowPlayingStyle     = lipgloss.NewStyle().Background(basePrimaryColor).Foreground(invertedPrimaryColor)
 	selNowPlayingDescStyle = lipgloss.NewStyle().Background(basePrimaryColor).Foreground(invertedSecondColor)
+
+	playStatusStyle = lipgloss.NewStyle().Bold(true).Foreground(baseSecondColor)
 
 	itemStyle    = lipgloss.NewStyle().Foreground(basePrimaryColor)
 	descStyle    = lipgloss.NewStyle().Foreground(baseSecondColor)
@@ -54,6 +58,9 @@ var (
 		Strikethrough(true).
 		Margin(0).Padding(0)
 
+	// header
+	spinnerStyle = lipgloss.NewStyle().Foreground(basePrimaryColor)
+
 	// help
 	helpkeyStyle  = lipgloss.NewStyle().Foreground(basePrimaryColor)
 	helpDescStyle = lipgloss.NewStyle().Foreground(baseSecondColor)
@@ -68,7 +75,7 @@ var (
 
 	// general
 	backgroundColor = termenv.RGBColor("#282c34")
-	docStyle        = lipgloss.NewStyle().Padding(1, 2)
+	docStyle        = lipgloss.NewStyle().Padding(2, 2)
 
 	// TODO replace list status
 	statusWarnMessageStyle = lipgloss.NewStyle().

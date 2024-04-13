@@ -57,7 +57,7 @@ func (t *favoritesTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		t.list.SetSize(msg.Width-h, msg.Height-m.headerHeight-v)
 
 	case favoritesStationRespMsg:
-		t.viewMsg = msg.viewMsg
+		t.viewMsg = string(msg.viewMsg)
 		items := make([]list.Item, 0)
 		var notFound []string
 		for j := 0; j < len(m.cfg.Favorites); j++ {

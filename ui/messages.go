@@ -1,24 +1,27 @@
 package ui
 
-import "github.com/dancnb/sonicradio/browser"
+import (
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/dancnb/sonicradio/browser"
+)
 
 // tea.Msg
 type (
 	// used for os signal quit not handled by the list model
 	quitMsg struct{}
 
-	respMsg struct {
-		viewMsg string // used for view message
-		errMsg  error  // used for status error message
-	}
+	viewMsg   string // used for view message
+	statusMsg string // used for status error message
 
 	favoritesStationRespMsg struct {
-		respMsg
+		viewMsg
+		statusMsg
 		stations []browser.Station
 	}
 
 	topStationsRespMsg struct {
-		respMsg
+		viewMsg
+		statusMsg
 		stations []browser.Station
 	}
 
@@ -30,3 +33,9 @@ type (
 
 // tea.Cmd
 func errorMsg(err error) error { return err }
+
+func respMsgCmd(msg string) tea.Cmd {
+	return func() tea.Msg {
+		return statusMsg(msg)
+	}
+}

@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -54,17 +55,35 @@ func (d *stationDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 		switch {
 		case key.Matches(msg, d.keymap.pause):
 			if d.currPlaying != nil {
-				_, _ = d.stopStation(*d.currPlaying)
+				_, err := d.stopStation(*d.currPlaying)
+				if err != nil {
+					return respMsgCmd("Could not terminate previous playback!")
+				}
 			} else if d.prevPlaying != nil {
-				_ = d.playStation(*d.prevPlaying)
+				cmds := []tea.Cmd{
+					respMsgCmd(fmt.Sprintf("Connecting to %s...", d.prevPlaying.Name)),
+					d.playCmd(d.prevPlaying),
+				}
+				return tea.Sequence(cmds...)
 			} else {
-				_ = d.playStation(selStation)
+				cmds := []tea.Cmd{
+					respMsgCmd(fmt.Sprintf("Connecting to %s...", selStation.Name)),
+					d.playCmd(&selStation),
+				}
+				return tea.Sequence(cmds...)
 			}
 
 		case key.Matches(msg, d.keymap.playSelected):
-			wasPlaying, _ := d.stopStation(selStation)
+			wasPlaying, err := d.stopStation(selStation)
+			if err != nil {
+				return respMsgCmd("Could not terminate playback!")
+			}
 			if !wasPlaying {
-				_ = d.playStation(selStation)
+				cmds := []tea.Cmd{
+					respMsgCmd(fmt.Sprintf("Connecting to %s...", selStation.Name)),
+					d.playCmd(&selStation),
+				}
+				return tea.Sequence(cmds...)
 			}
 
 		case key.Matches(msg, d.keymap.toggleFavorite):
@@ -141,12 +160,12 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 
 		res.WriteString(itStyle.Render(name))
 		w := m.Width()
-		hFill := max(w-len(prefix)-len(name), 0)
+		hFill := max(w-utf8.RuneCountInString(prefix)-utf8.RuneCountInString(name), 0)
 		res.WriteString(itStyle.Render(strings.Repeat(" ", hFill)))
 		res.WriteString("\n")
-		res.WriteString(nowPlayingPrefixStyle.Render(strings.Repeat(" ", len(prefix))))
+		res.WriteString(nowPlayingPrefixStyle.Render(strings.Repeat(" ", utf8.RuneCountInString(prefix))))
 		res.WriteString(descStyle.Render(s.Description()))
-		hFill = max(w-len(prefix)-len(s.Description()), 0)
+		hFill = max(w-utf8.RuneCountInString(prefix)-utf8.RuneCountInString(s.Description()), 0)
 		res.WriteString(descStyle.Render(strings.Repeat(" ", hFill)))
 
 		str = res.String()
@@ -162,12 +181,12 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		res.WriteString(itStyle.Render(name))
 
 		w := m.Width()
-		hFill := max(w-len(prefix)-len(name), 0)
+		hFill := max(w-utf8.RuneCountInString(prefix)-utf8.RuneCountInString(name), 0)
 		res.WriteString(itStyle.Render(strings.Repeat(" ", hFill)))
 		res.WriteString("\n")
-		res.WriteString(prefixStyle.Render(strings.Repeat(" ", len(prefix))))
+		res.WriteString(prefixStyle.Render(strings.Repeat(" ", utf8.RuneCountInString(prefix))))
 		res.WriteString(descStyle.Render(s.Description()))
-		hFill = max(w-len(prefix)-len(s.Description()), 0)
+		hFill = max(w-utf8.RuneCountInString(prefix)-utf8.RuneCountInString(s.Description()), 0)
 		res.WriteString(descStyle.Render(strings.Repeat(" ", hFill)))
 		str = res.String()
 	}
@@ -190,6 +209,16 @@ func (d *stationDelegate) FullHelp() [][]key.Binding {
 		{
 			d.keymap.playSelected, d.keymap.pause, d.keymap.toggleFavorite, d.keymap.info,
 		},
+	}
+}
+
+// tea.Cmd
+func (d *stationDelegate) playCmd(s *browser.Station) tea.Cmd {
+	err := d.playStation(*s)
+	if err != nil {
+		return respMsgCmd(fmt.Sprintf("Could not start playback for %s!", s.Name))
+	} else {
+		return respMsgCmd("")
 	}
 }
 

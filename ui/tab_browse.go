@@ -54,7 +54,7 @@ func (t *browseTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		t.list.SetSize(msg.Width-h, msg.Height-m.headerHeight-v)
 
 	case topStationsRespMsg:
-		t.viewMsg = msg.viewMsg
+		t.viewMsg = string(msg.viewMsg)
 		items := make([]list.Item, len(msg.stations))
 		for i := 0; i < len(msg.stations); i++ {
 			items[i] = msg.stations[i]

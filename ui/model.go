@@ -7,7 +7,9 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dancnb/sonicradio/browser"
@@ -16,8 +18,12 @@ import (
 )
 
 const (
+	// view messages
 	loadingMsg          = "\n  Fetching stations... \n"
-	noFavoritesAddedMsg = "\n No favorites added\n"
+	noFavoritesAddedMsg = "\n No favorite stations added.\n"
+
+	// header messages
+	noPlayingMsg = "Nothing playing"
 )
 
 func NewProgram(cfg *config.Value, b *browser.Api, p player.Player) *tea.Program {
@@ -36,13 +42,21 @@ func initialModel(cfg *config.Value, b *browser.Api, p player.Player) *model {
 	if len(cfg.Favorites) > 0 {
 		activeIx = favoriteTabIx
 	}
+	s := spinner.New()
+	s.Spinner = spinner.Spinner{
+		Frames: []string{"⡷", "⣧", "⣏", "⡟", "⡷", "⣧", "⣏", "⡟"},
+		FPS:    time.Second / 10, //nolint:gomnd
+	}
+	s.Style = spinnerStyle
 	m := model{
 		cfg:       cfg,
 		browser:   b,
 		player:    p,
 		delegate:  delegate,
 		tabs:      []uiTab{newFavoritesTab(), newBrowseTab()},
+		spinner:   s,
 		activeTab: activeIx,
+		statusMsg: noPlayingMsg,
 	}
 	return &m
 }
@@ -54,8 +68,11 @@ type model struct {
 	player   player.Player
 	delegate *stationDelegate
 
-	tabs         []uiTab
-	activeTab    uiTabIndex
+	tabs      []uiTab
+	activeTab uiTabIndex
+	statusMsg string
+	spinner   spinner.Model
+
 	width        int
 	totHeight    int
 	headerHeight int
@@ -66,6 +83,7 @@ func (m *model) Init() tea.Cmd {
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	slog.Debug("main", "type", fmt.Sprintf("%T", msg), "value", msg)
 	switch msg := msg.(type) {
 
 	//
@@ -98,6 +116,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.stop()
 		return nil, tea.Quit
 
+	case statusMsg:
+		m.statusMsg = string(msg)
+		return m, nil
 	//
 	// messages that need to reach a particular tab
 	//
@@ -133,8 +154,20 @@ func (m *model) stop() {
 }
 
 func (m *model) headerView(width int) string {
-	var renderedTabs []string
+	var res strings.Builder
 
+	if m.statusMsg != "" {
+		res.WriteString(playStatusStyle.Render("  " + m.statusMsg))
+	} else if m.delegate.currPlaying != nil {
+		res.WriteString(playStatusStyle.Render(playChar))
+		res.WriteString(itemStyle.Render(" " + m.delegate.currPlaying.Name))
+	} else if m.delegate.prevPlaying != nil {
+		res.WriteString(playStatusStyle.Render(pauseChar))
+		res.WriteString(itemStyle.Render(" " + m.delegate.prevPlaying.Name))
+	}
+	res.WriteString("\n\n")
+
+	var renderedTabs []string
 	renderedTabs = append(renderedTabs, tabGap.Render(strings.Repeat(" ", tabGapDistance)))
 	for i := range m.tabs {
 		if i == int(m.activeTab) {
@@ -152,7 +185,9 @@ func (m *model) headerView(width int) string {
 	)
 	hFill := width - lipgloss.Width(row) - 2
 	gap := tabGap.Render(strings.Repeat(" ", max(0, hFill)))
-	return lipgloss.JoinHorizontal(lipgloss.Bottom, row, gap) + "\n\n"
+	res.WriteString(lipgloss.JoinHorizontal(lipgloss.Bottom, row, gap) + "\n\n")
+
+	return res.String()
 }
 
 func (m model) View() string {
@@ -183,31 +218,27 @@ func trapSignal(p *tea.Program) {
 func (m *model) favoritesReqCmd() tea.Msg {
 	if len(m.cfg.Favorites) == 0 {
 		return favoritesStationRespMsg{
-			respMsg: respMsg{viewMsg: noFavoritesAddedMsg},
+			viewMsg: noFavoritesAddedMsg,
 		}
 	}
 
 	stations, err := m.browser.GetStations(m.cfg.Favorites)
-	res := respMsg{}
+	res := favoritesStationRespMsg{stations: stations}
 	if err != nil {
+		res.statusMsg = statusMsg(err.Error())
+	} else if len(stations) == 0 {
 		res.viewMsg = "No stations found"
-		res.errMsg = err
 	}
-	return favoritesStationRespMsg{
-		respMsg:  res,
-		stations: stations,
-	}
+	return res
 }
 
 func (m *model) topStationsCmd() tea.Msg {
 	stations, err := m.browser.TopStations()
-	res := respMsg{}
+	res := topStationsRespMsg{stations: stations}
 	if err != nil {
+		res.statusMsg = statusMsg(err.Error())
+	} else if len(stations) == 0 {
 		res.viewMsg = "No stations found"
-		res.errMsg = err
 	}
-	return topStationsRespMsg{
-		respMsg:  res,
-		stations: stations,
-	}
+	return res
 }
