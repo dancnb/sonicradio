@@ -57,17 +57,17 @@ func (d *stationDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 			if d.currPlaying != nil {
 				_, err := d.stopStation(*d.currPlaying)
 				if err != nil {
-					return respMsgCmd("Could not terminate previous playback!")
+					return statusMsgCmd("Could not terminate previous playback!")
 				}
 			} else if d.prevPlaying != nil {
 				cmds := []tea.Cmd{
-					respMsgCmd(fmt.Sprintf("Connecting to %s...", d.prevPlaying.Name)),
+					statusMsgCmd(fmt.Sprintf("Connecting to %s...", d.prevPlaying.Name)),
 					d.playCmd(d.prevPlaying),
 				}
 				return tea.Sequence(cmds...)
 			} else {
 				cmds := []tea.Cmd{
-					respMsgCmd(fmt.Sprintf("Connecting to %s...", selStation.Name)),
+					statusMsgCmd(fmt.Sprintf("Connecting to %s...", selStation.Name)),
 					d.playCmd(&selStation),
 				}
 				return tea.Sequence(cmds...)
@@ -76,11 +76,11 @@ func (d *stationDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 		case key.Matches(msg, d.keymap.playSelected):
 			wasPlaying, err := d.stopStation(selStation)
 			if err != nil {
-				return respMsgCmd("Could not terminate playback!")
+				return statusMsgCmd("Could not terminate playback!")
 			}
 			if !wasPlaying {
 				cmds := []tea.Cmd{
-					respMsgCmd(fmt.Sprintf("Connecting to %s...", selStation.Name)),
+					statusMsgCmd(fmt.Sprintf("Connecting to %s...", selStation.Name)),
 					d.playCmd(&selStation),
 				}
 				return tea.Sequence(cmds...)
@@ -95,17 +95,17 @@ func (d *stationDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	return nil
 }
 
-func (d *stationDelegate) playStation(station browser.Station) error {
+func (d *stationDelegate) playStation(station browser.Station) (string, error) {
 	slog.Debug("playing", "id", station.Stationuuid)
-	err := d.player.Play(station.URL)
+	title, err := d.player.Play(station.URL)
 	if err != nil {
 		errMsg := fmt.Sprintf("error playing station %s: %s", station.Name, err.Error())
 		slog.Error(errMsg)
-		return errors.New(errMsg)
+		return title, errors.New(errMsg)
 	}
 	d.prevPlaying = d.currPlaying
 	d.currPlaying = &station
-	return nil
+	return title, nil
 }
 
 func (d *stationDelegate) stopStation(station browser.Station) (wasPlaying bool, err error) {
@@ -214,23 +214,23 @@ func (d *stationDelegate) FullHelp() [][]key.Binding {
 
 // tea.Cmd
 func (d *stationDelegate) playCmd(s *browser.Station) tea.Cmd {
-	err := d.playStation(*s)
+	title, err := d.playStation(*s)
 	if err != nil {
-		return respMsgCmd(fmt.Sprintf("Could not start playback for %s!", s.Name))
+		return statusMsgCmd(fmt.Sprintf("Could not start playback for %s (%s)!", s.Name, s.URL))
 	} else {
-		return respMsgCmd("")
+		return tea.Batch(statusMsgCmd(""), titleMsgCmd(title))
 	}
 }
 
 func newDelegateKeyMap() *delegateKeyMap {
 	return &delegateKeyMap{
 		pause: key.NewBinding(
-			key.WithKeys("p"),
-			key.WithHelp("p", "pause"),
+			key.WithKeys(" "),
+			key.WithHelp("space", "pause"),
 		),
 		playSelected: key.NewBinding(
-			key.WithKeys(" ", "enter"),
-			key.WithHelp("space/enter", "play"),
+			key.WithKeys("p", "enter"),
+			key.WithHelp("p/enter", "play"),
 		),
 		info: key.NewBinding(
 			key.WithKeys("i"),

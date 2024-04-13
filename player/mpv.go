@@ -1,32 +1,40 @@
 package player
 
 import (
+	"bytes"
 	"errors"
+	"io"
 	"log/slog"
 	"os/exec"
 	"slices"
+	"strings"
 	"syscall"
+	"time"
 )
 
 const (
-	baseCmd = "mpv"
+	baseCmd         = "mpv"
+	errOut          = "Failed to"
+	titleMsg        = "icy-title:"
+	startWaitMillis = 500
 )
 
-var baseArgs = []string{"--no-video", "--really-quiet"}
+var baseArgs = []string{"--no-video", "--quiet"}
 
 func NewMPV() Player {
 	return &Mpv{}
 }
 
 type Mpv struct {
-	cmd *exec.Cmd
+	cmd    *exec.Cmd
+	cmdOut bytes.Buffer
 }
 
-func (m *Mpv) Play(url string) error {
+func (m *Mpv) Play(url string) (string, error) {
 	slog.Info("playing url=" + url)
 
 	if err := m.Stop(); err != nil {
-		return err
+		return "", err
 	}
 
 	args := slices.Clone(baseArgs)
@@ -36,19 +44,48 @@ func (m *Mpv) Play(url string) error {
 		cmd.Err = nil
 	} else if cmd.Err != nil {
 		slog.Error("mpv cmd error", "error", cmd.Err.Error())
-		return cmd.Err
+		return "", cmd.Err
 	}
 
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	m.cmdOut.Reset()
+	cmd.Stdout = &m.cmdOut
+
 	err := cmd.Start()
 	if err != nil {
 		slog.Error("mpv cmd start", "error", err)
-		return err
+		return "", err
 	}
+	time.Sleep(startWaitMillis * time.Millisecond)
+	b, err := io.ReadAll(&m.cmdOut)
+	if err != nil {
+		return "", err
+	}
+	output := string(b)
+	slog.Debug("mpv cmd", "output", output)
+	errIx := strings.Index(output, errOut)
+	if errIx >= 0 {
+		errMsg := output[errIx:]
+		nlIx := strings.Index(errMsg, "\n")
+		if nlIx >= 0 {
+			errMsg = errMsg[:nlIx]
+		}
+		return "", errors.New(errMsg)
+	}
+	title := ""
+	titleIx := strings.Index(output, titleMsg)
+	if titleIx >= 0 {
+		title = output[titleIx+10:]
+		nlIx := strings.Index(title, "\n")
+		if nlIx >= 0 {
+			title = title[:nlIx]
+		}
+	}
+	title = strings.TrimSpace(title)
 
 	m.cmd = cmd
 	slog.Debug("mpv cmd started", "pid", m.cmd.Process.Pid)
-	return nil
+	return title, nil
 }
 
 func (m *Mpv) Stop() error {
@@ -56,6 +93,10 @@ func (m *Mpv) Stop() error {
 		slog.Debug("no current station playing")
 		return nil
 	}
+	// err := m.cmd.Wait()
+	// if err != nil {
+	// 	return err
+	// }
 
 	if m.cmd.Process != nil {
 		slog.Debug("killing process", "pid", m.cmd.Process.Pid)

@@ -4,8 +4,9 @@ import "testing"
 
 func Test_mpv(t *testing.T) {
 	p := NewMPV()
-	url := "http://radiocdn.nxthost.com/radio-deea"
-	err := p.Play(url)
+	url := "http://stream-uk1.radioparadise.com/aac-320"
+	// url := "https://dancewaveee.com"
+	_, err := p.Play(url)
 	if err != nil {
 		t.Error(err)
 	}

@@ -71,6 +71,7 @@ type model struct {
 	tabs      []uiTab
 	activeTab uiTabIndex
 	statusMsg string
+	titleMsg  string
 	spinner   spinner.Model
 
 	width        int
@@ -119,6 +120,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case statusMsg:
 		m.statusMsg = string(msg)
 		return m, nil
+
+	case titleMsg:
+		m.titleMsg = string(msg)
+		return m, nil
 	//
 	// messages that need to reach a particular tab
 	//
@@ -164,6 +169,10 @@ func (m *model) headerView(width int) string {
 	} else if m.delegate.prevPlaying != nil {
 		res.WriteString(playStatusStyle.Render(pauseChar))
 		res.WriteString(itemStyle.Render(" " + m.delegate.prevPlaying.Name))
+	}
+	res.WriteString("\n")
+	if m.titleMsg != "" {
+		res.WriteString(playStatusStyle.Render("  " + m.titleMsg))
 	}
 	res.WriteString("\n\n")
 

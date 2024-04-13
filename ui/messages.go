@@ -12,6 +12,7 @@ type (
 
 	viewMsg   string // used for view message
 	statusMsg string // used for status error message
+	titleMsg  string
 
 	favoritesStationRespMsg struct {
 		viewMsg
@@ -34,8 +35,14 @@ type (
 // tea.Cmd
 func errorMsg(err error) error { return err }
 
-func respMsgCmd(msg string) tea.Cmd {
+func statusMsgCmd(msg string) tea.Cmd {
 	return func() tea.Msg {
 		return statusMsg(msg)
+	}
+}
+
+func titleMsgCmd(msg string) tea.Cmd {
+	return func() tea.Msg {
+		return titleMsg(msg)
 	}
 }

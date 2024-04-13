@@ -75,7 +75,7 @@ var (
 
 	// general
 	backgroundColor = termenv.RGBColor("#282c34")
-	docStyle        = lipgloss.NewStyle().Padding(2, 2)
+	docStyle        = lipgloss.NewStyle().Padding(1, 2)
 
 	// TODO replace list status
 	statusWarnMessageStyle = lipgloss.NewStyle().
