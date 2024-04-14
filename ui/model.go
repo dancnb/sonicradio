@@ -75,6 +75,7 @@ func getPlayerMetadata(progr *tea.Program, m *model) {
 		m, err := m.player.Metadata()
 		if err != nil {
 			slog.Error("getPlayerMetadata", "err", err)
+			progr.Send(statusMsg(err.Error()))
 			continue
 		} else if m == nil {
 			continue
@@ -238,8 +239,13 @@ func (m *model) stop() {
 func (m *model) headerView(width int) string {
 	var res strings.Builder
 
+	hFill := width
+	gap := headerTop.Render(strings.Repeat(" ", max(0, hFill)))
+	res.WriteString(gap)
+	res.WriteString("\n")
+
 	if m.statusMsg != "" {
-		res.WriteString(playStatusStyle.Render("  " + m.statusMsg))
+		res.WriteString(playStatusStyle.Render("\u2847" + " " + m.statusMsg))
 	} else if m.delegate.currPlaying != nil {
 		res.WriteString(playStatusStyle.Render(playChar))
 		res.WriteString(itemStyle.Render(" " + m.delegate.currPlaying.Name))
@@ -250,6 +256,8 @@ func (m *model) headerView(width int) string {
 	res.WriteString("\n")
 	if m.titleMsg != "" {
 		res.WriteString(playStatusStyle.Render("  " + m.titleMsg))
+	} else if m.delegate.currPlaying != nil {
+		res.WriteString(playStatusStyle.Render("  " + m.delegate.currPlaying.Homepage))
 	}
 	res.WriteString("\n\n")
 
@@ -269,14 +277,15 @@ func (m *model) headerView(width int) string {
 		lipgloss.Top,
 		renderedTabs...,
 	)
-	hFill := width - lipgloss.Width(row) - 2
-	gap := tabGap.Render(strings.Repeat(" ", max(0, hFill)))
+	hFill = width - lipgloss.Width(row)
+	gap = tabGap.Render(strings.Repeat(" ", max(0, hFill)))
 	res.WriteString(lipgloss.JoinHorizontal(lipgloss.Bottom, row, gap) + "\n\n")
 
 	return res.String()
 }
 
 func (m model) View() string {
+	slog.Debug("main view", "statusMsg", m.statusMsg)
 	if !m.ready {
 		return loadingMsg
 	}
@@ -286,6 +295,7 @@ func (m model) View() string {
 	doc.WriteString(header)
 	tabView := m.tabs[m.activeTab].View()
 	doc.WriteString(tabView)
+	// return doc.String()
 	return docStyle.Render(doc.String())
 }
 

@@ -188,6 +188,15 @@ func (d *stationDelegate) playCmd(s *browser.Station) tea.Cmd {
 		if err != nil {
 			return statusMsg(fmt.Sprintf("Could not start playback for %s (%s)!", s.Name, s.URL))
 		}
+		// m, err := d.player.Metadata()
+		// if err != nil {
+		// 	slog.Error("playCmd Metadata", "err", err)
+		// 	return statusMsg(err.Error())
+		// } else if m != nil {
+		// 	slog.Error("playCmd Metadata", "title", m.Title)
+		// 	return titleMsg(m.Title)
+		// }
+
 		emptyS := ""
 		return statusMsg(emptyS)
 	}

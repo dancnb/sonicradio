@@ -81,8 +81,8 @@ func (t *browseTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, t.listKeymap.search):
 			// TODO search stations; use cmd and msg
-			cmd := t.list.NewStatusMessage(statusWarnMessageStyle("Not implemented yet!"))
-			cmds = append(cmds, cmd)
+			// cmd := t.list.NewStatusMessage(statusWarnMessageStyle("Not implemented yet!"))
+			// cmds = append(cmds, cmd)
 
 		case key.Matches(msg, t.listKeymap.toFavorites):
 			m.activeTab = favoriteTabIx

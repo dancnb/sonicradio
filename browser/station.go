@@ -96,19 +96,20 @@ type Station struct {
 	HasExtendedInfo bool `json:"has_extended_info"`
 }
 
-func (i Station) Title() string { return i.Name }
-func (i Station) Description() string {
-	desc := i.Country
-	if strings.TrimSpace(i.State) != "" {
-		desc += ", " + i.State
+func (s Station) Title() string { return s.Name }
+func (s Station) Description() string {
+	desc := s.Country
+	if strings.TrimSpace(s.State) != "" {
+		desc += ", " + s.State
 	}
-	if strings.TrimSpace(i.Language) != "" {
-		desc += ", " + i.Language
+	if strings.TrimSpace(s.Language) != "" {
+		desc += ", " + s.Language
 	}
-	desc = fmt.Sprintf("Votes: %[2]d %[1]s %[3]d kbps %[1]s %[4]s %[1]s %[5]s", separator, i.Votes, i.Bitrate, desc, i.Tags)
+	desc = fmt.Sprintf("Votes: %[2]d %[1]s %[3]d kbps %[1]s %[4]s %[1]s %[5]s",
+		separator, s.Votes, s.Bitrate, desc, s.Tags)
 	desc = strings.TrimSpace(desc)
 	desc = strings.Trim(desc, "|")
 	desc = strings.TrimSpace(desc)
 	return desc
 }
-func (i Station) FilterValue() string { return i.Name }
+func (s Station) FilterValue() string { return s.Name }

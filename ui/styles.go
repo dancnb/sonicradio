@@ -37,7 +37,9 @@ var (
 	selItemStyle = lipgloss.NewStyle().Background(basePrimaryColor).Foreground(invertedPrimaryColor)
 	selDescStyle = lipgloss.NewStyle().Background(basePrimaryColor).Foreground(invertedSecondColor)
 
-	selectedBorderStyle = lipgloss.NewStyle().Border(lipgloss.BlockBorder(), false, false, false, true).BorderForeground(basePrimaryColor)
+	selectedBorderStyle = lipgloss.NewStyle().
+				Border(lipgloss.BlockBorder(), false, false, false, true).
+				BorderForeground(basePrimaryColor)
 
 	// tabs
 	inactiveTab = lipgloss.NewStyle().
@@ -60,7 +62,11 @@ var (
 
 	// header
 	spinnerStyle = lipgloss.NewStyle().Foreground(basePrimaryColor)
-
+	headerTop    = lipgloss.NewStyle().
+			Border(lipgloss.Border{Top: "─"}, true, false, false, false).
+			Foreground(basePrimaryColor).
+			BorderForeground(basePrimaryColor).
+			Margin(0).Padding(0)
 	// help
 	helpkeyStyle  = lipgloss.NewStyle().Foreground(basePrimaryColor)
 	helpDescStyle = lipgloss.NewStyle().Foreground(baseSecondColor)
@@ -75,16 +81,5 @@ var (
 
 	// general
 	backgroundColor = termenv.RGBColor("#282c34")
-	docStyle        = lipgloss.NewStyle().Padding(1, 2)
-
-	// TODO replace list status
-	statusWarnMessageStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.AdaptiveColor{Light: "#eab676", Dark: "#eab676"}).
-				Render
-	statusErrMessageStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.AdaptiveColor{Light: "#fc2c03", Dark: "#fc2c03"}).
-				Render
-	statusMessageStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.AdaptiveColor{Light: "#04B575", Dark: "#04B575"}).
-				Render
+	docStyle        = lipgloss.NewStyle().Padding(0, 2, 0, 2)
 )
