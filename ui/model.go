@@ -22,10 +22,11 @@ const (
 	// view messages
 	loadingMsg          = "\n  Fetching stations... \n"
 	noFavoritesAddedMsg = "\n No favorite stations added.\n"
+	noStationsFound     = "\n No stations found. \n"
 	// header messages
 	noPlayingMsg = "Nothing playing"
 
-	playerPollInterval = 2 * time.Second
+	playerPollInterval = 500 * time.Millisecond
 )
 
 func NewProgram(cfg *config.Value, b *browser.Api, p player.Player) *tea.Program {
@@ -46,20 +47,12 @@ func initialModel(cfg *config.Value, b *browser.Api, p player.Player) *model {
 		activeIx = favoriteTabIx
 	}
 
-	s := spinner.New()
-	s.Spinner = spinner.Spinner{
-		Frames: []string{"⡷", "⣧", "⣏", "⡟", "⡷", "⣧", "⣏", "⡟"},
-		FPS:    time.Second / 10, //nolint:gomnd
-	}
-	s.Style = spinnerStyle
-
 	m := model{
 		cfg:       cfg,
 		browser:   b,
 		player:    p,
 		delegate:  delegate,
 		tabs:      []uiTab{newFavoritesTab(), newBrowseTab()},
-		spinner:   s,
 		activeTab: activeIx,
 		statusMsg: noPlayingMsg,
 	}
@@ -72,12 +65,13 @@ func getPlayerMetadata(progr *tea.Program, m *model) {
 		if m.delegate.currPlaying == nil {
 			continue
 		}
-		m, err := m.player.Metadata()
-		if err != nil {
-			slog.Error("getPlayerMetadata", "err", err)
-			progr.Send(statusMsg(err.Error()))
+		slog.Debug("main getPlayerMetadata", "currPlaying", m.delegate.currPlaying.URL)
+		m := m.player.Metadata()
+		slog.Debug("main getPlayerMetadata", "metadata", m)
+		if m == nil {
 			continue
-		} else if m == nil {
+		} else if m.Err != nil {
+			progr.Send(playRespMsg{m.Err.Error()})
 			continue
 		}
 		progr.Send(titleMsg(m.Title))
@@ -95,7 +89,7 @@ type model struct {
 	activeTab uiTabIndex
 	statusMsg string
 	titleMsg  string
-	spinner   spinner.Model
+	spinner   *spinner.Model
 
 	width        int
 	totHeight    int
@@ -141,59 +135,64 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, d.keymap.pause):
 			m.titleMsg = ""
+			m.spinner = nil
 			if d.currPlaying != nil {
 				_, err := d.stopStation(*d.currPlaying)
 				if err != nil {
 					m.statusMsg = "Could not terminate previous playback!"
-					slog.Debug("statusMsg", "", m.statusMsg)
 					return m, nil
 				}
 			} else if d.prevPlaying != nil {
 				m.statusMsg = fmt.Sprintf("Connecting to %s...", d.prevPlaying.Name)
-				slog.Debug("statusMsg", "", m.statusMsg)
-				return m, d.playCmd(d.prevPlaying)
+				cmds := []tea.Cmd{m.initSpinner(), d.playCmd(d.prevPlaying)}
+				return m, tea.Batch(cmds...)
 			} else {
 				if m.activeTab != favoriteTabIx && m.activeTab != browseTabIx {
-					// TODO handle d.keymap.playSelected for other tabs if necessary
+					// TODO handle enter for other tabs if necessary
 					return m, nil
 				}
 				selStation := m.tabs[m.activeTab].List().SelectedItem().(browser.Station)
 				m.statusMsg = fmt.Sprintf("Connecting to %s...", selStation.Name)
-				slog.Debug("statusMsg", "", m.statusMsg)
-				return m, d.playCmd(&selStation)
+				cmds := []tea.Cmd{m.initSpinner(), d.playCmd(&selStation)}
+				return m, tea.Batch(cmds...)
 			}
 
 		case key.Matches(msg, d.keymap.playSelected):
 			if m.activeTab != favoriteTabIx && m.activeTab != browseTabIx {
-				// TODO handle d.keymap.playSelected for other tabs if necessary
+				// TODO handle enter for other tabs if necessary
 				return m, nil
 			}
 			m.titleMsg = ""
+			m.spinner = nil
 			selStation := m.tabs[m.activeTab].List().SelectedItem().(browser.Station)
 			_, err := d.stopStation(selStation)
 			if err != nil {
 				m.statusMsg = "Could not terminate previous playback!"
-				slog.Debug("statusMsg", "", m.statusMsg)
 				return m, nil
 			}
 			m.statusMsg = fmt.Sprintf("Connecting to %s...", selStation.Name)
-			slog.Debug("statusMsg", "", m.statusMsg)
-			return m, d.playCmd(&selStation)
+			cmds := []tea.Cmd{m.initSpinner(), d.playCmd(&selStation)}
+			return m, tea.Batch(cmds...)
 		}
 
 	case quitMsg:
 		m.stop()
 		return nil, tea.Quit
 
-	case stringMsg:
-		if msg.statusMsg != nil {
-			m.statusMsg = *msg.statusMsg
-		}
-		if msg.titleMsg != nil {
-			m.titleMsg = *msg.titleMsg
+	case playRespMsg:
+		m.statusMsg = msg.err
+		if msg.err != "" {
+			m.spinner = nil
+			d := m.delegate
+			if d.currPlaying != nil {
+				_, err := d.stopStation(*d.currPlaying)
+				if err != nil {
+					m.statusMsg = "Could not terminate previous playback!"
+					return m, nil
+				}
+			}
 		}
 		return m, nil
-
 	case statusMsg:
 		m.statusMsg = string(msg)
 		return m, nil
@@ -201,6 +200,15 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case titleMsg:
 		m.titleMsg = string(msg)
 		return m, nil
+
+	case spinner.TickMsg:
+		if m.spinner == nil {
+			return m, nil
+		}
+		var cmd tea.Cmd
+		s, cmd := m.spinner.Update(msg)
+		m.spinner = &s
+		return m, cmd
 
 	//
 	// messages that need to reach a particular tab
@@ -236,18 +244,30 @@ func (m *model) stop() {
 	}
 }
 
+func (m *model) initSpinner() tea.Cmd {
+	s := spinner.New()
+	s.Spinner = spinner.Spinner{
+		Frames: []string{"⡷", "⣧", "⣏", "⡟", "⡷", "⣧", "⣏", "⡟"},
+		FPS:    time.Second / 10,
+	}
+	s.Style = playStatusStyle
+	m.spinner = &s
+	return m.spinner.Tick
+}
+
 func (m *model) headerView(width int) string {
 	var res strings.Builder
 
-	hFill := width
-	gap := headerTop.Render(strings.Repeat(" ", max(0, hFill)))
-	res.WriteString(gap)
-	res.WriteString("\n")
+	// hFill := width
+	// gap := headerTop.Render(strings.Repeat(" ", max(0, hFill)))
+	// res.WriteString(gap)
+	// res.WriteString("\n")
 
 	if m.statusMsg != "" {
 		res.WriteString(playStatusStyle.Render("\u2847" + " " + m.statusMsg))
 	} else if m.delegate.currPlaying != nil {
-		res.WriteString(playStatusStyle.Render(playChar))
+		res.WriteString(m.spinner.View())
+		// res.WriteString(playStatusStyle.Render(playChar))
 		res.WriteString(itemStyle.Render(" " + m.delegate.currPlaying.Name))
 	} else if m.delegate.prevPlaying != nil {
 		res.WriteString(playStatusStyle.Render(pauseChar))
@@ -258,6 +278,8 @@ func (m *model) headerView(width int) string {
 		res.WriteString(playStatusStyle.Render("  " + m.titleMsg))
 	} else if m.delegate.currPlaying != nil {
 		res.WriteString(playStatusStyle.Render("  " + m.delegate.currPlaying.Homepage))
+	} else if m.delegate.prevPlaying != nil {
+		res.WriteString(playStatusStyle.Render("  " + m.delegate.prevPlaying.Homepage))
 	}
 	res.WriteString("\n\n")
 
@@ -277,15 +299,15 @@ func (m *model) headerView(width int) string {
 		lipgloss.Top,
 		renderedTabs...,
 	)
-	hFill = width - lipgloss.Width(row)
-	gap = tabGap.Render(strings.Repeat(" ", max(0, hFill)))
+	hFill := width - lipgloss.Width(row)
+	gap := tabGap.Render(strings.Repeat(" ", max(0, hFill)))
 	res.WriteString(lipgloss.JoinHorizontal(lipgloss.Bottom, row, gap) + "\n\n")
 
 	return res.String()
 }
 
 func (m model) View() string {
-	slog.Debug("main view", "statusMsg", m.statusMsg)
+	slog.Debug("main view", "statusMsg", m.statusMsg, "titleMsg", m.titleMsg)
 	if !m.ready {
 		return loadingMsg
 	}
@@ -295,7 +317,6 @@ func (m model) View() string {
 	doc.WriteString(header)
 	tabView := m.tabs[m.activeTab].View()
 	doc.WriteString(tabView)
-	// return doc.String()
 	return docStyle.Render(doc.String())
 }
 
@@ -323,7 +344,7 @@ func (m *model) favoritesReqCmd() tea.Msg {
 	if err != nil {
 		res.statusMsg = statusMsg(err.Error())
 	} else if len(stations) == 0 {
-		res.viewMsg = "No stations found"
+		res.viewMsg = noStationsFound
 	}
 	return res
 }
@@ -334,7 +355,7 @@ func (m *model) topStationsCmd() tea.Msg {
 	if err != nil {
 		res.statusMsg = statusMsg(err.Error())
 	} else if len(stations) == 0 {
-		res.viewMsg = "No stations found"
+		res.viewMsg = noStationsFound
 	}
 	return res
 }

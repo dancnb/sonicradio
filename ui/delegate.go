@@ -64,6 +64,17 @@ func (d *stationDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	return nil
 }
 
+func (d *stationDelegate) playCmd(s *browser.Station) tea.Cmd {
+	return func() tea.Msg {
+		err := d.playStation(*s)
+		if err != nil {
+			return playRespMsg{fmt.Sprintf("Could not start playback for %s (%s)!", s.Name, s.URL)}
+		}
+
+		return playRespMsg{}
+	}
+}
+
 func (d *stationDelegate) playStation(station browser.Station) error {
 	slog.Debug("playing", "id", station.Stationuuid)
 	err := d.player.Play(station.URL)
@@ -178,27 +189,6 @@ func (d *stationDelegate) FullHelp() [][]key.Binding {
 		{
 			d.keymap.playSelected, d.keymap.pause, d.keymap.toggleFavorite, d.keymap.info,
 		},
-	}
-}
-
-// tea.Cmd
-func (d *stationDelegate) playCmd(s *browser.Station) tea.Cmd {
-	return func() tea.Msg {
-		err := d.playStation(*s)
-		if err != nil {
-			return statusMsg(fmt.Sprintf("Could not start playback for %s (%s)!", s.Name, s.URL))
-		}
-		// m, err := d.player.Metadata()
-		// if err != nil {
-		// 	slog.Error("playCmd Metadata", "err", err)
-		// 	return statusMsg(err.Error())
-		// } else if m != nil {
-		// 	slog.Error("playCmd Metadata", "title", m.Title)
-		// 	return titleMsg(m.Title)
-		// }
-
-		emptyS := ""
-		return statusMsg(emptyS)
 	}
 }
 

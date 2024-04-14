@@ -2,7 +2,6 @@ package ui
 
 import (
 	"log/slog"
-	"time"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/list"
@@ -66,17 +65,14 @@ func createList(delegate *stationDelegate, width int, height int) list.Model {
 	l.InfiniteScrolling = true
 	l.SetShowTitle(false)
 	l.SetShowStatusBar(false)
-	l.StatusMessageLifetime = 3 * time.Second
 	l.SetShowPagination(false)
 	l.SetShowFilter(true)
 	l.FilterInput.ShowSuggestions = true
 	l.KeyMap.Quit.SetKeys("q")
 	l.KeyMap.PrevPage.SetKeys("pgup", "u")
 	l.KeyMap.PrevPage.SetHelp("u/pgup", "prev page")
-	// l.KeyMap.PrevPage.SetHelp("←/h/pgup", "prev page")
 	l.KeyMap.NextPage.SetKeys("pgdown", "d")
 	l.KeyMap.NextPage.SetHelp("d/pgdn", "next page")
-	// l.KeyMap.NextPage.SetHelp("→/l/pgdn", "next page")
 	v, h := docStyle.GetFrameSize()
 	l.SetSize(width-h, height-v)
 

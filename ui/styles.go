@@ -13,8 +13,6 @@ var (
 	favChar   = "  ★  "
 	playChar  = "\u2877"
 	pauseChar = "\u28FF"
-	// playChar  = "\u25B6"
-	// pauseChar = "\u2225"
 
 	// list items
 	basePrimaryColor     = lipgloss.Color("#ffb641")
@@ -46,13 +44,13 @@ var (
 			Bold(true).
 			Border(lipgloss.HiddenBorder(), true).
 			Foreground(basePrimaryColor).
-			Padding(0, 1).Margin(0)
+			Padding(0, 0).Margin(0)
 	activeTab = lipgloss.NewStyle().
 			Bold(true).
 			Border(lipgloss.NormalBorder(), true).
 			BorderForeground(basePrimaryColor).
 			Foreground(basePrimaryColor).
-			Padding(0, 1).Margin(0)
+			Padding(0, 0).Margin(0)
 	tabGap = lipgloss.NewStyle().
 		Border(lipgloss.Border{Left: " ", Right: " "}, true, false).
 		Foreground(basePrimaryColor).
@@ -60,18 +58,11 @@ var (
 		Strikethrough(true).
 		Margin(0).Padding(0)
 
-	// header
-	spinnerStyle = lipgloss.NewStyle().Foreground(basePrimaryColor)
-	headerTop    = lipgloss.NewStyle().
-			Border(lipgloss.Border{Top: "─"}, true, false, false, false).
-			Foreground(basePrimaryColor).
-			BorderForeground(basePrimaryColor).
-			Margin(0).Padding(0)
 	// help
 	helpkeyStyle  = lipgloss.NewStyle().Foreground(basePrimaryColor)
 	helpDescStyle = lipgloss.NewStyle().Foreground(baseSecondColor)
 	helpStyle     = lipgloss.NewStyle().
-			Padding(0, 1).Margin(0).
+			Padding(0, 0).Margin(0).
 			Border(lipgloss.NormalBorder()).
 			BorderForeground(basePrimaryColor)
 
@@ -81,5 +72,5 @@ var (
 
 	// general
 	backgroundColor = termenv.RGBColor("#282c34")
-	docStyle        = lipgloss.NewStyle().Padding(0, 2, 0, 2)
+	docStyle        = lipgloss.NewStyle().Padding(1, 2, 0, 2)
 )
