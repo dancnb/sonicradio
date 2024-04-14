@@ -16,6 +16,8 @@ import (
 	"github.com/dancnb/sonicradio/player"
 )
 
+const startWaitMillis = 500 * 3
+
 func newStationDelegate(cfg *config.Value, p player.Player) *stationDelegate {
 	keymap := newDelegateKeyMap()
 
@@ -44,7 +46,7 @@ func (d *stationDelegate) Height() int { return d.defaultDelegate.Height() }
 func (d *stationDelegate) Spacing() int { return d.defaultDelegate.Spacing() }
 
 func (d *stationDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
-	slog.Debug("stationDelegate", "type", fmt.Sprintf("%T", msg), "go value", fmt.Sprintf("%#v", msg), "value", msg)
+	slog.Debug("stationDelegate", "type", fmt.Sprintf("%T", msg), "value", msg, "#", fmt.Sprintf("%#v", msg))
 	selStation, ok := m.SelectedItem().(browser.Station)
 	if !ok {
 		return nil
@@ -62,17 +64,17 @@ func (d *stationDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	return nil
 }
 
-func (d *stationDelegate) playStation(station browser.Station) (string, error) {
+func (d *stationDelegate) playStation(station browser.Station) error {
 	slog.Debug("playing", "id", station.Stationuuid)
-	title, err := d.player.Play(station.URL)
+	err := d.player.Play(station.URL)
 	if err != nil {
 		errMsg := fmt.Sprintf("error playing station %s: %s", station.Name, err.Error())
 		slog.Error(errMsg)
-		return title, errors.New(errMsg)
+		return errors.New(errMsg)
 	}
 	d.prevPlaying = d.currPlaying
 	d.currPlaying = &station
-	return title, nil
+	return nil
 }
 
 func (d *stationDelegate) stopStation(station browser.Station) (wasPlaying bool, err error) {
@@ -182,13 +184,12 @@ func (d *stationDelegate) FullHelp() [][]key.Binding {
 // tea.Cmd
 func (d *stationDelegate) playCmd(s *browser.Station) tea.Cmd {
 	return func() tea.Msg {
-		emptyS := ""
-		title, err := d.playStation(*s)
+		err := d.playStation(*s)
 		if err != nil {
 			return statusMsg(fmt.Sprintf("Could not start playback for %s (%s)!", s.Name, s.URL))
-		} else {
-			return stringMsg{statusMsg: &emptyS, titleMsg: &title}
 		}
+		emptyS := ""
+		return statusMsg(emptyS)
 	}
 }
 

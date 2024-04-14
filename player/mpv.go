@@ -3,20 +3,17 @@ package player
 import (
 	"bytes"
 	"errors"
-	"io"
 	"log/slog"
 	"os/exec"
 	"slices"
 	"strings"
 	"syscall"
-	"time"
 )
 
 const (
-	baseCmd         = "mpv"
-	errOut          = "Failed to"
-	titleMsg        = "icy-title:"
-	startWaitMillis = 500
+	baseCmd  = "mpv"
+	errOut   = "Failed to"
+	titleMsg = "icy-title:"
 )
 
 var baseArgs = []string{"--no-video", "--quiet"}
@@ -27,14 +24,15 @@ func NewMPV() Player {
 
 type Mpv struct {
 	cmd    *exec.Cmd
-	cmdOut bytes.Buffer
+	output bytes.Buffer
 }
 
-func (m *Mpv) Play(url string) (string, error) {
+func (mpv *Mpv) Play(url string) error {
 	slog.Info("playing url=" + url)
+	mpv.output.Reset()
 
-	if err := m.Stop(); err != nil {
-		return "", err
+	if err := mpv.Stop(); err != nil {
+		return err
 	}
 
 	args := slices.Clone(baseArgs)
@@ -44,25 +42,28 @@ func (m *Mpv) Play(url string) (string, error) {
 		cmd.Err = nil
 	} else if cmd.Err != nil {
 		slog.Error("mpv cmd error", "error", cmd.Err.Error())
-		return "", cmd.Err
+		return cmd.Err
 	}
-
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	m.cmdOut.Reset()
-	cmd.Stdout = &m.cmdOut
-
+	cmd.Stdout = &mpv.output
 	err := cmd.Start()
 	if err != nil {
 		slog.Error("mpv cmd start", "error", err)
-		return "", err
+		return err
 	}
-	time.Sleep(startWaitMillis * time.Millisecond)
-	b, err := io.ReadAll(&m.cmdOut)
-	if err != nil {
-		return "", err
+	mpv.cmd = cmd
+	slog.Debug("mpv cmd started", "pid", mpv.cmd.Process.Pid)
+
+	return nil
+}
+
+func (mpv *Mpv) Metadata() (*Metadata, error) {
+	if mpv.cmd == nil {
+		return nil, nil
 	}
-	output := string(b)
-	slog.Debug("mpv cmd", "output", output)
+
+	output := mpv.output.String()
+	slog.Debug("mpv", "output", output)
 	errIx := strings.Index(output, errOut)
 	if errIx >= 0 {
 		errMsg := output[errIx:]
@@ -70,10 +71,11 @@ func (m *Mpv) Play(url string) (string, error) {
 		if nlIx >= 0 {
 			errMsg = errMsg[:nlIx]
 		}
-		return "", errors.New(errMsg)
+		errMsg = strings.TrimSpace(errMsg)
+		return nil, errors.New(errMsg)
 	}
 	title := ""
-	titleIx := strings.Index(output, titleMsg)
+	titleIx := strings.LastIndex(output, titleMsg)
 	if titleIx >= 0 {
 		title = output[titleIx+10:]
 		nlIx := strings.Index(title, "\n")
@@ -83,13 +85,14 @@ func (m *Mpv) Play(url string) (string, error) {
 	}
 	title = strings.TrimSpace(title)
 
-	m.cmd = cmd
-	slog.Debug("mpv cmd started", "pid", m.cmd.Process.Pid)
-	return title, nil
+	res := Metadata{Title: title}
+	return &res, nil
 }
 
-func (m *Mpv) Stop() error {
-	if m.cmd == nil {
+func (mpv *Mpv) Stop() error {
+	mpv.output.Reset()
+
+	if mpv.cmd == nil {
 		slog.Debug("no current station playing")
 		return nil
 	}
@@ -98,8 +101,8 @@ func (m *Mpv) Stop() error {
 	// 	return err
 	// }
 
-	if m.cmd.Process != nil {
-		slog.Debug("killing process", "pid", m.cmd.Process.Pid)
+	if mpv.cmd.Process != nil {
+		slog.Debug("killing process", "pid", mpv.cmd.Process.Pid)
 
 		// err := m.cmd.Process.Kill()
 		// if err != nil {
@@ -107,9 +110,9 @@ func (m *Mpv) Stop() error {
 		// }
 
 		// pid := m.cmd.Process.Pid
-		pid, err := syscall.Getpgid(m.cmd.Process.Pid)
+		pid, err := syscall.Getpgid(mpv.cmd.Process.Pid)
 		if err != nil {
-			slog.Error("error getting process group", "pid", m.cmd.Process.Pid)
+			slog.Error("error getting process group", "pid", mpv.cmd.Process.Pid)
 			return err
 		}
 		// err = syscall.Kill(-m.cmd.Process.Pid, syscall.SIGCHLD)
@@ -124,7 +127,7 @@ func (m *Mpv) Stop() error {
 		}
 
 		slog.Debug("killed process group", "pgid", pid)
-		m.cmd = nil
+		mpv.cmd = nil
 	}
 
 	return nil

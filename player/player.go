@@ -1,6 +1,11 @@
 package player
 
 type Player interface {
-	Play(url string) (string, error)
+	Play(url string) error
 	Stop() error
+	Metadata() (*Metadata, error)
+}
+
+type Metadata struct {
+	Title string
 }

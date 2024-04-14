@@ -22,15 +22,17 @@ const (
 	// view messages
 	loadingMsg          = "\n  Fetching stations... \n"
 	noFavoritesAddedMsg = "\n No favorite stations added.\n"
-
 	// header messages
 	noPlayingMsg = "Nothing playing"
+
+	playerPollInterval = 2 * time.Second
 )
 
 func NewProgram(cfg *config.Value, b *browser.Api, p player.Player) *tea.Program {
 	m := initialModel(cfg, b, p)
 	progr := tea.NewProgram(m, tea.WithAltScreen())
 	trapSignal(progr)
+	go getPlayerMetadata(progr, m)
 	return progr
 }
 
@@ -43,12 +45,14 @@ func initialModel(cfg *config.Value, b *browser.Api, p player.Player) *model {
 	if len(cfg.Favorites) > 0 {
 		activeIx = favoriteTabIx
 	}
+
 	s := spinner.New()
 	s.Spinner = spinner.Spinner{
 		Frames: []string{"⡷", "⣧", "⣏", "⡟", "⡷", "⣧", "⣏", "⡟"},
 		FPS:    time.Second / 10, //nolint:gomnd
 	}
 	s.Style = spinnerStyle
+
 	m := model{
 		cfg:       cfg,
 		browser:   b,
@@ -60,6 +64,23 @@ func initialModel(cfg *config.Value, b *browser.Api, p player.Player) *model {
 		statusMsg: noPlayingMsg,
 	}
 	return &m
+}
+
+func getPlayerMetadata(progr *tea.Program, m *model) {
+	tick := time.NewTicker(playerPollInterval)
+	for range tick.C {
+		if m.delegate.currPlaying == nil {
+			continue
+		}
+		m, err := m.player.Metadata()
+		if err != nil {
+			slog.Error("getPlayerMetadata", "err", err)
+			continue
+		} else if m == nil {
+			continue
+		}
+		progr.Send(titleMsg(m.Title))
+	}
 }
 
 type model struct {
@@ -85,7 +106,7 @@ func (m *model) Init() tea.Cmd {
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	slog.Debug("main update", "type", fmt.Sprintf("%T", msg), "go value", fmt.Sprintf("%#v", msg), "value", msg)
+	slog.Debug("main update", "type", fmt.Sprintf("%T", msg), "value", msg, "#", fmt.Sprintf("%#v", msg))
 	switch msg := msg.(type) {
 
 	//
