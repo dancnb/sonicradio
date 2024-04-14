@@ -43,7 +43,7 @@ func (t *browseTab) Init(m *model) tea.Cmd {
 }
 
 func (t *browseTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
-	slog.Debug("browse tab", "type", fmt.Sprintf("%T", msg), "value", msg)
+	slog.Debug("browse tab", "type", fmt.Sprintf("%T", msg), "go value", fmt.Sprintf("%#v", msg), "value", msg)
 
 	var cmds []tea.Cmd
 

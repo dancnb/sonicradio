@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -84,7 +85,7 @@ func (m *model) Init() tea.Cmd {
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	slog.Debug("main", "type", fmt.Sprintf("%T", msg), "value", msg)
+	slog.Debug("main update", "type", fmt.Sprintf("%T", msg), "go value", fmt.Sprintf("%#v", msg), "value", msg)
 	switch msg := msg.(type) {
 
 	//
@@ -113,9 +114,63 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, tea.Batch(cmds...)
 
+	case tea.KeyMsg:
+		d := m.delegate
+		switch {
+		case key.Matches(msg, d.keymap.pause):
+			m.titleMsg = ""
+			if d.currPlaying != nil {
+				_, err := d.stopStation(*d.currPlaying)
+				if err != nil {
+					m.statusMsg = "Could not terminate previous playback!"
+					slog.Debug("statusMsg", "", m.statusMsg)
+					return m, nil
+				}
+			} else if d.prevPlaying != nil {
+				m.statusMsg = fmt.Sprintf("Connecting to %s...", d.prevPlaying.Name)
+				slog.Debug("statusMsg", "", m.statusMsg)
+				return m, d.playCmd(d.prevPlaying)
+			} else {
+				if m.activeTab != favoriteTabIx && m.activeTab != browseTabIx {
+					// TODO handle d.keymap.playSelected for other tabs if necessary
+					return m, nil
+				}
+				selStation := m.tabs[m.activeTab].List().SelectedItem().(browser.Station)
+				m.statusMsg = fmt.Sprintf("Connecting to %s...", selStation.Name)
+				slog.Debug("statusMsg", "", m.statusMsg)
+				return m, d.playCmd(&selStation)
+			}
+
+		case key.Matches(msg, d.keymap.playSelected):
+			if m.activeTab != favoriteTabIx && m.activeTab != browseTabIx {
+				// TODO handle d.keymap.playSelected for other tabs if necessary
+				return m, nil
+			}
+			m.titleMsg = ""
+			selStation := m.tabs[m.activeTab].List().SelectedItem().(browser.Station)
+			_, err := d.stopStation(selStation)
+			if err != nil {
+				m.statusMsg = "Could not terminate previous playback!"
+				slog.Debug("statusMsg", "", m.statusMsg)
+				return m, nil
+			}
+			m.statusMsg = fmt.Sprintf("Connecting to %s...", selStation.Name)
+			slog.Debug("statusMsg", "", m.statusMsg)
+			return m, d.playCmd(&selStation)
+		}
+
 	case quitMsg:
 		m.stop()
 		return nil, tea.Quit
+
+	case stringMsg:
+		if msg.statusMsg != nil {
+			m.statusMsg = *msg.statusMsg
+		}
+		if msg.titleMsg != nil {
+			m.titleMsg = *msg.titleMsg
+		}
+		return m, nil
 
 	case statusMsg:
 		m.statusMsg = string(msg)
@@ -124,6 +179,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case titleMsg:
 		m.titleMsg = string(msg)
 		return m, nil
+
 	//
 	// messages that need to reach a particular tab
 	//

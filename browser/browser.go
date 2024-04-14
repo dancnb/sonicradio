@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -11,15 +12,19 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/dancnb/sonicradio/config"
 )
 
 const (
-	HOST           = "all.api.radio-browser.info"
-	backup_server  = "https://de1.api.radio-browser.info/json/servers"
-	serverMaxRetry = 5
+	HOST              = "all.api.radio-browser.info"
+	backup_server     = "https://de1.api.radio-browser.info/json/servers"
+	serverMaxRetry    = 5
+	serverRetryMillis = 200
 )
+
+var serverErrMsg = errors.New("Server response not available.")
 
 func NewApi(cfg config.Value) *Api {
 	api := Api{
@@ -57,6 +62,7 @@ func (a *Api) TopStations() ([]Station, error) {
 		res, err = a.doServerRequest(http.MethodPost, urlStations, []byte(body))
 		if err != nil {
 			slog.Error("top stations", "request error", err)
+			time.Sleep(serverRetryMillis * time.Millisecond)
 			continue
 		}
 		var stations []Station
@@ -64,13 +70,14 @@ func (a *Api) TopStations() ([]Station, error) {
 		if err != nil {
 			slog.Error("top stations", "unmarshal error", err)
 			slog.Error("top stations", "response", string(res))
+			time.Sleep(serverRetryMillis * time.Millisecond)
 			continue
 		}
 		slog.Info("top stations", "length", len(stations))
 		return stations, nil
 	}
 	slog.Warn("top stations exceeded max retries")
-	return nil, fmt.Errorf("Server response not available.")
+	return nil, serverErrMsg
 }
 
 func (a *Api) GetStations(uuids []string) ([]Station, error) {
@@ -90,6 +97,7 @@ func (a *Api) GetStations(uuids []string) ([]Station, error) {
 		res, err := a.doServerRequest(http.MethodPost, urlStationsByUUID, []byte(x))
 		if err != nil {
 			slog.Error("get stations", "request error", err)
+			time.Sleep(serverRetryMillis * time.Millisecond)
 			continue
 		}
 		var stations []Station
@@ -97,6 +105,7 @@ func (a *Api) GetStations(uuids []string) ([]Station, error) {
 		if err != nil {
 			slog.Error("get stations", "unmarshal error", err)
 			slog.Error("get stations", "response", string(res))
+			time.Sleep(serverRetryMillis * time.Millisecond)
 			continue
 		}
 		slog.Info("get stations", "length", len(stations))
@@ -104,7 +113,7 @@ func (a *Api) GetStations(uuids []string) ([]Station, error) {
 	}
 
 	slog.Warn("get station exceeded max retries")
-	return nil, fmt.Errorf("Server response not available.")
+	return nil, serverErrMsg
 }
 
 func (a *Api) doServerRequest(method string, path string, body []byte) ([]byte, error) {

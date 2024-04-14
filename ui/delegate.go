@@ -44,7 +44,7 @@ func (d *stationDelegate) Height() int { return d.defaultDelegate.Height() }
 func (d *stationDelegate) Spacing() int { return d.defaultDelegate.Spacing() }
 
 func (d *stationDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
-	slog.Debug("stationDelegate", "type", fmt.Sprintf("%T", msg), "value", msg)
+	slog.Debug("stationDelegate", "type", fmt.Sprintf("%T", msg), "go value", fmt.Sprintf("%#v", msg), "value", msg)
 	selStation, ok := m.SelectedItem().(browser.Station)
 	if !ok {
 		return nil
@@ -53,39 +53,6 @@ func (d *stationDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, d.keymap.pause):
-			if d.currPlaying != nil {
-				_, err := d.stopStation(*d.currPlaying)
-				if err != nil {
-					return statusMsgCmd("Could not terminate previous playback!")
-				}
-			} else if d.prevPlaying != nil {
-				cmds := []tea.Cmd{
-					statusMsgCmd(fmt.Sprintf("Connecting to %s...", d.prevPlaying.Name)),
-					d.playCmd(d.prevPlaying),
-				}
-				return tea.Sequence(cmds...)
-			} else {
-				cmds := []tea.Cmd{
-					statusMsgCmd(fmt.Sprintf("Connecting to %s...", selStation.Name)),
-					d.playCmd(&selStation),
-				}
-				return tea.Sequence(cmds...)
-			}
-
-		case key.Matches(msg, d.keymap.playSelected):
-			wasPlaying, err := d.stopStation(selStation)
-			if err != nil {
-				return statusMsgCmd("Could not terminate playback!")
-			}
-			if !wasPlaying {
-				cmds := []tea.Cmd{
-					statusMsgCmd(fmt.Sprintf("Connecting to %s...", selStation.Name)),
-					d.playCmd(&selStation),
-				}
-				return tea.Sequence(cmds...)
-			}
-
 		case key.Matches(msg, d.keymap.toggleFavorite):
 			added := d.cfg.ToggleFavorite(selStation.Stationuuid)
 			return func() tea.Msg { return toggleFavoriteMsg{added, selStation} }
@@ -214,11 +181,14 @@ func (d *stationDelegate) FullHelp() [][]key.Binding {
 
 // tea.Cmd
 func (d *stationDelegate) playCmd(s *browser.Station) tea.Cmd {
-	title, err := d.playStation(*s)
-	if err != nil {
-		return statusMsgCmd(fmt.Sprintf("Could not start playback for %s (%s)!", s.Name, s.URL))
-	} else {
-		return tea.Batch(statusMsgCmd(""), titleMsgCmd(title))
+	return func() tea.Msg {
+		emptyS := ""
+		title, err := d.playStation(*s)
+		if err != nil {
+			return statusMsg(fmt.Sprintf("Could not start playback for %s (%s)!", s.Name, s.URL))
+		} else {
+			return stringMsg{statusMsg: &emptyS, titleMsg: &title}
+		}
 	}
 }
 

@@ -46,7 +46,7 @@ func (t *favoritesTab) Init(m *model) tea.Cmd {
 }
 
 func (t *favoritesTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
-	slog.Debug("favorites tab", "type", fmt.Sprintf("%T", msg), "value", msg)
+	slog.Debug("favorites tab", "type", fmt.Sprintf("%T", msg), "go value", fmt.Sprintf("%#v", msg), "value", msg)
 
 	var cmds []tea.Cmd
 
