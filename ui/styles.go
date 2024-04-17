@@ -67,8 +67,8 @@ var (
 			BorderForeground(basePrimaryColor)
 
 	// filter
-	filterPromptStyle = lipgloss.NewStyle().Foreground(basePrimaryColor).Bold(true)
-	filterTextStyle   = lipgloss.NewStyle().Foreground(baseSecondColor).Bold(true)
+	filterPromptStyle = lipgloss.NewStyle().Foreground(baseSecondColor).Bold(true).MarginLeft(1)
+	filterTextStyle   = lipgloss.NewStyle().Foreground(basePrimaryColor).Bold(true)
 
 	// general
 	backgroundColor = termenv.RGBColor("#282c34")
