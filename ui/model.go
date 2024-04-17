@@ -87,6 +87,7 @@ type model struct {
 
 	tabs      []uiTab
 	activeTab uiTabIndex
+
 	statusMsg string
 	titleMsg  string
 	spinner   *spinner.Model
@@ -132,7 +133,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		d := m.delegate
+
 		switch {
+		case msg.String() == "ctrl+c":
+			m.quit()
+			return m, tea.Quit
+
 		case key.Matches(msg, d.keymap.pause):
 			m.titleMsg = ""
 			m.spinner = nil
