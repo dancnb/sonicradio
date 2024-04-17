@@ -77,7 +77,7 @@ func (t *browseTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch {
 		case key.Matches(msg, t.list.KeyMap.Quit, t.list.KeyMap.ForceQuit):
-			m.stop()
+			m.quit()
 
 		case key.Matches(msg, t.listKeymap.search):
 			// TODO search stations; use cmd and msg

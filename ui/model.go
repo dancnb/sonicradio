@@ -176,7 +176,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case quitMsg:
-		m.stop()
+		m.quit()
 		return nil, tea.Quit
 
 	case playRespMsg:
@@ -232,7 +232,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return model, cmd
 }
 
-func (m *model) stop() {
+func (m *model) quit() {
 	slog.Info("----------------------Quitting----------------------")
 	err := m.player.Stop()
 	if err != nil {
