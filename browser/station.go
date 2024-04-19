@@ -98,7 +98,7 @@ type Station struct {
 
 func (s Station) Title() string { return s.Name }
 func (s Station) Description() string {
-	desc := s.Country
+	desc := s.Countrycode
 	if strings.TrimSpace(s.State) != "" {
 		desc += ", " + s.State
 	}
