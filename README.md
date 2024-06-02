@@ -6,7 +6,7 @@ A stylish TUI radio player making use of [Radio Browser API](https://www.radio-b
 * Go : https://go.dev/doc/install
 * MPV  : https://mpv.io/
 
-## Instalation
+## Installation
 
     go install github.com/dancnb/sonicradio@latest
 
