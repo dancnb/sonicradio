@@ -17,8 +17,8 @@ func (t uiTabIndex) String() string {
 		return "Favorites"
 	case browseTabIx:
 		return " Browse "
-	case historyTabIx:
-		return " History "
+		// case historyTabIx:
+		// 	return " History "
 	}
 	return ""
 }
@@ -26,7 +26,7 @@ func (t uiTabIndex) String() string {
 const (
 	favoriteTabIx uiTabIndex = iota
 	browseTabIx
-	historyTabIx
+	// historyTabIx
 	// configTab
 )
 

@@ -88,8 +88,8 @@ type model struct {
 	tabs      []uiTab
 	activeTab uiTabIndex
 
-	statusMsg string
-	titleMsg  string
+	statusMsg string // display currently performed action or encountered error
+	titleMsg  string // display station metadata (song name)
 	spinner   *spinner.Model
 
 	width        int
