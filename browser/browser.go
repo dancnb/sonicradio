@@ -50,11 +50,7 @@ type Api struct {
 }
 
 func (a *Api) TopStations() ([]Station, error) {
-	s := SearchParams{
-		Offset: 0,
-		Limit:  30,
-		Order:  Votes,
-	}
+	s := DefaultSearchParams()
 	body := s.toFormData()
 	var err error
 	for i := 0; i < serverMaxRetry; i++ {

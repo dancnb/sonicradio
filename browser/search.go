@@ -39,32 +39,37 @@ type SearchParams struct {
 	Reverse     bool
 	Offset      int
 	Limit       int
-	HideBroken  bool
+	// TagExact    string //always "true"
+	// HideBroken  string //always "true"
 }
 
-// `
-// curl 'https://de1.api.radio-browser.info/json/stations/search'
-// -X POST
-// -H 'User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:123.0) Gecko/20100101 Firefox/123.0'
-// -H 'Accept: */*'
-// -H 'Accept-Language: en-US,en;q=0.5'
-// -H 'Accept-Encoding: gzip, deflate, br'
-// -H 'Referer: https://radiolise.gitlab.io/'
-// -H 'content-type: application/x-www-form-urlencoded'
-// -H 'Origin: https://radiolise.gitlab.io'
-// -H 'Connection: keep-alive'
-// -H 'Sec-Fetch-Dest: empty'
-// -H 'Sec-Fetch-Mode: cors'
-// -H 'Sec-Fetch-Site: cross-site'
-// --data-raw 'name=zen+relax&tagList=&country=&state=&language=&tagExact=true&countryExact=false&stateExact=false&languageExact=false&offset=0&limit=20&order=clickcount&bitrateMin=0&bitrateMax=&reverse=true&hidebroken=true'
-//
-// `
-func (p SearchParams) toFormData() string {
-	var tags strings.Builder
-	for _, v := range p.TagList {
-		tags.WriteString(strings.TrimSpace(v))
+func DefaultSearchParams() SearchParams {
+	return SearchParams{
+		Order:   Votes,
+		Reverse: true,
+		Offset:  0,
+		Limit:   30,
 	}
+}
+
+func (p SearchParams) toFormData() string {
 	fname := strings.Join(strings.Fields(p.Name), "+")
-	return fmt.Sprintf("name=%s&tagList=%s&country=%s&state=%s&language=%s&tagExact=true&offset=%d&limit=%d&order=%s&bitrateMin=0&bitrateMax=&reverse=true&hidebroken=true",
-		fname, tags.String(), p.Country, p.State, p.Language, p.Offset, p.Limit, p.Order)
+
+	var tags strings.Builder
+	for i, v := range p.TagList {
+		tags.WriteString(strings.TrimSpace(v))
+		if i < len(p.TagList)-1 {
+			tags.WriteString(",")
+		}
+	}
+
+	return fmt.Sprintf("name=%s&tagList=%s&country=%s&state=%s&language=%s&tagExact=true&offset=%d&limit=%d&order=%s&bitrateMin=0&bitrateMax=&reverse=%s&hidebroken=true",
+		fname, tags.String(), p.Country, p.State, p.Language, p.Offset, p.Limit, p.Order, boolString(p.Reverse))
+}
+
+func boolString(v bool) string {
+	if v {
+		return "true"
+	}
+	return "false"
 }
