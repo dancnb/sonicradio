@@ -10,16 +10,16 @@ import (
 )
 
 type browseTab struct {
-	list       list.Model
-	viewMsg    string
-	listKeymap listKeymap
+	baseTab
 }
 
 func newBrowseTab() *browseTab {
 	k := newListKeymap()
 
 	m := &browseTab{
-		listKeymap: k,
+		baseTab: baseTab{
+			listKeymap: k,
+		},
 	}
 	return m
 }
@@ -67,11 +67,11 @@ func (t *browseTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			newListModel, cmd := t.list.Update(msg)
 			t.list = newListModel
 			cmds = append(cmds, cmd)
-			toNowPlaying(m, t)
+			t.toNowPlaying(m)
 		}
 
 		// Don't match any of the keys below if we're actively filtering.
-		if t.list.FilterState() == list.Filtering {
+		if t.IsFiltering() {
 			break
 		}
 
@@ -99,12 +99,3 @@ func (t *browseTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	return m, tea.Batch(cmds...)
 }
-
-func (t *browseTab) View() string {
-	if t.viewMsg != "" {
-		return itemStyle.Render(t.viewMsg)
-	}
-	return t.list.View()
-}
-
-func (t *browseTab) List() *list.Model { return &t.list }

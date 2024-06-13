@@ -35,9 +35,30 @@ type uiTab interface {
 	Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd)
 	View() string
 	List() *list.Model
+	IsFiltering() bool
 }
 
-func toNowPlaying(m *model, t uiTab) {
+type baseTab struct {
+	uiTab
+	list       list.Model
+	viewMsg    string
+	listKeymap listKeymap
+}
+
+func (t *baseTab) View() string {
+	if t.viewMsg != "" {
+		return itemStyle.Render(t.viewMsg)
+	}
+	return t.list.View()
+}
+
+func (t *baseTab) List() *list.Model { return &t.list }
+
+func (t *baseTab) IsFiltering() bool {
+	return t.list.FilterState() == list.Filtering
+}
+
+func (t *baseTab) toNowPlaying(m *model) {
 	uuid := ""
 	if m.delegate.currPlaying != nil {
 		uuid = m.delegate.currPlaying.Stationuuid

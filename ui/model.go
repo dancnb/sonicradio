@@ -103,8 +103,9 @@ func (m *model) Init() tea.Cmd {
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	slog.Debug("main update", "type", fmt.Sprintf("%T", msg), "value", msg, "#", fmt.Sprintf("%#v", msg))
-	switch msg := msg.(type) {
+	activeTab := m.tabs[m.activeTab]
 
+	switch msg := msg.(type) {
 	//
 	// messages that need to reach all tabs
 	//
@@ -132,13 +133,16 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 
 	case tea.KeyMsg:
+		if msg.String() == "ctrl+c" {
+			m.quit()
+			return m, tea.Quit
+		} else if activeTab.IsFiltering() {
+			break
+		}
+
 		d := m.delegate
 
 		switch {
-		case msg.String() == "ctrl+c":
-			m.quit()
-			return m, tea.Quit
-
 		case key.Matches(msg, d.keymap.pause):
 			m.titleMsg = ""
 			m.spinner = nil
@@ -157,7 +161,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// TODO handle enter for other tabs if necessary
 					return m, nil
 				}
-				selStation := m.tabs[m.activeTab].List().SelectedItem().(browser.Station)
+				selStation := activeTab.List().SelectedItem().(browser.Station)
 				m.statusMsg = fmt.Sprintf("Connecting to %s...", selStation.Name)
 				cmds := []tea.Cmd{m.initSpinner(), d.playCmd(&selStation)}
 				return m, tea.Batch(cmds...)
@@ -170,7 +174,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.titleMsg = ""
 			m.spinner = nil
-			selStation := m.tabs[m.activeTab].List().SelectedItem().(browser.Station)
+			selStation := activeTab.List().SelectedItem().(browser.Station)
 			_, err := d.stopStation(selStation)
 			if err != nil {
 				m.statusMsg = "Could not terminate previous playback!"
@@ -234,7 +238,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	//
 	// messages that need to reach active tab
 	//
-	model, cmd := m.tabs[m.activeTab].Update(m, msg)
+	model, cmd := activeTab.Update(m, msg)
 	return model, cmd
 }
 
