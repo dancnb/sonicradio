@@ -11,6 +11,7 @@ import (
 
 type browseTab struct {
 	baseTab
+	searchModel searchModel
 }
 
 func newBrowseTab() *browseTab {
@@ -19,6 +20,11 @@ func newBrowseTab() *browseTab {
 	m := &browseTab{
 		baseTab: baseTab{
 			listKeymap: k,
+		},
+		searchModel: searchModel{
+			enabled: false,
+			content: "placeholder",
+			keymap:  newSearchKeymap(),
 		},
 	}
 	return m
@@ -48,7 +54,6 @@ func (t *browseTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
-
 	case tea.WindowSizeMsg:
 		v, h := docStyle.GetFrameSize()
 		t.list.SetSize(msg.Width-h, msg.Height-m.headerHeight-v)
@@ -63,6 +68,13 @@ func (t *browseTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 
 	case tea.KeyMsg:
+		// search > filter > list
+		if t.searchModel.enabled {
+			cmd := t.searchModel.update(msg)
+			cmds = append(cmds, cmd)
+			return m, tea.Batch(cmds...)
+		}
+
 		if key.Matches(msg, t.listKeymap.toNowPlaying) {
 			newListModel, cmd := t.list.Update(msg)
 			t.list = newListModel
@@ -80,9 +92,7 @@ func (t *browseTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.quit()
 
 		case key.Matches(msg, t.listKeymap.search):
-			// TODO search stations; use cmd and msg
-			// cmd := t.list.NewStatusMessage(statusWarnMessageStyle("Not implemented yet!"))
-			// cmds = append(cmds, cmd)
+			t.searchModel.toggle()
 
 		case key.Matches(msg, t.listKeymap.toFavorites):
 			m.activeTab = favoriteTabIx
@@ -98,4 +108,17 @@ func (t *browseTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
+}
+
+func (t *browseTab) View() string {
+	if t.viewMsg != "" {
+		return itemStyle.Render(t.viewMsg)
+	} else if t.searchModel.enabled {
+		return t.searchModel.view()
+	}
+	return t.list.View()
+}
+
+func (t *browseTab) IsSearch() bool {
+	return t.searchModel.enabled
 }

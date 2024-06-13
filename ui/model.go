@@ -132,10 +132,61 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, tea.Batch(cmds...)
 
+	case quitMsg:
+		m.quit()
+		return nil, tea.Quit
+
+	case playRespMsg:
+		m.statusMsg = msg.err
+		if msg.err != "" {
+			m.spinner = nil
+			d := m.delegate
+			if d.currPlaying != nil {
+				_, err := d.stopStation(*d.currPlaying)
+				if err != nil {
+					m.statusMsg = "Could not terminate previous playback!"
+					return m, nil
+				}
+			}
+		}
+		return m, nil
+	case statusMsg:
+		m.statusMsg = string(msg)
+		return m, nil
+
+	case titleMsg:
+		m.titleMsg = string(msg)
+		return m, nil
+
+	case spinner.TickMsg:
+		if m.spinner == nil {
+			return m, nil
+		}
+		var cmd tea.Cmd
+		s, cmd := m.spinner.Update(msg)
+		m.spinner = &s
+		return m, cmd
+
+	//
+	// messages that need to reach a particular tab
+	//
+	case topStationsRespMsg:
+		// TODO handle errMsg
+		return m.tabs[browseTabIx].Update(m, msg)
+
+	case favoritesStationRespMsg:
+		// TODO handle errMsg
+		return m.tabs[favoriteTabIx].Update(m, msg)
+
+	case toggleFavoriteMsg:
+		return m.tabs[favoriteTabIx].Update(m, msg)
+
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {
 			m.quit()
 			return m, tea.Quit
+		} else if activeTab.IsSearch() {
+			break
 		} else if activeTab.IsFiltering() {
 			break
 		}
@@ -185,54 +236,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(cmds...)
 		}
 
-	case quitMsg:
-		m.quit()
-		return nil, tea.Quit
-
-	case playRespMsg:
-		m.statusMsg = msg.err
-		if msg.err != "" {
-			m.spinner = nil
-			d := m.delegate
-			if d.currPlaying != nil {
-				_, err := d.stopStation(*d.currPlaying)
-				if err != nil {
-					m.statusMsg = "Could not terminate previous playback!"
-					return m, nil
-				}
-			}
-		}
-		return m, nil
-	case statusMsg:
-		m.statusMsg = string(msg)
-		return m, nil
-
-	case titleMsg:
-		m.titleMsg = string(msg)
-		return m, nil
-
-	case spinner.TickMsg:
-		if m.spinner == nil {
-			return m, nil
-		}
-		var cmd tea.Cmd
-		s, cmd := m.spinner.Update(msg)
-		m.spinner = &s
-		return m, cmd
-
-	//
-	// messages that need to reach a particular tab
-	//
-	case topStationsRespMsg:
-		// TODO handle errMsg
-		return m.tabs[browseTabIx].Update(m, msg)
-
-	case favoritesStationRespMsg:
-		// TODO handle errMsg
-		return m.tabs[favoriteTabIx].Update(m, msg)
-
-	case toggleFavoriteMsg:
-		return m.tabs[favoriteTabIx].Update(m, msg)
 	}
 
 	//

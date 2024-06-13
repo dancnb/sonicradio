@@ -36,6 +36,7 @@ type uiTab interface {
 	View() string
 	List() *list.Model
 	IsFiltering() bool
+	IsSearch() bool
 }
 
 type baseTab struct {
@@ -79,6 +80,10 @@ func (t *baseTab) toNowPlaying(m *model) {
 	if selIndex > -1 {
 		t.List().Select(selIndex)
 	}
+}
+
+func (t *baseTab) IsSearch() bool {
+	return false
 }
 
 func createList(delegate *stationDelegate, width int, height int) list.Model {
