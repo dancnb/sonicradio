@@ -102,7 +102,7 @@ func (m *model) Init() tea.Cmd {
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	slog.Debug("main update", "type", fmt.Sprintf("%T", msg), "value", msg, "#", fmt.Sprintf("%#v", msg))
+	logTeaMsg(msg, "update main")
 	activeTab := m.tabs[m.activeTab]
 
 	switch msg := msg.(type) {
@@ -371,4 +371,8 @@ func (m *model) topStationsCmd() tea.Msg {
 		res.viewMsg = noStationsFound
 	}
 	return res
+}
+
+func logTeaMsg(msg tea.Msg, tag string) {
+	slog.Debug(tag, "type", fmt.Sprintf("%T", msg), "value", msg, "#", fmt.Sprintf("%#v", msg))
 }
