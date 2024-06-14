@@ -20,7 +20,7 @@ import (
 
 const (
 	// view messages
-	loadingMsg          = "\n  Fetching stations... \n"
+	loadingMsg          = "\n Fetching stations... \n"
 	noFavoritesAddedMsg = "\n No favorite stations added.\n"
 	noStationsFound     = "\n No stations found. \n"
 	// header messages
@@ -170,7 +170,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	//
 	// messages that need to reach a particular tab
 	//
-	case topStationsRespMsg:
+	case topStationsRespMsg, searchRespMsg:
 		// TODO handle errMsg
 		return m.tabs[browseTabIx].Update(m, msg)
 
@@ -179,6 +179,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.tabs[favoriteTabIx].Update(m, msg)
 
 	case toggleFavoriteMsg:
+		// TODO handle errMsg
 		return m.tabs[favoriteTabIx].Update(m, msg)
 
 	case tea.KeyMsg:
@@ -212,10 +213,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// TODO handle enter for other tabs if necessary
 					return m, nil
 				}
-				selStation := activeTab.List().SelectedItem().(browser.Station)
-				m.statusMsg = fmt.Sprintf("Connecting to %s...", selStation.Name)
-				cmds := []tea.Cmd{m.initSpinner(), d.playCmd(&selStation)}
-				return m, tea.Batch(cmds...)
+				selStation, ok := activeTab.List().SelectedItem().(browser.Station)
+				if ok {
+					m.statusMsg = fmt.Sprintf("Connecting to %s...", selStation.Name)
+					cmds := []tea.Cmd{m.initSpinner(), d.playCmd(&selStation)}
+					return m, tea.Batch(cmds...)
+				}
 			}
 
 		case key.Matches(msg, d.keymap.playSelected):
@@ -223,17 +226,19 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// TODO handle enter for other tabs if necessary
 				return m, nil
 			}
-			m.titleMsg = ""
-			m.spinner = nil
-			selStation := activeTab.List().SelectedItem().(browser.Station)
-			_, err := d.stopStation(selStation)
-			if err != nil {
-				m.statusMsg = "Could not terminate previous playback!"
-				return m, nil
+			selStation, ok := activeTab.List().SelectedItem().(browser.Station)
+			if ok {
+				m.titleMsg = ""
+				m.spinner = nil
+				_, err := d.stopStation(selStation)
+				if err != nil {
+					m.statusMsg = "Could not terminate previous playback!"
+					return m, nil
+				}
+				m.statusMsg = fmt.Sprintf("Connecting to %s...", selStation.Name)
+				cmds := []tea.Cmd{m.initSpinner(), d.playCmd(&selStation)}
+				return m, tea.Batch(cmds...)
 			}
-			m.statusMsg = fmt.Sprintf("Connecting to %s...", selStation.Name)
-			cmds := []tea.Cmd{m.initSpinner(), d.playCmd(&selStation)}
-			return m, tea.Batch(cmds...)
 		}
 
 	}

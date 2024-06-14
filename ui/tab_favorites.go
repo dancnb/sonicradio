@@ -1,9 +1,6 @@
 package ui
 
 import (
-	"fmt"
-	"log/slog"
-
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -16,7 +13,6 @@ type favoritesTab struct {
 
 func newFavoritesTab() *favoritesTab {
 	k := newListKeymap()
-	k.search.SetEnabled(false)
 
 	m := &favoritesTab{
 		baseTab: baseTab{
@@ -28,12 +24,11 @@ func newFavoritesTab() *favoritesTab {
 
 func (t *favoritesTab) createList(delegate *stationDelegate, width int, height int) list.Model {
 	l := createList(delegate, width, height)
-
 	l.AdditionalShortHelpKeys = func() []key.Binding {
-		return []key.Binding{}
+		return []key.Binding{t.listKeymap.search}
 	}
 	l.AdditionalFullHelpKeys = func() []key.Binding {
-		return []key.Binding{t.listKeymap.toNowPlaying, t.listKeymap.toBrowser, t.listKeymap.prevTab, t.listKeymap.nextTab}
+		return []key.Binding{t.listKeymap.search, t.listKeymap.toNowPlaying, t.listKeymap.toBrowser, t.listKeymap.prevTab, t.listKeymap.nextTab}
 	}
 
 	return l
@@ -52,7 +47,7 @@ func (t *favoritesTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		v, h := docStyle.GetFrameSize()
+		h, v := docStyle.GetFrameSize()
 		t.list.SetSize(msg.Width-h, msg.Height-m.headerHeight-v)
 
 	case favoritesStationRespMsg:
@@ -114,7 +109,11 @@ func (t *favoritesTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, t.list.KeyMap.Quit, t.list.KeyMap.ForceQuit):
 			m.quit()
+			return m, tea.Quit
 
+		case key.Matches(msg, t.listKeymap.search):
+			m.activeTab = browseTabIx
+			return m.tabs[browseTabIx].Update(m, msg)
 		case key.Matches(msg, t.listKeymap.toBrowser):
 			m.activeTab = browseTabIx
 		case key.Matches(msg, t.listKeymap.nextTab):

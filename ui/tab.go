@@ -48,7 +48,7 @@ type baseTab struct {
 
 func (t *baseTab) View() string {
 	if t.viewMsg != "" {
-		return itemStyle.Render(t.viewMsg)
+		return viewStyle.Render(t.viewMsg)
 	}
 	return t.list.View()
 }
@@ -93,13 +93,15 @@ func createList(delegate *stationDelegate, width int, height int) list.Model {
 	l.SetShowStatusBar(false)
 	l.SetShowPagination(false)
 	l.SetShowFilter(true)
+	l.SetStatusBarItemName("station", "stations")
+	l.Styles.NoItems = noItemsStyle
 	l.FilterInput.ShowSuggestions = true
 	l.KeyMap.Quit.SetKeys("q")
 	l.KeyMap.PrevPage.SetKeys("pgup", "u")
 	l.KeyMap.PrevPage.SetHelp("u/pgup", "prev page")
 	l.KeyMap.NextPage.SetKeys("pgdown", "d")
 	l.KeyMap.NextPage.SetHelp("d/pgdn", "next page")
-	v, h := docStyle.GetFrameSize()
+	h, v := docStyle.GetFrameSize()
 	l.SetSize(width-h, height-v)
 
 	l.Help.ShortSeparator = "  "

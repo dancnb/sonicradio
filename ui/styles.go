@@ -39,6 +39,9 @@ var (
 				Border(lipgloss.BlockBorder(), false, false, false, true).
 				BorderForeground(basePrimaryColor)
 
+	viewStyle    = lipgloss.NewStyle().Foreground(baseSecondColor).PaddingLeft(2)
+	noItemsStyle = lipgloss.NewStyle().Foreground(baseSecondColor).PaddingLeft(3)
+
 	// tabs
 	inactiveTab = lipgloss.NewStyle().
 			Bold(true).

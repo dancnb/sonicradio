@@ -27,6 +27,13 @@ type (
 		stations []browser.Station
 	}
 
+	searchRespMsg struct {
+		viewMsg
+		statusMsg
+		stations  []browser.Station
+		cancelled bool
+	}
+
 	toggleFavoriteMsg struct {
 		added   bool
 		station browser.Station
