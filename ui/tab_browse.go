@@ -57,6 +57,7 @@ func (t *browseTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		t.list.SetSize(msg.Width-h, msg.Height-m.headerHeight-v)
 
 	case topStationsRespMsg:
+		m.updateStatus(msg.statusMsg)
 		t.viewMsg = string(msg.viewMsg)
 		copy(t.defTopStations, msg.stations)
 		cmd := t.setStations(msg.stations)
@@ -67,8 +68,8 @@ func (t *browseTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.cancelled {
 			// do nothing, list already has top stations
 		} else {
+			m.updateStatus(msg.statusMsg)
 			t.viewMsg = string(msg.viewMsg)
-			// TODO handle errMsg
 			cmd := t.setStations(msg.stations)
 			cmds = append(cmds, cmd)
 		}

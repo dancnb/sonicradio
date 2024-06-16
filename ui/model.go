@@ -23,8 +23,9 @@ const (
 	loadingMsg          = "\n Fetching stations... \n"
 	noFavoritesAddedMsg = "\n No favorite stations added.\n"
 	noStationsFound     = "\n No stations found. \n"
-	// header messages
-	noPlayingMsg = "Nothing playing"
+	// header status messages
+	noPlayingMsg     = "Nothing playing"
+	missingFavorites = "Some stations not found"
 
 	playerPollInterval = 500 * time.Millisecond
 )
@@ -151,7 +152,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case statusMsg:
-		m.statusMsg = string(msg)
+		m.updateStatus(msg)
 		return m, nil
 
 	case titleMsg:
@@ -171,15 +172,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// messages that need to reach a particular tab
 	//
 	case topStationsRespMsg, searchRespMsg:
-		// TODO handle errMsg
 		return m.tabs[browseTabIx].Update(m, msg)
 
 	case favoritesStationRespMsg:
-		// TODO handle errMsg
 		return m.tabs[favoriteTabIx].Update(m, msg)
 
 	case toggleFavoriteMsg:
-		// TODO handle errMsg
 		return m.tabs[favoriteTabIx].Update(m, msg)
 
 	case tea.KeyMsg:
@@ -248,6 +246,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	//
 	model, cmd := activeTab.Update(m, msg)
 	return model, cmd
+}
+
+func (m *model) updateStatus(msg statusMsg) {
+	if msg != "" {
+		m.statusMsg = string(msg)
+	}
 }
 
 func (m *model) quit() {

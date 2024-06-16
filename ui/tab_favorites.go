@@ -67,9 +67,11 @@ func (t *favoritesTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 				notFound = append(notFound, m.cfg.Favorites[j])
 			}
 		}
-		if len(notFound) > 0 {
-			// TODO status message: some stations could not be retrieved from the server
+		sm := msg.statusMsg
+		if sm == "" && len(notFound) > 0 {
+			sm = statusMsg(missingFavorites)
 		}
+		m.updateStatus(sm)
 		cmd := t.list.SetItems(items)
 		cmds = append(cmds, cmd)
 
