@@ -131,10 +131,8 @@ func (t *browseTab) setStations(stations []browser.Station) tea.Cmd {
 func (t *browseTab) View() string {
 	if t.IsSearch() {
 		return t.searchModel.view()
-	} else if t.viewMsg != "" {
-		return viewStyle.Render(t.viewMsg)
 	}
-	return t.list.View()
+	return t.baseTab.View()
 }
 
 func (t *browseTab) IsSearch() bool {

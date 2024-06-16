@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/dancnb/sonicradio/browser"
 )
 
@@ -48,7 +49,14 @@ type baseTab struct {
 
 func (t *baseTab) View() string {
 	if t.viewMsg != "" {
-		return viewStyle.Render(t.viewMsg)
+		var sections []string
+		availHeight := t.list.Height()
+		help := t.list.Styles.HelpStyle.Render(t.list.Help.View(t.list))
+		availHeight -= lipgloss.Height(help)
+		viewSection := viewStyle.Height(availHeight).Render(t.viewMsg)
+		sections = append(sections, viewSection)
+		sections = append(sections, help)
+		return lipgloss.JoinVertical(lipgloss.Left, sections...)
 	}
 	return t.list.View()
 }
