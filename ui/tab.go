@@ -3,7 +3,6 @@ package ui
 import (
 	"log/slog"
 
-	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -37,7 +36,7 @@ type uiTab interface {
 	View() string
 	List() *list.Model
 	IsFiltering() bool
-	IsSearch() bool
+	IsSearchEnabled() bool
 }
 
 type baseTab struct {
@@ -90,7 +89,7 @@ func (t *baseTab) toNowPlaying(m *model) {
 	}
 }
 
-func (t *baseTab) IsSearch() bool {
+func (t *baseTab) IsSearchEnabled() bool {
 	return false
 }
 
@@ -112,20 +111,10 @@ func createList(delegate *stationDelegate, width int, height int) list.Model {
 	h, v := docStyle.GetFrameSize()
 	l.SetSize(width-h, height-v)
 
-	l.Help.ShortSeparator = "  "
-	l.Help.Styles = help.Styles{
-		ShortKey:       helpkeyStyle,
-		ShortDesc:      helpDescStyle,
-		ShortSeparator: helpDescStyle,
-		Ellipsis:       helpDescStyle.Copy(),
-		FullKey:        helpkeyStyle.Copy(),
-		FullDesc:       helpDescStyle.Copy(),
-		FullSeparator:  helpDescStyle.Copy(),
-	}
+	l.Help.ShortSeparator = "   "
+	l.Help.Styles = helpStyles()
 	l.Styles.HelpStyle = helpStyle
 
-	l.FilterInput.PromptStyle = filterPromptStyle
-	l.FilterInput.TextStyle = filterTextStyle
-	l.FilterInput.Cursor.Style = filterPromptStyle
+	textInputSyle(&l.FilterInput, "Filter:       ", "name")
 	return l
 }

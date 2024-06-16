@@ -10,20 +10,17 @@ import (
 type browseTab struct {
 	baseTab
 	defTopStations []browser.Station
-	searchModel    searchModel
+	searchModel    *searchModel
 }
 
-func newBrowseTab() *browseTab {
+func newBrowseTab(browser *browser.Api) *browseTab {
 	k := newListKeymap()
 
 	m := &browseTab{
 		baseTab: baseTab{
 			listKeymap: k,
 		},
-		searchModel: searchModel{
-			content: "placeholder",
-			keymap:  newSearchKeymap(),
-		},
+		searchModel: newSearchModel(browser),
 	}
 	return m
 }
@@ -51,6 +48,20 @@ func (t *browseTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	var cmds []tea.Cmd
 
+	if t.searchModel.isEnabled() {
+		if sizeMsg, ok := msg.(tea.WindowSizeMsg); ok {
+			availableHeight := sizeMsg.Height - m.headerHeight
+			newSizeMsg := tea.WindowSizeMsg{Width: sizeMsg.Width, Height: availableHeight}
+			sm, cmd := t.searchModel.Update(newSizeMsg)
+			t.searchModel = sm.(*searchModel)
+			cmds = append(cmds, cmd)
+		} else {
+			sm, cmd := t.searchModel.Update(msg)
+			t.searchModel = sm.(*searchModel)
+			cmds = append(cmds, cmd)
+		}
+	}
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		h, v := docStyle.GetFrameSize()
@@ -75,10 +86,7 @@ func (t *browseTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.KeyMsg:
-		// search > filter > list
-		if t.IsSearch() {
-			cmd := t.searchModel.update(msg)
-			cmds = append(cmds, cmd)
+		if t.searchModel.isEnabled() {
 			return m, tea.Batch(cmds...)
 		}
 
@@ -89,7 +97,6 @@ func (t *browseTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			t.toNowPlaying(m)
 		}
 
-		// Don't match any of the keys below if we're actively filtering.
 		if t.IsFiltering() {
 			break
 		}
@@ -101,7 +108,8 @@ func (t *browseTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, t.listKeymap.search):
 			t.listKeymap.setEnabled(false)
-			t.searchModel.setEnabled(true)
+			t.searchModel.setSize(m.width, m.totHeight-m.headerHeight)
+			cmds = append(cmds, t.searchModel.Init())
 			return m, tea.Batch(cmds...)
 
 		case key.Matches(msg, t.listKeymap.toFavorites):
@@ -126,16 +134,17 @@ func (t *browseTab) setStations(stations []browser.Station) tea.Cmd {
 		items[i] = stations[i]
 	}
 	cmd := t.list.SetItems(items)
+	t.List().Select(0)
 	return cmd
 }
 
 func (t *browseTab) View() string {
-	if t.IsSearch() {
-		return t.searchModel.view()
+	if t.searchModel.isEnabled() {
+		return t.searchModel.View()
 	}
 	return t.baseTab.View()
 }
 
-func (t *browseTab) IsSearch() bool {
-	return t.searchModel.enabled
+func (t *browseTab) IsSearchEnabled() bool {
+	return t.searchModel.isEnabled()
 }

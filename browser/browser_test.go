@@ -3,6 +3,7 @@ package browser
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/dancnb/sonicradio/config"
@@ -53,6 +54,26 @@ func Test_getStation(t *testing.T) {
 		"96133c49-0601-11e8-ae97-52543be04c81",
 	}
 	res, err := a.GetStations(uuid)
+	if err != nil {
+		t.Error(err)
+	}
+	if res == nil {
+		t.Error("missing station response")
+	}
+	t.Log(res)
+	fmt.Printf("%#v", res)
+}
+
+func Test_searchStations(t *testing.T) {
+	a := NewApi(config.Value{Version: "", Debug: true})
+
+	params := DefaultSearchParams()
+	params.Name = strings.TrimSpace("deea")
+	params.TagList = strings.TrimSpace("")
+	params.Country = strings.TrimSpace("")
+	params.State = strings.TrimSpace("")
+	params.Language = strings.TrimSpace("")
+	res, err := a.Search(params)
 	if err != nil {
 		t.Error(err)
 	}

@@ -103,7 +103,6 @@ func (t *favoritesTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			t.toNowPlaying(m)
 		}
 
-		// Don't match any of the keys below if we're actively filtering.
 		if t.IsFiltering() {
 			break
 		}

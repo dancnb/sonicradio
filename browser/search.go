@@ -29,16 +29,17 @@ const (
 )
 
 type SearchParams struct {
-	Name        string
-	Country     string
-	CountryCode string
-	State       string
-	Language    string
-	TagList     []string
-	Order       SearchOrder
-	Reverse     bool
-	Offset      int
-	Limit       int
+	Name     string
+	TagList  string
+	Country  string
+	State    string
+	Language string
+	Limit    int
+	Order    SearchOrder
+	Reverse  bool
+
+	Offset int
+	// CountryCode string
 	// TagExact    string //always "true"
 	// HideBroken  string //always "true"
 }
@@ -54,17 +55,10 @@ func DefaultSearchParams() SearchParams {
 
 func (p SearchParams) toFormData() string {
 	fname := strings.Join(strings.Fields(p.Name), "+")
+	fTags := strings.Join(strings.Fields(p.TagList), "+")
 
-	var tags strings.Builder
-	for i, v := range p.TagList {
-		tags.WriteString(strings.TrimSpace(v))
-		if i < len(p.TagList)-1 {
-			tags.WriteString(",")
-		}
-	}
-
-	return fmt.Sprintf("name=%s&tagList=%s&country=%s&state=%s&language=%s&tagExact=true&offset=%d&limit=%d&order=%s&bitrateMin=0&bitrateMax=&reverse=%s&hidebroken=true",
-		fname, tags.String(), p.Country, p.State, p.Language, p.Offset, p.Limit, p.Order, boolString(p.Reverse))
+	return fmt.Sprintf("name=%s&tagList=%s&country=%s&countryExact=false&state=%s&language=%s&tagExact=true&offset=%d&limit=%d&order=%s&bitrateMin=0&bitrateMax=&reverse=%s&hidebroken=true",
+		fname, fTags, p.Country, p.State, p.Language, p.Offset, p.Limit, p.Order, boolString(p.Reverse))
 }
 
 func boolString(v bool) string {

@@ -53,7 +53,7 @@ func initialModel(cfg *config.Value, b *browser.Api, p player.Player) *model {
 		browser:   b,
 		player:    p,
 		delegate:  delegate,
-		tabs:      []uiTab{newFavoritesTab(), newBrowseTab()},
+		tabs:      []uiTab{newFavoritesTab(), newBrowseTab(b)},
 		activeTab: activeIx,
 		statusMsg: noPlayingMsg,
 	}
@@ -184,7 +184,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.String() == "ctrl+c" {
 			m.quit()
 			return m, tea.Quit
-		} else if activeTab.IsSearch() {
+		} else if activeTab.IsSearchEnabled() {
 			break
 		} else if activeTab.IsFiltering() {
 			break
@@ -383,5 +383,10 @@ func (m *model) topStationsCmd() tea.Msg {
 }
 
 func logTeaMsg(msg tea.Msg, tag string) {
-	slog.Debug(tag, "type", fmt.Sprintf("%T", msg), "value", msg, "#", fmt.Sprintf("%#v", msg))
+	switch msg.(type) {
+	case favoritesStationRespMsg, topStationsRespMsg, searchRespMsg:
+		slog.Debug(tag, "type", fmt.Sprintf("%T", msg))
+	default:
+		slog.Debug(tag, "type", fmt.Sprintf("%T", msg), "value", msg, "#", fmt.Sprintf("%#v", msg))
+	}
 }
