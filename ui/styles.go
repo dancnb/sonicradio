@@ -13,6 +13,7 @@ var (
 	favChar   = "  ★  "
 	playChar  = "\u2877"
 	pauseChar = "\u28FF"
+	lineChar  = "\u2847"
 
 	// list items
 	basePrimaryColor     = lipgloss.Color("#ffb641")

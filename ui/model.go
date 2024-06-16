@@ -282,7 +282,7 @@ func (m *model) headerView(width int) string {
 	// res.WriteString("\n")
 
 	if m.statusMsg != "" {
-		res.WriteString(playStatusStyle.Render("\u2847" + " " + m.statusMsg))
+		res.WriteString(playStatusStyle.Render(lineChar + " " + m.statusMsg))
 	} else if m.delegate.currPlaying != nil {
 		res.WriteString(m.spinner.View())
 		// res.WriteString(playStatusStyle.Render(playChar))
