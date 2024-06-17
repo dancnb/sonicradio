@@ -3,9 +3,9 @@ package ui
 import (
 	"log/slog"
 
-	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/dancnb/sonicradio/browser"
 )
 
@@ -17,8 +17,8 @@ func (t uiTabIndex) String() string {
 		return "Favorites"
 	case browseTabIx:
 		return " Browse "
-	case historyTabIx:
-		return " History "
+		// case historyTabIx:
+		// 	return " History "
 	}
 	return ""
 }
@@ -26,7 +26,7 @@ func (t uiTabIndex) String() string {
 const (
 	favoriteTabIx uiTabIndex = iota
 	browseTabIx
-	historyTabIx
+	// historyTabIx
 	// configTab
 )
 
@@ -36,6 +36,7 @@ type uiTab interface {
 	View() string
 	List() *list.Model
 	IsFiltering() bool
+	IsSearchEnabled() bool
 }
 
 type baseTab struct {
@@ -47,7 +48,14 @@ type baseTab struct {
 
 func (t *baseTab) View() string {
 	if t.viewMsg != "" {
-		return itemStyle.Render(t.viewMsg)
+		var sections []string
+		availHeight := t.list.Height()
+		help := t.list.Styles.HelpStyle.Render(t.list.Help.View(t.list))
+		availHeight -= lipgloss.Height(help)
+		viewSection := viewStyle.Height(availHeight).Render(t.viewMsg)
+		sections = append(sections, viewSection)
+		sections = append(sections, help)
+		return lipgloss.JoinVertical(lipgloss.Left, sections...)
 	}
 	return t.list.View()
 }
@@ -81,6 +89,10 @@ func (t *baseTab) toNowPlaying(m *model) {
 	}
 }
 
+func (t *baseTab) IsSearchEnabled() bool {
+	return false
+}
+
 func createList(delegate *stationDelegate, width int, height int) list.Model {
 	l := list.New([]list.Item{}, delegate, 0, 0)
 	l.InfiniteScrolling = true
@@ -88,29 +100,21 @@ func createList(delegate *stationDelegate, width int, height int) list.Model {
 	l.SetShowStatusBar(false)
 	l.SetShowPagination(false)
 	l.SetShowFilter(true)
+	l.SetStatusBarItemName("station", "stations")
+	l.Styles.NoItems = noItemsStyle
 	l.FilterInput.ShowSuggestions = true
 	l.KeyMap.Quit.SetKeys("q")
 	l.KeyMap.PrevPage.SetKeys("pgup", "u")
 	l.KeyMap.PrevPage.SetHelp("u/pgup", "prev page")
 	l.KeyMap.NextPage.SetKeys("pgdown", "d")
 	l.KeyMap.NextPage.SetHelp("d/pgdn", "next page")
-	v, h := docStyle.GetFrameSize()
+	h, v := docStyle.GetFrameSize()
 	l.SetSize(width-h, height-v)
 
-	l.Help.ShortSeparator = "  "
-	l.Help.Styles = help.Styles{
-		ShortKey:       helpkeyStyle,
-		ShortDesc:      helpDescStyle,
-		ShortSeparator: helpDescStyle,
-		Ellipsis:       helpDescStyle.Copy(),
-		FullKey:        helpkeyStyle.Copy(),
-		FullDesc:       helpDescStyle.Copy(),
-		FullSeparator:  helpDescStyle.Copy(),
-	}
+	l.Help.ShortSeparator = "   "
+	l.Help.Styles = helpStyles()
 	l.Styles.HelpStyle = helpStyle
 
-	l.FilterInput.PromptStyle = filterPromptStyle
-	l.FilterInput.TextStyle = filterTextStyle
-	l.FilterInput.Cursor.Style = filterPromptStyle
+	textInputSyle(&l.FilterInput, "Filter:       ", "name")
 	return l
 }

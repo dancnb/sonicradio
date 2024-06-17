@@ -1,25 +1,26 @@
 package ui
 
 import (
-	"fmt"
-	"log/slog"
-
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/dancnb/sonicradio/browser"
 )
 
 type browseTab struct {
 	baseTab
+	defTopStations []browser.Station
+	searchModel    *searchModel
 }
 
-func newBrowseTab() *browseTab {
+func newBrowseTab(browser *browser.Api) *browseTab {
 	k := newListKeymap()
 
 	m := &browseTab{
 		baseTab: baseTab{
 			listKeymap: k,
 		},
+		searchModel: newSearchModel(browser),
 	}
 	return m
 }
@@ -43,26 +44,52 @@ func (t *browseTab) Init(m *model) tea.Cmd {
 }
 
 func (t *browseTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
-	slog.Debug("browse tab", "type", fmt.Sprintf("%T", msg), "value", msg, "#", fmt.Sprintf("%#v", msg))
+	logTeaMsg(msg, "update browseTab")
 
 	var cmds []tea.Cmd
 
-	switch msg := msg.(type) {
+	if t.searchModel.isEnabled() {
+		if sizeMsg, ok := msg.(tea.WindowSizeMsg); ok {
+			availableHeight := sizeMsg.Height - m.headerHeight
+			newSizeMsg := tea.WindowSizeMsg{Width: sizeMsg.Width, Height: availableHeight}
+			sm, cmd := t.searchModel.Update(newSizeMsg)
+			t.searchModel = sm.(*searchModel)
+			cmds = append(cmds, cmd)
+		} else {
+			sm, cmd := t.searchModel.Update(msg)
+			t.searchModel = sm.(*searchModel)
+			cmds = append(cmds, cmd)
+		}
+	}
 
+	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		v, h := docStyle.GetFrameSize()
+		h, v := docStyle.GetFrameSize()
 		t.list.SetSize(msg.Width-h, msg.Height-m.headerHeight-v)
 
 	case topStationsRespMsg:
+		m.updateStatus(msg.statusMsg)
 		t.viewMsg = string(msg.viewMsg)
-		items := make([]list.Item, len(msg.stations))
-		for i := 0; i < len(msg.stations); i++ {
-			items[i] = msg.stations[i]
-		}
-		cmd := t.list.SetItems(items)
+		copy(t.defTopStations, msg.stations)
+		cmd := t.setStations(msg.stations)
 		cmds = append(cmds, cmd)
 
+	case searchRespMsg:
+		t.listKeymap.setEnabled(true)
+		if msg.cancelled {
+			// do nothing, list already has top stations
+		} else {
+			m.updateStatus(msg.statusMsg)
+			t.viewMsg = string(msg.viewMsg)
+			cmd := t.setStations(msg.stations)
+			cmds = append(cmds, cmd)
+		}
+
 	case tea.KeyMsg:
+		if t.searchModel.isEnabled() {
+			return m, tea.Batch(cmds...)
+		}
+
 		if key.Matches(msg, t.listKeymap.toNowPlaying) {
 			newListModel, cmd := t.list.Update(msg)
 			t.list = newListModel
@@ -70,7 +97,6 @@ func (t *browseTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			t.toNowPlaying(m)
 		}
 
-		// Don't match any of the keys below if we're actively filtering.
 		if t.IsFiltering() {
 			break
 		}
@@ -78,11 +104,13 @@ func (t *browseTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, t.list.KeyMap.Quit, t.list.KeyMap.ForceQuit):
 			m.quit()
+			return m, tea.Quit
 
 		case key.Matches(msg, t.listKeymap.search):
-			// TODO search stations; use cmd and msg
-			// cmd := t.list.NewStatusMessage(statusWarnMessageStyle("Not implemented yet!"))
-			// cmds = append(cmds, cmd)
+			t.listKeymap.setEnabled(false)
+			t.searchModel.setSize(m.width, m.totHeight-m.headerHeight)
+			cmds = append(cmds, t.searchModel.Init())
+			return m, tea.Batch(cmds...)
 
 		case key.Matches(msg, t.listKeymap.toFavorites):
 			m.activeTab = favoriteTabIx
@@ -98,4 +126,25 @@ func (t *browseTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
+}
+
+func (t *browseTab) setStations(stations []browser.Station) tea.Cmd {
+	items := make([]list.Item, len(stations))
+	for i := 0; i < len(stations); i++ {
+		items[i] = stations[i]
+	}
+	cmd := t.list.SetItems(items)
+	t.List().Select(0)
+	return cmd
+}
+
+func (t *browseTab) View() string {
+	if t.searchModel.isEnabled() {
+		return t.searchModel.View()
+	}
+	return t.baseTab.View()
+}
+
+func (t *browseTab) IsSearchEnabled() bool {
+	return t.searchModel.isEnabled()
 }

@@ -40,3 +40,12 @@ type listKeymap struct {
 	nextTab      key.Binding
 	prevTab      key.Binding
 }
+
+func (k *listKeymap) setEnabled(v bool) {
+	k.search.SetEnabled(v)
+	k.toNowPlaying.SetEnabled(v)
+	k.toFavorites.SetEnabled(v)
+	k.toBrowser.SetEnabled(v)
+	k.nextTab.SetEnabled(v)
+	k.prevTab.SetEnabled(v)
+}

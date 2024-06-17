@@ -46,7 +46,7 @@ func (d *stationDelegate) Height() int { return d.defaultDelegate.Height() }
 func (d *stationDelegate) Spacing() int { return d.defaultDelegate.Spacing() }
 
 func (d *stationDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
-	slog.Debug("stationDelegate", "type", fmt.Sprintf("%T", msg), "value", msg, "#", fmt.Sprintf("%#v", msg))
+	logTeaMsg(msg, "update stationDelegate")
 	selStation, ok := m.SelectedItem().(browser.Station)
 	if !ok {
 		return nil
@@ -196,11 +196,11 @@ func newDelegateKeyMap() *delegateKeyMap {
 	return &delegateKeyMap{
 		pause: key.NewBinding(
 			key.WithKeys(" "),
-			key.WithHelp("space", "pause"),
+			key.WithHelp("space", "play/pause"),
 		),
 		playSelected: key.NewBinding(
-			key.WithKeys("p", "enter"),
-			key.WithHelp("p/enter", "play"),
+			key.WithKeys("enter"),
+			key.WithHelp("enter", "play"),
 		),
 		info: key.NewBinding(
 			key.WithKeys("i"),

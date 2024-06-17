@@ -9,10 +9,12 @@ type (
 	// used for os signal quit not handled by the list model
 	quitMsg struct{}
 
-	statusMsg string // used for status error message
-	titleMsg  string
-
-	viewMsg                 string // used for view message
+	// song title
+	titleMsg string
+	// used for status error message
+	statusMsg string
+	// view msg instead of list
+	viewMsg                 string
 	favoritesStationRespMsg struct {
 		viewMsg
 		statusMsg
@@ -23,6 +25,13 @@ type (
 		viewMsg
 		statusMsg
 		stations []browser.Station
+	}
+
+	searchRespMsg struct {
+		viewMsg
+		statusMsg
+		stations  []browser.Station
+		cancelled bool
 	}
 
 	toggleFavoriteMsg struct {

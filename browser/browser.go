@@ -49,34 +49,39 @@ type Api struct {
 	servers []string
 }
 
+func (a *Api) Search(s SearchParams) ([]Station, error) {
+	return a.stationSearch(s)
+}
+
 func (a *Api) TopStations() ([]Station, error) {
-	s := SearchParams{
-		Offset: 0,
-		Limit:  30,
-		Order:  Votes,
-	}
+	s := DefaultSearchParams()
+	return a.stationSearch(s)
+}
+
+func (a *Api) stationSearch(s SearchParams) ([]Station, error) {
 	body := s.toFormData()
+	slog.Debug("stationSearch", "request", body)
 	var err error
 	for i := 0; i < serverMaxRetry; i++ {
 		var res []byte
 		res, err = a.doServerRequest(http.MethodPost, urlStations, []byte(body))
 		if err != nil {
-			slog.Error("top stations", "request error", err)
+			slog.Error("stationSearch", "request error", err)
 			time.Sleep(serverRetryMillis * time.Millisecond)
 			continue
 		}
 		var stations []Station
 		err = json.Unmarshal(res, &stations)
 		if err != nil {
-			slog.Error("top stations", "unmarshal error", err)
-			slog.Error("top stations", "response", string(res))
+			slog.Error("stationSearch", "unmarshal error", err)
+			slog.Error("stationSearch", "response", string(res))
 			time.Sleep(serverRetryMillis * time.Millisecond)
 			continue
 		}
-		slog.Info("top stations", "length", len(stations))
+		slog.Info("stationSearch", "length", len(stations))
 		return stations, nil
 	}
-	slog.Warn("top stations exceeded max retries")
+	slog.Warn("stationSearch", "", "exceeded max retries")
 	return nil, serverErrMsg
 }
 
