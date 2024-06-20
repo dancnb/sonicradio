@@ -228,12 +228,12 @@ func newSearchKeymap() searchKeymap {
 			key.WithHelp("esc", "cancel"),
 		),
 		nextInput: key.NewBinding(
-			key.WithKeys("down", "tab", "ctrl+n"),
-			key.WithHelp("↓/tab/ctrl+n", "next input"),
+			key.WithKeys("down", "ctrl+n"),
+			key.WithHelp("↓/ctrl+n", "next input"),
 		),
 		prevInput: key.NewBinding(
-			key.WithKeys("up", "shift+tab", "ctrl+p"),
-			key.WithHelp("↑/shift+tab/ctrl+p", "prev input"),
+			key.WithKeys("up", "ctrl+p"),
+			key.WithHelp("↑/ctrl+p", "prev input"),
 		),
 	}
 }
