@@ -3,7 +3,7 @@ package browser
 type Country struct {
 	Name         string `json:"name"`
 	ISO3166_1    string `json:"iso_3166_1"`
-	Stationcount string `json:"stationcount"`
+	Stationcount int    `json:"stationcount"`
 }
 
 type Language struct {

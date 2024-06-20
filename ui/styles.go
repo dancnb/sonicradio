@@ -90,7 +90,9 @@ func textInputSyle(textInput *textinput.Model, prompt, placeholder string) {
 	textInput.Prompt = prompt
 	textInput.PromptStyle = filterPromptStyle
 	textInput.TextStyle = filterTextStyle
+	textInput.CompletionStyle = filterTextStyle
 	textInput.Cursor.Style = filterPromptStyle
+	textInput.Cursor.TextStyle = filterTextStyle
 	textInput.Placeholder = placeholder
 	textInput.PlaceholderStyle = secondaryColorStyle.Copy()
 }

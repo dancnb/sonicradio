@@ -83,3 +83,12 @@ func Test_searchStations(t *testing.T) {
 	t.Log(res)
 	fmt.Printf("%#v", res)
 }
+
+func Test_getCountries(t *testing.T) {
+	a := NewApi(config.Value{Version: "", Debug: true})
+	res, err := a.GetCountries()
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log(res)
+}

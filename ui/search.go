@@ -25,6 +25,8 @@ type searchModel struct {
 	help   help.Model
 	width  int
 	height int
+
+	countryNames []string
 }
 
 type inputIdx byte
@@ -42,7 +44,7 @@ func newSearchModel(browser *browser.Api) *searchModel {
 	inputs := []textinput.Model{
 		makeInput("Name:          ", "---"),
 		makeInput("Tags:          ", "comma separated list"),
-		makeInput("Country:       ", "---"), //todo add suggestions from countries req
+		makeInput("Country:       ", "---"),
 		makeInput("State:         ", "---"), //todo add suggestions from states by country req
 		makeInput("Language:      ", "---"), //todo add suggestions from languages req
 		makeInput("Limit results: ", "---"),
@@ -56,12 +58,24 @@ func newSearchModel(browser *browser.Api) *searchModel {
 	h.ShortSeparator = "   "
 	h.Styles = helpStyles()
 
-	return &searchModel{
+	sm := &searchModel{
 		browser: browser,
 		keymap:  newSearchKeymap(),
 		help:    h,
 		inputs:  inputs,
 	}
+	go func() {
+		res, err := browser.GetCountries()
+		if err != nil || len(res) == 0 {
+			return
+		}
+		for i := range res {
+			sm.countryNames = append(sm.countryNames, res[i].Name)
+		}
+		inputs[country].ShowSuggestions = true
+		inputs[country].SetSuggestions(sm.countryNames)
+	}()
+	return sm
 }
 
 func makeInput(prompt, placeholder string) textinput.Model {
@@ -121,12 +135,12 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				defer s.setEnabled(false)
 
 				params := browser.DefaultSearchParams()
-				params.Name = strings.TrimSpace(s.inputs[0].Value())
-				params.TagList = strings.TrimSpace(s.inputs[1].Value())
-				params.Country = strings.TrimSpace(s.inputs[2].Value())
-				params.State = strings.TrimSpace(s.inputs[3].Value())
-				params.Language = strings.TrimSpace(s.inputs[4].Value())
-				limit, err := strconv.Atoi(strings.TrimSpace(s.inputs[5].Value()))
+				params.Name = strings.TrimSpace(s.inputs[name].Value())
+				params.TagList = strings.TrimSpace(s.inputs[tags].Value())
+				params.Country = strings.TrimSpace(s.inputs[country].Value())
+				params.State = strings.TrimSpace(s.inputs[state].Value())
+				params.Language = strings.TrimSpace(s.inputs[language].Value())
+				limit, err := strconv.Atoi(strings.TrimSpace(s.inputs[limit].Value()))
 				if err == nil {
 					params.Limit = limit
 				}

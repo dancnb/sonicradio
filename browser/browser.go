@@ -45,8 +45,36 @@ func NewApi(cfg config.Value) *Api {
 }
 
 type Api struct {
-	cfg     config.Value
-	servers []string
+	cfg       config.Value
+	servers   []string
+	countries []Country
+}
+
+func (a *Api) GetCountries() ([]Country, error) {
+	if len(a.countries) > 0 {
+		return a.countries, nil
+	}
+	for i := 0; i < serverMaxRetry; i++ {
+		res, err := a.doServerRequest(http.MethodGet, urlCountries, nil)
+		if err != nil {
+			slog.Error("get countries", "request error", err)
+			time.Sleep(serverRetryMillis * time.Millisecond)
+			continue
+		}
+		var countries []Country
+		err = json.Unmarshal(res, &countries)
+		if err != nil {
+			slog.Error("get countries", "unmarshal error", err)
+			slog.Error("get countries", "response", string(res))
+			time.Sleep(serverRetryMillis * time.Millisecond)
+			continue
+		}
+		slog.Info("get countries", "length", len(countries))
+		a.countries = countries
+		return countries, nil
+	}
+	slog.Warn("get countries", "", "exceeded max retries")
+	return nil, serverErrMsg
 }
 
 func (a *Api) Search(s SearchParams) ([]Station, error) {
@@ -140,7 +168,6 @@ func (a *Api) getServersDNSLookup(host string) ([]string, error) {
 	return res, nil
 }
 
-// ONLY USE THIS if your client is not able to do DNS look-ups
 func (a *Api) getServerMirrors() ([]string, error) {
 	res, err := a.doRequest(http.MethodGet, backup_server, nil)
 	if err != nil {
