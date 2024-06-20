@@ -26,7 +26,8 @@ type searchModel struct {
 	width  int
 	height int
 
-	countryNames []string
+	countries []string
+	languages []string
 }
 
 type inputIdx byte
@@ -64,17 +65,7 @@ func newSearchModel(browser *browser.Api) *searchModel {
 		help:    h,
 		inputs:  inputs,
 	}
-	go func() {
-		res, err := browser.GetCountries()
-		if err != nil || len(res) == 0 {
-			return
-		}
-		for i := range res {
-			sm.countryNames = append(sm.countryNames, res[i].Name)
-		}
-		inputs[country].ShowSuggestions = true
-		inputs[country].SetSuggestions(sm.countryNames)
-	}()
+	go sm.getSuggestions()
 	return sm
 }
 
@@ -84,6 +75,26 @@ func makeInput(prompt, placeholder string) textinput.Model {
 	textInputSyle(&input, prompt, placeholder)
 	input.PromptStyle = searchPromptStyle
 	return input
+}
+
+func (s *searchModel) getSuggestions() {
+	countries, err := s.browser.GetCountries()
+	if err == nil && len(countries) > 0 {
+		for i := range countries {
+			s.countries = append(s.countries, countries[i].Name)
+		}
+		s.inputs[country].ShowSuggestions = true
+		s.inputs[country].SetSuggestions(s.countries)
+	}
+
+	langs, err := s.browser.GetLanguages()
+	if err == nil && len(langs) > 0 {
+		for i := range langs {
+			s.languages = append(s.languages, langs[i].Name)
+		}
+		s.inputs[language].ShowSuggestions = true
+		s.inputs[language].SetSuggestions(s.languages)
+	}
 }
 
 func (s *searchModel) Init() tea.Cmd {

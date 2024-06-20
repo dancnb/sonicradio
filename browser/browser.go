@@ -48,6 +48,34 @@ type Api struct {
 	cfg       config.Value
 	servers   []string
 	countries []Country
+	langs     []Language
+}
+
+func (a *Api) GetLanguages() ([]Language, error) {
+	if len(a.langs) > 0 {
+		return a.langs, nil
+	}
+	for i := 0; i < serverMaxRetry; i++ {
+		res, err := a.doServerRequest(http.MethodGet, urlLangs, nil)
+		if err != nil {
+			slog.Error("get languages", "request error", err)
+			time.Sleep(serverRetryMillis * time.Millisecond)
+			continue
+		}
+		var languages []Language
+		err = json.Unmarshal(res, &languages)
+		if err != nil {
+			slog.Error("get languages", "unmarshal error", err)
+			slog.Error("get languages", "response", string(res))
+			time.Sleep(serverRetryMillis * time.Millisecond)
+			continue
+		}
+		slog.Info("get languages", "length", len(languages))
+		a.langs = languages
+		return languages, nil
+	}
+	slog.Warn("get languages", "", "exceeded max retries")
+	return nil, serverErrMsg
 }
 
 func (a *Api) GetCountries() ([]Country, error) {

@@ -9,7 +9,7 @@ type Country struct {
 type Language struct {
 	Name         string `json:"name"`
 	ISO639       string `json:"iso_639"`
-	Stationcount string `json:"stationcount"`
+	Stationcount int    `json:"stationcount"`
 }
 
 type StationTag struct {
