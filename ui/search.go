@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -26,6 +27,17 @@ type searchModel struct {
 	height int
 }
 
+type inputIdx byte
+
+const (
+	name inputIdx = iota
+	tags
+	country
+	state
+	language
+	limit
+)
+
 func newSearchModel(browser *browser.Api) *searchModel {
 	inputs := []textinput.Model{
 		makeInput("Name:          ", "---"),
@@ -35,7 +47,7 @@ func newSearchModel(browser *browser.Api) *searchModel {
 		makeInput("Language:      ", "---"), //todo add suggestions from languages req
 		makeInput("Limit results: ", "---"),
 	}
-	inputs[5].Validate = func(s string) error {
+	inputs[limit].Validate = func(s string) error {
 		_, err := strconv.Atoi(s)
 		return err
 	}
@@ -84,6 +96,7 @@ func (s *searchModel) setEnabled(v bool) {
 		s.inputs[i].Blur()
 		s.inputs[i].Reset()
 	}
+	s.inputs[limit].SetValue(fmt.Sprintf("%d", browser.DefLimit))
 	s.keymap.setEnable(v)
 }
 

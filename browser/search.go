@@ -28,6 +28,8 @@ const (
 	Random          SearchOrder = "random"
 )
 
+const DefLimit = 30
+
 type SearchParams struct {
 	Name     string
 	TagList  string
@@ -49,7 +51,7 @@ func DefaultSearchParams() SearchParams {
 		Order:   Votes,
 		Reverse: true,
 		Offset:  0,
-		Limit:   30,
+		Limit:   DefLimit,
 	}
 }
 
