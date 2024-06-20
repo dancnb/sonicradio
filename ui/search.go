@@ -43,12 +43,12 @@ const (
 
 func newSearchModel(browser *browser.Api) *searchModel {
 	inputs := []textinput.Model{
-		makeInput("Name:          ", "---"),
-		makeInput("Tags:          ", "comma separated list"),
-		makeInput("Country:       ", "---"),
-		makeInput("State:         ", "---"), //todo add suggestions from states by country req
-		makeInput("Language:      ", "---"), //todo add suggestions from languages req
-		makeInput("Limit results: ", "---"),
+		makeInput("Name          ", "---"),
+		makeInput("Tags          ", "comma separated list"),
+		makeInput("Country       ", "---"),
+		makeInput("State         ", "---"), //todo add suggestions from states by country req
+		makeInput("Language      ", "---"), //todo add suggestions from languages req
+		makeInput("Limit         ", "---"),
 	}
 	inputs[limit].Validate = func(s string) error {
 		_, err := strconv.Atoi(s)
@@ -148,7 +148,7 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				params := browser.DefaultSearchParams()
 				params.Name = strings.TrimSpace(s.inputs[name].Value())
 				params.TagList = strings.TrimSpace(s.inputs[tags].Value())
-				params.Country = strings.TrimSpace(s.inputs[country].Value())
+				params.Country = strings.Title(strings.TrimSpace(s.inputs[country].Value()))
 				params.State = strings.TrimSpace(s.inputs[state].Value())
 				params.Language = strings.TrimSpace(s.inputs[language].Value())
 				limit, err := strconv.Atoi(strings.TrimSpace(s.inputs[limit].Value()))
