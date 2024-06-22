@@ -18,8 +18,10 @@ import (
 type searchModel struct {
 	browser *browser.Api
 	enabled bool
+
 	inputs  []textinput.Model
 	idx     int
+	reverse bool
 
 	keymap searchKeymap
 	help   help.Model
@@ -36,19 +38,20 @@ const (
 	name inputIdx = iota
 	tags
 	country
-	state
+	// state
 	language
 	limit
 )
 
 func newSearchModel(browser *browser.Api) *searchModel {
+	k := newSearchKeymap()
 	inputs := []textinput.Model{
-		makeInput("Name          ", "---"),
-		makeInput("Tags          ", "comma separated list"),
-		makeInput("Country       ", "---"),
-		makeInput("State         ", "---"), //todo add suggestions from states by country req
-		makeInput("Language      ", "---"), //todo add suggestions from languages req
-		makeInput("Limit         ", "---"),
+		makeInput("Name          ", "---", k),
+		makeInput("Tags          ", "comma separated list", k),
+		makeInput("Country       ", "---", k),
+		// makeInput("State         ", "---",k),
+		makeInput("Language      ", "---", k),
+		makeInput("Limit         ", "---", k),
 	}
 	inputs[limit].Validate = func(s string) error {
 		_, err := strconv.Atoi(s)
@@ -56,12 +59,13 @@ func newSearchModel(browser *browser.Api) *searchModel {
 	}
 
 	h := help.New()
+	h.ShowAll = false
 	h.ShortSeparator = "   "
 	h.Styles = helpStyles()
 
 	sm := &searchModel{
 		browser: browser,
-		keymap:  newSearchKeymap(),
+		keymap:  k,
 		help:    h,
 		inputs:  inputs,
 	}
@@ -69,11 +73,12 @@ func newSearchModel(browser *browser.Api) *searchModel {
 	return sm
 }
 
-func makeInput(prompt, placeholder string) textinput.Model {
+func makeInput(prompt, placeholder string, keymap searchKeymap) textinput.Model {
 	input := textinput.New()
 	input.Cursor.SetMode(cursor.CursorBlink)
 	textInputSyle(&input, prompt, placeholder)
 	input.PromptStyle = searchPromptStyle
+	input.KeyMap.AcceptSuggestion = keymap.acceptSugg
 	return input
 }
 
@@ -122,7 +127,9 @@ func (s *searchModel) setEnabled(v bool) {
 		s.inputs[i].Reset()
 	}
 	s.inputs[limit].SetValue(fmt.Sprintf("%d", browser.DefLimit))
+	s.reverse = true
 	s.keymap.setEnable(v)
+	s.help.ShowAll = false
 }
 
 func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -135,6 +142,18 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch {
+
+		case key.Matches(msg, s.keymap.showFullHelp):
+			fallthrough
+		case key.Matches(msg, s.keymap.closeFullHelp):
+			s.help.ShowAll = !s.help.ShowAll
+			s.keymap.showFullHelp.SetEnabled(!s.help.ShowAll)
+			s.keymap.closeFullHelp.SetEnabled(s.help.ShowAll)
+			return s, tea.Batch(cmds...)
+
+		case key.Matches(msg, s.keymap.reverse):
+			s.reverse = !s.reverse
+
 		case key.Matches(msg, s.keymap.cancelSearch):
 			return s, func() tea.Msg {
 				s.setEnabled(false)
@@ -149,12 +168,13 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				params.Name = strings.TrimSpace(s.inputs[name].Value())
 				params.TagList = strings.TrimSpace(s.inputs[tags].Value())
 				params.Country = strings.Title(strings.TrimSpace(s.inputs[country].Value()))
-				params.State = strings.TrimSpace(s.inputs[state].Value())
+				// params.State = strings.TrimSpace(s.inputs[state].Value())
 				params.Language = strings.TrimSpace(s.inputs[language].Value())
 				limit, err := strconv.Atoi(strings.TrimSpace(s.inputs[limit].Value()))
 				if err == nil {
 					params.Limit = limit
 				}
+				params.Reverse = s.reverse
 
 				stations, err := s.browser.Search(params)
 				res := searchRespMsg{stations: stations}
@@ -167,6 +187,10 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case key.Matches(msg, s.keymap.nextInput):
+			if msg.String() == "tab" && strings.TrimSpace(s.inputs[s.idx].Value()) != "" && s.inputs[s.idx].ShowSuggestions {
+				s.inputs[s.idx].SetValue(s.inputs[s.idx].CurrentSuggestion())
+				s.inputs[s.idx].CursorEnd()
+			}
 			s.idx++
 			s.idx = s.idx % len(s.inputs)
 			cmds = s.updateFocusedInput(cmds)
@@ -205,27 +229,40 @@ func (s *searchModel) View() string {
 	var b strings.Builder
 	for i := range s.inputs {
 		b.WriteString(s.inputs[i].View())
-		if i < len(s.inputs)-1 {
-			b.WriteRune('\n')
-		}
+		b.WriteRune('\n')
 	}
-	inputs := b.String()
+	b.WriteRune('\n')
+	b.WriteRune('\n')
+	b.WriteString(searchPromptStyle.Render("Reverse       "))
+	rev := "off"
+	if s.reverse {
+		rev = "on"
+	}
+	b.WriteString(filterTextStyle.Render(rev))
 
 	availHeight := s.height
 	help := helpStyle.Render(s.help.View(s.keymap))
 	availHeight -= lipgloss.Height(help)
 
-	for i := 0; i < availHeight-lipgloss.Height(inputs); i++ {
+	inputs := b.String()
+	inputsHeight := lipgloss.Height(inputs)
+	for i := 0; i < availHeight-inputsHeight; i++ {
 		b.WriteString("\n")
 	}
-	return b.String() + "\n" + help
+	return b.String() + help
 }
 
 type searchKeymap struct {
-	submit       key.Binding
-	cancelSearch key.Binding
-	nextInput    key.Binding
-	prevInput    key.Binding
+	submit        key.Binding
+	cancelSearch  key.Binding
+	nextInput     key.Binding
+	prevInput     key.Binding
+	reverse       key.Binding
+	prevSugg      key.Binding
+	nextSugg      key.Binding
+	acceptSugg    key.Binding
+	showFullHelp  key.Binding
+	closeFullHelp key.Binding
 }
 
 func newSearchKeymap() searchKeymap {
@@ -239,30 +276,61 @@ func newSearchKeymap() searchKeymap {
 			key.WithHelp("esc", "cancel"),
 		),
 		nextInput: key.NewBinding(
-			key.WithKeys("down", "ctrl+n"),
-			key.WithHelp("↓/ctrl+n", "next input"),
+			key.WithKeys("down", "tab"),
+			key.WithHelp("↓/tab", "next input"),
 		),
 		prevInput: key.NewBinding(
-			key.WithKeys("up", "ctrl+p"),
-			key.WithHelp("↑/ctrl+p", "prev input"),
+			key.WithKeys("up", "shift+tab"),
+			key.WithHelp("↑/shift+tab", "prev input"),
+		),
+		reverse: key.NewBinding(
+			key.WithKeys("ctrl+r"),
+			key.WithHelp("ctrl+r", "reverse order"),
+		),
+		prevSugg: key.NewBinding(
+			key.WithKeys("ctrl+p"),
+			key.WithHelp("ctrl+p", "prev suggestion"),
+		),
+		nextSugg: key.NewBinding(
+			key.WithKeys("ctrl+n"),
+			key.WithHelp("ctrl+n", "next suggestion"),
+		),
+		acceptSugg: key.NewBinding(
+			key.WithKeys("right", "ctrl+l"),
+			key.WithHelp("→/ctrl+l", "accept suggestion"),
+		),
+		showFullHelp: key.NewBinding(
+			key.WithKeys("?"),
+			key.WithHelp("?", "more"),
+		),
+		closeFullHelp: key.NewBinding(
+			key.WithKeys("?"),
+			key.WithHelp("?", "close help"),
 		),
 	}
 }
 
 func (k searchKeymap) ShortHelp() []key.Binding {
-	return []key.Binding{k.prevInput, k.nextInput, k.submit, k.cancelSearch}
+	return []key.Binding{k.prevInput, k.nextInput, k.submit, k.cancelSearch, k.showFullHelp}
 }
 
 func (k searchKeymap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		k.ShortHelp(), //first column
-		// second column ...
+		{k.prevInput, k.nextInput, k.prevSugg, k.nextSugg, k.acceptSugg},
+		{k.reverse},
+		{k.submit, k.cancelSearch, k.closeFullHelp},
 	}
 }
 
 func (k searchKeymap) setEnable(v bool) {
-	k.prevInput.SetEnabled(v)
-	k.nextInput.SetEnabled(v)
 	k.submit.SetEnabled(v)
 	k.cancelSearch.SetEnabled(v)
+	k.prevInput.SetEnabled(v)
+	k.nextInput.SetEnabled(v)
+	k.reverse.SetEnabled(v)
+	k.prevSugg.SetEnabled(v)
+	k.nextSugg.SetEnabled(v)
+	k.acceptSugg.SetEnabled(v)
+	k.showFullHelp.SetEnabled(v)
+	k.closeFullHelp.SetEnabled(false)
 }

@@ -5,27 +5,27 @@ import (
 	"strings"
 )
 
-type SearchOrder string
+type OrderBy string
 
 const (
-	Name            SearchOrder = "name"
-	Url             SearchOrder = "url"
-	Homepage        SearchOrder = "homepage"
-	Favicon         SearchOrder = "favicon"
-	Tags            SearchOrder = "tags"
-	CountryOrder    SearchOrder = "country"
-	State           SearchOrder = "state"
-	LanguageOrder   SearchOrder = "language"
-	Votes           SearchOrder = "votes"
-	Codec           SearchOrder = "codec"
-	Bitrate         SearchOrder = "bitrate"
-	Lastcheckok     SearchOrder = "lastcheckok"
-	Lastchecktime   SearchOrder = "lastchecktime"
-	Clicktimestamp  SearchOrder = "clicktimestamp"
-	Clickcount      SearchOrder = "clickcount"
-	Clicktrend      SearchOrder = "clicktrend"
-	Changetimestamp SearchOrder = "changetimestamp"
-	Random          SearchOrder = "random"
+	Name            OrderBy = "name"
+	Url             OrderBy = "url"
+	Homepage        OrderBy = "homepage"
+	Favicon         OrderBy = "favicon"
+	Tags            OrderBy = "tags"
+	CountryOrder    OrderBy = "country"
+	State           OrderBy = "state"
+	LanguageOrder   OrderBy = "language"
+	Votes           OrderBy = "votes"
+	Codec           OrderBy = "codec"
+	Bitrate         OrderBy = "bitrate"
+	Lastcheckok     OrderBy = "lastcheckok"
+	Lastchecktime   OrderBy = "lastchecktime"
+	Clicktimestamp  OrderBy = "clicktimestamp"
+	Clickcount      OrderBy = "clickcount"
+	Clicktrend      OrderBy = "clicktrend"
+	Changetimestamp OrderBy = "changetimestamp"
+	Random          OrderBy = "random"
 )
 
 const DefLimit = 30
@@ -37,7 +37,7 @@ type SearchParams struct {
 	State    string
 	Language string
 	Limit    int
-	Order    SearchOrder
+	Order    OrderBy
 	Reverse  bool
 
 	Offset int
