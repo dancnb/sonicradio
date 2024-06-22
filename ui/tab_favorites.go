@@ -41,7 +41,7 @@ func (t *favoritesTab) Init(m *model) tea.Cmd {
 }
 
 func (t *favoritesTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
-	logTeaMsg(msg, "update favoritesTab")
+	logTeaMsg(msg, "ui.favoritesTab.Update")
 
 	var cmds []tea.Cmd
 

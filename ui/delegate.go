@@ -46,7 +46,7 @@ func (d *stationDelegate) Height() int { return d.defaultDelegate.Height() }
 func (d *stationDelegate) Spacing() int { return d.defaultDelegate.Spacing() }
 
 func (d *stationDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
-	logTeaMsg(msg, "update stationDelegate")
+	logTeaMsg(msg, "ui.stationDelegate.Update")
 	selStation, ok := m.SelectedItem().(browser.Station)
 	if !ok {
 		return nil
@@ -76,11 +76,12 @@ func (d *stationDelegate) playCmd(s *browser.Station) tea.Cmd {
 }
 
 func (d *stationDelegate) playStation(station browser.Station) error {
-	slog.Debug("playing", "id", station.Stationuuid)
+	log := slog.With("method", "stationDelegate.playStation")
+	log.Debug("playing", "id", station.Stationuuid)
 	err := d.player.Play(station.URL)
 	if err != nil {
 		errMsg := fmt.Sprintf("error playing station %s: %s", station.Name, err.Error())
-		slog.Error(errMsg)
+		log.Error(errMsg)
 		return errors.New(errMsg)
 	}
 	d.prevPlaying = d.currPlaying
@@ -89,14 +90,15 @@ func (d *stationDelegate) playStation(station browser.Station) error {
 }
 
 func (d *stationDelegate) stopStation(station browser.Station) (wasPlaying bool, err error) {
+	log := slog.With("method", "stationDelegate.stopStation")
 	if d.currPlaying != nil && d.currPlaying.Stationuuid == station.Stationuuid {
-		slog.Debug("stopping", "id", d.currPlaying.Stationuuid)
+		log.Debug("stopping", "id", d.currPlaying.Stationuuid)
 		d.prevPlaying = &station
 		d.currPlaying = nil
 		err := d.player.Stop()
 		if err != nil {
 			errMsg := fmt.Sprintf("error stopping station %s: %s", station.Name, err.Error())
-			slog.Error(errMsg)
+			log.Error(errMsg)
 			return true, errors.New(errMsg)
 		}
 		return true, nil

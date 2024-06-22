@@ -2,7 +2,6 @@ package ui
 
 import (
 	"fmt"
-	"log/slog"
 	"strconv"
 	"strings"
 
@@ -164,7 +163,6 @@ func (s *searchModel) setSize(width, height int) {
 }
 
 func (s *searchModel) isEnabled() bool {
-	slog.Debug("searchModel", "enabled", s.enabled)
 	return s.enabled
 }
 
@@ -184,7 +182,7 @@ func (s *searchModel) setEnabled(v bool) {
 }
 
 func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	logTeaMsg(msg, "update searchModel")
+	logTeaMsg(msg, "ui.searchModel.Update")
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {

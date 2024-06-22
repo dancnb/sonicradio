@@ -83,7 +83,7 @@ func (t *baseTab) toNowPlaying(m *model) {
 			break
 		}
 	}
-	slog.Debug("toNowPlaying", "selIndex", selIndex)
+	slog.Debug("method", "ui.baseTab.toNowPlaying", "selIndex", selIndex)
 	if selIndex > -1 {
 		t.List().Select(selIndex)
 	}
