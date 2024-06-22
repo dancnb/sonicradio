@@ -8,24 +8,25 @@ import (
 type OrderBy string
 
 const (
-	Name            OrderBy = "name"
-	Url             OrderBy = "url"
-	Homepage        OrderBy = "homepage"
-	Favicon         OrderBy = "favicon"
-	Tags            OrderBy = "tags"
-	CountryOrder    OrderBy = "country"
-	State           OrderBy = "state"
-	LanguageOrder   OrderBy = "language"
-	Votes           OrderBy = "votes"
-	Codec           OrderBy = "codec"
-	Bitrate         OrderBy = "bitrate"
-	Lastcheckok     OrderBy = "lastcheckok"
-	Lastchecktime   OrderBy = "lastchecktime"
-	Clicktimestamp  OrderBy = "clicktimestamp"
-	Clickcount      OrderBy = "clickcount"
-	Clicktrend      OrderBy = "clicktrend"
-	Changetimestamp OrderBy = "changetimestamp"
-	Random          OrderBy = "random"
+	Votes         OrderBy = "votes"      // Number of votes for this station. This number is by server and only ever increases. It will never be reset to 0.
+	Clickcount    OrderBy = "clickcount" // Clicks within the last 24 hours
+	Clicktrend    OrderBy = "clicktrend" // The difference of the clickcounts within the last 2 days. Posivite values mean an increase, negative a decrease of clicks.
+	Bitrate       OrderBy = "bitrate"
+	Name          OrderBy = "name"
+	Tags          OrderBy = "tags"
+	CountryOrder  OrderBy = "country"
+	LanguageOrder OrderBy = "language"
+	Codec         OrderBy = "codec"
+	Random        OrderBy = "random"
+
+	// Url             OrderBy = "url"
+	// Homepage        OrderBy = "homepage"
+	// State           OrderBy = "state"
+	// Favicon         OrderBy = "favicon"
+	// Lastcheckok     OrderBy = "lastcheckok"
+	// Lastchecktime   OrderBy = "lastchecktime"
+	// Clicktimestamp  OrderBy = "clicktimestamp"
+	// Changetimestamp OrderBy = "changetimestamp"
 )
 
 const DefLimit = 30

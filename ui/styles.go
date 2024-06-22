@@ -80,7 +80,8 @@ var (
 
 	//search
 	searchPromptStyle = primaryColorStyle.Copy().Bold(true).MarginLeft(3)
-	separatorStyle    = secondaryColorStyle.Copy().Bold(true).MarginLeft(3)
+	orderByStyle      = secondaryColorStyle.Copy()
+	orderBySelStyle   = primaryColorStyle.Copy()
 
 	// general
 	backgroundColor = termenv.RGBColor("#282c34")

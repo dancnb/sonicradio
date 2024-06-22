@@ -16,20 +16,22 @@ import (
 )
 
 type searchModel struct {
-	browser *browser.Api
 	enabled bool
 
-	inputs  []textinput.Model
-	idx     int
-	reverse bool
+	browser   *browser.Api
+	countries []string
+	languages []string
+
+	inputs      []textinput.Model
+	idx         inputIdx
+	orderActive bool
+	oIdx        orderIx
+	reverse     bool
 
 	keymap searchKeymap
 	help   help.Model
 	width  int
 	height int
-
-	countries []string
-	languages []string
 }
 
 type inputIdx byte
@@ -38,10 +40,54 @@ const (
 	name inputIdx = iota
 	tags
 	country
-	// state
 	language
 	limit
 )
+
+type orderIx uint8
+
+const (
+	orderRand orderIx = iota
+	orderVotes
+	orderClickcount
+	orderClicktrend
+	orderBitrate
+	orderName
+	orderTags
+	orderCountry
+	orderLang
+	orderCodec
+)
+
+func (o orderIx) toSearchOrder() browser.OrderBy {
+	return searchOrder[o]
+}
+
+var searchOrder = map[orderIx]browser.OrderBy{
+	orderVotes:      browser.Votes,
+	orderClickcount: browser.Clickcount,
+	orderClicktrend: browser.Clicktrend,
+	orderBitrate:    browser.Bitrate,
+	orderName:       browser.Name,
+	orderTags:       browser.Tags,
+	orderCountry:    browser.CountryOrder,
+	orderLang:       browser.LanguageOrder,
+	orderCodec:      browser.Codec,
+	orderRand:       browser.Random,
+}
+
+var orderView = map[orderIx]string{
+	orderVotes:      "Votes",
+	orderClickcount: "Clicks",
+	orderClicktrend: "Recent trends",
+	orderBitrate:    "Bitrate",
+	orderName:       "Name",
+	orderTags:       "Tags",
+	orderCountry:    "Country",
+	orderLang:       "Language",
+	orderCodec:      "Codecs",
+	orderRand:       "Random",
+}
 
 func newSearchModel(browser *browser.Api) *searchModel {
 	k := newSearchKeymap()
@@ -49,7 +95,6 @@ func newSearchModel(browser *browser.Api) *searchModel {
 		makeInput("Name          ", "---", k),
 		makeInput("Tags          ", "comma separated list", k),
 		makeInput("Country       ", "---", k),
-		// makeInput("State         ", "---",k),
 		makeInput("Language      ", "---", k),
 		makeInput("Limit         ", "---", k),
 	}
@@ -78,6 +123,8 @@ func makeInput(prompt, placeholder string, keymap searchKeymap) textinput.Model 
 	input.Cursor.SetMode(cursor.CursorBlink)
 	textInputSyle(&input, prompt, placeholder)
 	input.PromptStyle = searchPromptStyle
+	input.KeyMap.NextSuggestion = keymap.nextSugg
+	input.KeyMap.PrevSuggestion = keymap.prevSugg
 	input.KeyMap.AcceptSuggestion = keymap.acceptSugg
 	return input
 }
@@ -104,6 +151,8 @@ func (s *searchModel) getSuggestions() {
 
 func (s *searchModel) Init() tea.Cmd {
 	s.setEnabled(true)
+	s.keymap.prevInput.SetHelp("↑/ctrl+k", "prev input")
+	s.keymap.nextInput.SetHelp("↓/ctrl+j", "next input")
 	return s.inputs[0].Focus()
 }
 
@@ -121,12 +170,14 @@ func (s *searchModel) isEnabled() bool {
 
 func (s *searchModel) setEnabled(v bool) {
 	s.enabled = v
-	s.idx = 0
+	s.idx = name
 	for i := range s.inputs {
 		s.inputs[i].Blur()
 		s.inputs[i].Reset()
 	}
 	s.inputs[limit].SetValue(fmt.Sprintf("%d", browser.DefLimit))
+	s.orderActive = false
+	s.oIdx = orderVotes
 	s.reverse = true
 	s.keymap.setEnable(v)
 	s.help.ShowAll = false
@@ -149,15 +200,42 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			s.help.ShowAll = !s.help.ShowAll
 			s.keymap.showFullHelp.SetEnabled(!s.help.ShowAll)
 			s.keymap.closeFullHelp.SetEnabled(s.help.ShowAll)
+			s.keymap.update(s.help.ShowAll)
 			return s, tea.Batch(cmds...)
+
+		case key.Matches(msg, s.keymap.order):
+			if !s.orderActive {
+				s.orderActive = true
+				s.keymap.setEnable(false)
+				s.keymap.cancel.SetEnabled(true)
+				s.keymap.setEnableOrderKeys(true)
+				cmds = s.updateInputs(cmds)
+			}
+		case key.Matches(msg, s.keymap.orderkeys...):
+			ord, err := strconv.Atoi(msg.String())
+			if err == nil {
+				s.oIdx = orderIx(ord)
+				s.orderActive = false
+				s.keymap.setEnable(true)
+				s.keymap.setEnableOrderKeys(false)
+				cmds = s.updateInputs(cmds)
+				return s, tea.Batch(cmds...)
+			}
 
 		case key.Matches(msg, s.keymap.reverse):
 			s.reverse = !s.reverse
 
-		case key.Matches(msg, s.keymap.cancelSearch):
-			return s, func() tea.Msg {
-				s.setEnabled(false)
-				return searchRespMsg{cancelled: true}
+		case key.Matches(msg, s.keymap.cancel):
+			if s.orderActive {
+				s.orderActive = false
+				s.keymap.setEnable(true)
+				s.keymap.setEnableOrderKeys(false)
+				cmds = s.updateInputs(cmds)
+			} else {
+				return s, func() tea.Msg {
+					s.setEnabled(false)
+					return searchRespMsg{cancelled: true}
+				}
 			}
 
 		case key.Matches(msg, s.keymap.submit):
@@ -168,12 +246,12 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				params.Name = strings.TrimSpace(s.inputs[name].Value())
 				params.TagList = strings.TrimSpace(s.inputs[tags].Value())
 				params.Country = strings.Title(strings.TrimSpace(s.inputs[country].Value()))
-				// params.State = strings.TrimSpace(s.inputs[state].Value())
 				params.Language = strings.TrimSpace(s.inputs[language].Value())
 				limit, err := strconv.Atoi(strings.TrimSpace(s.inputs[limit].Value()))
 				if err == nil {
 					params.Limit = limit
 				}
+				params.Order = s.oIdx.toSearchOrder()
 				params.Reverse = s.reverse
 
 				stations, err := s.browser.Search(params)
@@ -192,16 +270,14 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				s.inputs[s.idx].CursorEnd()
 			}
 			s.idx++
-			s.idx = s.idx % len(s.inputs)
-			cmds = s.updateFocusedInput(cmds)
-			return s, tea.Batch(cmds...)
+			s.idx = s.idx % inputIdx(len(s.inputs))
+			cmds = s.updateInputs(cmds)
 		case key.Matches(msg, s.keymap.prevInput):
-			s.idx--
-			if s.idx < 0 {
-				s.idx = len(s.inputs) - 1
+			if s.idx == 0 {
+				s.idx = limit
 			}
-			cmds = s.updateFocusedInput(cmds)
-			return s, tea.Batch(cmds...)
+			s.idx--
+			cmds = s.updateInputs(cmds)
 		}
 	}
 
@@ -214,9 +290,9 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return s, tea.Batch(cmds...)
 }
 
-func (s *searchModel) updateFocusedInput(cmds []tea.Cmd) []tea.Cmd {
+func (s *searchModel) updateInputs(cmds []tea.Cmd) []tea.Cmd {
 	for i := range s.inputs {
-		if i == s.idx {
+		if !s.orderActive && i == int(s.idx) {
 			cmds = append(cmds, s.inputs[i].Focus())
 			continue
 		}
@@ -225,13 +301,46 @@ func (s *searchModel) updateFocusedInput(cmds []tea.Cmd) []tea.Cmd {
 	return cmds
 }
 
+func (s *searchModel) getOrderString(o orderIx) string {
+	idx := o
+	return fmt.Sprintf("%d. %s", idx, orderView[o])
+}
+
+func (s *searchModel) getOrderStyle(o orderIx) lipgloss.Style {
+	if s.oIdx == o {
+		return orderBySelStyle
+	}
+	return orderByStyle
+}
+
 func (s *searchModel) View() string {
 	var b strings.Builder
 	for i := range s.inputs {
 		b.WriteString(s.inputs[i].View())
 		b.WriteRune('\n')
 	}
+
 	b.WriteRune('\n')
+	b.WriteRune('\n')
+	orderPrompt := "Order by      "
+	if s.orderActive {
+		orderPrompt = "Enter #       "
+	}
+	b.WriteString(searchPromptStyle.Render(orderPrompt))
+	ordS := s.getOrderString(orderVotes)
+	b.WriteString(s.getOrderStyle(orderVotes).Render(ordS))
+	b.WriteRune('\n')
+	for i := orderClickcount; i <= orderCodec; i++ {
+		b.WriteString(searchPromptStyle.Render("              "))
+		ordS := s.getOrderString(i)
+		b.WriteString(s.getOrderStyle(i).Render(ordS))
+		b.WriteRune('\n')
+	}
+	b.WriteString(searchPromptStyle.Render("              "))
+	ordS = s.getOrderString(orderRand)
+	b.WriteString(s.getOrderStyle(orderRand).Render(ordS))
+	b.WriteRune('\n')
+
 	b.WriteRune('\n')
 	b.WriteString(searchPromptStyle.Render("Reverse       "))
 	rev := "off"
@@ -241,7 +350,7 @@ func (s *searchModel) View() string {
 	b.WriteString(filterTextStyle.Render(rev))
 
 	availHeight := s.height
-	help := helpStyle.Render(s.help.View(s.keymap))
+	help := helpStyle.Render(s.help.View(&s.keymap))
 	availHeight -= lipgloss.Height(help)
 
 	inputs := b.String()
@@ -254,9 +363,11 @@ func (s *searchModel) View() string {
 
 type searchKeymap struct {
 	submit        key.Binding
-	cancelSearch  key.Binding
+	cancel        key.Binding
 	nextInput     key.Binding
 	prevInput     key.Binding
+	order         key.Binding
+	orderkeys     []key.Binding
 	reverse       key.Binding
 	prevSugg      key.Binding
 	nextSugg      key.Binding
@@ -266,38 +377,42 @@ type searchKeymap struct {
 }
 
 func newSearchKeymap() searchKeymap {
-	return searchKeymap{
+	k := searchKeymap{
 		submit: key.NewBinding(
 			key.WithKeys("enter"),
 			key.WithHelp("enter", "submit"),
 		),
-		cancelSearch: key.NewBinding(
+		cancel: key.NewBinding(
 			key.WithKeys("esc"),
 			key.WithHelp("esc", "cancel"),
 		),
 		nextInput: key.NewBinding(
-			key.WithKeys("down", "tab"),
-			key.WithHelp("↓/tab", "next input"),
+			key.WithKeys("down", "tab", "ctrl+j"),
+			key.WithHelp("↓/ctrl+j", "next input"),
 		),
 		prevInput: key.NewBinding(
-			key.WithKeys("up", "shift+tab"),
-			key.WithHelp("↑/shift+tab", "prev input"),
+			key.WithKeys("up", "shift+tab", "ctrl+k"),
+			key.WithHelp("↑/ctrl+k", "prev input"),
+		),
+		order: key.NewBinding(
+			key.WithKeys("ctrl+o"),
+			key.WithHelp("ctrl+o", "set order"),
 		),
 		reverse: key.NewBinding(
 			key.WithKeys("ctrl+r"),
-			key.WithHelp("ctrl+r", "reverse order"),
+			key.WithHelp("ctrl+r", "reverse"),
 		),
 		prevSugg: key.NewBinding(
-			key.WithKeys("ctrl+p"),
-			key.WithHelp("ctrl+p", "prev suggestion"),
+			key.WithKeys("ctrl+p", "ctrl+up"),
+			key.WithHelp("ctrl+↑/ctrl+p", "prev suggestion"),
 		),
 		nextSugg: key.NewBinding(
-			key.WithKeys("ctrl+n"),
-			key.WithHelp("ctrl+n", "next suggestion"),
+			key.WithKeys("ctrl+n", "ctrl+down"),
+			key.WithHelp("ctrl+↓/ctrl+n", "next suggestion"),
 		),
 		acceptSugg: key.NewBinding(
-			key.WithKeys("right", "ctrl+l"),
-			key.WithHelp("→/ctrl+l", "accept suggestion"),
+			key.WithKeys("right", "ctrl+right", "ctrl+l"),
+			key.WithHelp("→/ctrl+→/ctrl+l", "accept suggestion"),
 		),
 		showFullHelp: key.NewBinding(
 			key.WithKeys("?"),
@@ -308,29 +423,55 @@ func newSearchKeymap() searchKeymap {
 			key.WithHelp("?", "close help"),
 		),
 	}
+	for i := orderRand; i <= orderCodec; i++ {
+		x := fmt.Sprintf("%d", i)
+		ordkey := key.NewBinding(key.WithKeys(x))
+		ordkey.SetEnabled(false)
+		k.orderkeys = append(k.orderkeys, ordkey)
+	}
+	return k
 }
 
-func (k searchKeymap) ShortHelp() []key.Binding {
-	return []key.Binding{k.prevInput, k.nextInput, k.submit, k.cancelSearch, k.showFullHelp}
+func (k *searchKeymap) ShortHelp() []key.Binding {
+	return []key.Binding{k.prevInput, k.nextInput, k.order, k.reverse, k.submit, k.cancel, k.showFullHelp}
 }
 
-func (k searchKeymap) FullHelp() [][]key.Binding {
+func (k *searchKeymap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.prevInput, k.nextInput, k.prevSugg, k.nextSugg, k.acceptSugg},
-		{k.reverse},
-		{k.submit, k.cancelSearch, k.closeFullHelp},
+		{k.prevInput, k.nextInput},
+		{k.prevSugg, k.nextSugg, k.acceptSugg},
+		{k.order, k.reverse},
+		{k.submit, k.cancel, k.closeFullHelp},
 	}
 }
 
-func (k searchKeymap) setEnable(v bool) {
+func (k *searchKeymap) setEnable(v bool) {
 	k.submit.SetEnabled(v)
-	k.cancelSearch.SetEnabled(v)
+	k.cancel.SetEnabled(v)
 	k.prevInput.SetEnabled(v)
 	k.nextInput.SetEnabled(v)
+	k.order.SetEnabled(v)
 	k.reverse.SetEnabled(v)
 	k.prevSugg.SetEnabled(v)
 	k.nextSugg.SetEnabled(v)
 	k.acceptSugg.SetEnabled(v)
 	k.showFullHelp.SetEnabled(v)
 	k.closeFullHelp.SetEnabled(false)
+	k.setEnableOrderKeys(false)
+}
+
+func (k *searchKeymap) setEnableOrderKeys(v bool) {
+	for i := range k.orderkeys {
+		k.orderkeys[i].SetEnabled(v)
+	}
+}
+
+func (k *searchKeymap) update(showAll bool) {
+	if showAll {
+		k.nextInput.SetHelp("↓/tab/ctrl+j", "next input")
+		k.prevInput.SetHelp("↑/shift+tab/ctrl+k", "prev input")
+	} else {
+		k.nextInput.SetHelp("↓/ctrl+j", "next input")
+		k.prevInput.SetHelp("↑/ctrl+k", "prev input")
+	}
 }
