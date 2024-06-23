@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dancnb/sonicradio/config"
@@ -28,7 +29,8 @@ var serverErrMsg = errors.New("Server response not available.")
 
 func NewApi(cfg config.Value) *Api {
 	api := Api{
-		cfg: cfg,
+		cfg:           cfg,
+		stationsCache: make(map[string][]Station),
 	}
 	res, err := api.getServersDNSLookup(HOST)
 	if err != nil {
@@ -45,11 +47,13 @@ func NewApi(cfg config.Value) *Api {
 }
 
 type Api struct {
-	cfg         config.Value
-	servers     []string
-	countries   []Country
-	langs       []Language
-	topStations []Station
+	cfg       config.Value
+	servers   []string
+	countries []Country
+	langs     []Language
+
+	stationsMtx   sync.Mutex
+	stationsCache map[string][]Station
 }
 
 func (a *Api) GetLanguages() ([]Language, error) {
@@ -109,26 +113,28 @@ func (a *Api) GetCountries() ([]Country, error) {
 }
 
 func (a *Api) Search(s SearchParams) ([]Station, error) {
-	if s == DefaultSearchParams() && len(a.topStations) > 0 {
-		slog.Debug("Api.Search", "top stations cache hit", len(a.topStations))
-		return a.topStations, nil
-	}
 	return a.stationSearch(s)
 }
 
 func (a *Api) TopStations() ([]Station, error) {
 	s := DefaultSearchParams()
-	res, err := a.stationSearch(s)
-	if len(a.topStations) == 0 && len(res) > 0 {
-		a.topStations = res
-	}
-	return res, err
+	return a.stationSearch(s)
 }
 
 func (a *Api) stationSearch(s SearchParams) ([]Station, error) {
 	body := s.toFormData()
 	log := slog.With("method", "Api.stationSearch")
 	log.Debug("", "request", body)
+
+	a.stationsMtx.Lock()
+	if v, ok := a.stationsCache[body]; ok && len(v) > 0 {
+		a.stationsMtx.Unlock()
+		log.Debug("stations cache hit", "len", len(v))
+		return v, nil
+	}
+	a.stationsMtx.Unlock()
+	log.Debug("stations cache miss")
+
 	var err error
 	for i := 0; i < serverMaxRetry; i++ {
 		var res []byte
@@ -147,6 +153,12 @@ func (a *Api) stationSearch(s SearchParams) ([]Station, error) {
 			continue
 		}
 		log.Info("", "length", len(stations))
+		if len(stations) > 0 {
+			a.stationsMtx.Lock()
+			a.stationsCache[body] = stations
+			a.stationsMtx.Unlock()
+			log.Debug("stations cache set")
+		}
 		return stations, nil
 	}
 	log.Warn("exceeded max retries")
