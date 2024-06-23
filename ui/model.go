@@ -61,14 +61,15 @@ func initialModel(cfg *config.Value, b *browser.Api, p player.Player) *model {
 }
 
 func getPlayerMetadata(progr *tea.Program, m *model) {
+	log := slog.With("func", "getPlayerMetadata")
 	tick := time.NewTicker(playerPollInterval)
 	for range tick.C {
 		if m.delegate.currPlaying == nil {
 			continue
 		}
-		slog.Debug("main getPlayerMetadata", "currPlaying", m.delegate.currPlaying.URL)
+		log.Debug("", "currPlaying", m.delegate.currPlaying.URL)
 		m := m.player.Metadata()
-		slog.Debug("main getPlayerMetadata", "metadata", m)
+		log.Debug("", "metadata", m)
 		if m == nil {
 			continue
 		} else if m.Err != nil {
@@ -103,9 +104,10 @@ func (m *model) Init() tea.Cmd {
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	logTeaMsg(msg, "update main")
+	logTeaMsg(msg, "ui.model.Update")
 	activeTab := m.tabs[m.activeTab]
 
+	log := slog.With("method", "ui.model.Update")
 	switch msg := msg.(type) {
 	//
 	// messages that need to reach all tabs
@@ -115,9 +117,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.totHeight = msg.Height
 		header := m.headerView(msg.Width)
 		m.headerHeight = strings.Count(header, "\n")
-		slog.Debug("width", "", m.width)
-		slog.Debug("totHeight", "", m.totHeight)
-		slog.Debug("headerHeight", "", m.headerHeight)
+		log.Debug("width", "", m.width)
+		log.Debug("totHeight", "", m.totHeight)
+		log.Debug("headerHeight", "", m.headerHeight)
 		var cmds []tea.Cmd
 		if !m.ready {
 			m.ready = true
@@ -255,14 +257,15 @@ func (m *model) updateStatus(msg statusMsg) {
 }
 
 func (m *model) quit() {
-	slog.Info("----------------------Quitting----------------------")
+	log := slog.With("method", "ui.model.quit")
+	log.Info("----------------------Quitting----------------------")
 	err := m.player.Stop()
 	if err != nil {
-		slog.Error("error stopping station at exit", "error", err.Error())
+		log.Error("error stopping station at exit", "error", err.Error())
 	}
 	err = config.Save(*m.cfg)
 	if err != nil {
-		slog.Error("error saving config", "error", err.Error())
+		log.Error("error saving config", "error", err.Error())
 	}
 }
 
@@ -329,7 +332,8 @@ func (m *model) headerView(width int) string {
 }
 
 func (m model) View() string {
-	slog.Debug("main view", "statusMsg", m.statusMsg, "titleMsg", m.titleMsg)
+	log := slog.With("method", "ui.model.View")
+	log.Debug("", "statusMsg", m.statusMsg, "titleMsg", m.titleMsg)
 	if !m.ready {
 		return loadingMsg
 	}
@@ -383,10 +387,11 @@ func (m *model) topStationsCmd() tea.Msg {
 }
 
 func logTeaMsg(msg tea.Msg, tag string) {
+	log := slog.With("method", tag)
 	switch msg.(type) {
 	case favoritesStationRespMsg, topStationsRespMsg, searchRespMsg:
-		slog.Debug(tag, "type", fmt.Sprintf("%T", msg))
+		log.Debug("tea.Msg", "type", fmt.Sprintf("%T", msg))
 	default:
-		slog.Debug(tag, "type", fmt.Sprintf("%T", msg), "value", msg, "#", fmt.Sprintf("%#v", msg))
+		log.Debug("tea.Msg", "type", fmt.Sprintf("%T", msg), "value", msg, "#", fmt.Sprintf("%#v", msg))
 	}
 }

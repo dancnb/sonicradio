@@ -44,7 +44,7 @@ func (t *browseTab) Init(m *model) tea.Cmd {
 }
 
 func (t *browseTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
-	logTeaMsg(msg, "update browseTab")
+	logTeaMsg(msg, "ui.browseTab.Update")
 
 	var cmds []tea.Cmd
 

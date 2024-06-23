@@ -28,7 +28,8 @@ type Mpv struct {
 }
 
 func (mpv *Mpv) Play(url string) error {
-	slog.Info("playing url=" + url)
+	log := slog.With("method", "Mpv.Play")
+	log.Info("playing url=" + url)
 	if err := mpv.Stop(); err != nil {
 		return err
 	}
@@ -39,19 +40,19 @@ func (mpv *Mpv) Play(url string) error {
 	if errors.Is(cmd.Err, exec.ErrDot) {
 		cmd.Err = nil
 	} else if cmd.Err != nil {
-		slog.Error("mpv cmd error", "error", cmd.Err.Error())
+		log.Error("mpv cmd error", "error", cmd.Err.Error())
 		return cmd.Err
 	}
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Stdout = &bytes.Buffer{}
 	err := cmd.Start()
 	if err != nil {
-		slog.Error("mpv cmd start", "error", err)
+		log.Error("mpv cmd start", "error", err)
 		return err
 	}
 	mpv.cmd = cmd
 	mpv.url = url
-	slog.Debug("mpv cmd started", "pid", mpv.cmd.Process.Pid)
+	log.Debug("mpv cmd started", "pid", mpv.cmd.Process.Pid)
 
 	return nil
 }
@@ -60,10 +61,11 @@ func (mpv *Mpv) Metadata() *Metadata {
 	if mpv.cmd == nil || mpv.cmd.Stdout == nil {
 		return nil
 	}
+	log := slog.With("method", "Mpv.Metadata")
 
 	output := mpv.cmd.Stdout.(*bytes.Buffer).String()
 
-	slog.Debug("mpv", "output", output)
+	log.Debug("mpv", "output", output)
 	errIx := strings.Index(output, errOut)
 	if errIx >= 0 {
 		errMsg := output[errIx:]
@@ -89,9 +91,11 @@ func (mpv *Mpv) Metadata() *Metadata {
 }
 
 func (mpv *Mpv) Stop() error {
+	log := slog.With("method", "Mpv.Stop")
+
 	mpv.url = ""
 	if mpv.cmd == nil {
-		slog.Debug("no current station playing")
+		log.Debug("no current station playing")
 		return nil
 	}
 	cmd := *mpv.cmd
@@ -104,7 +108,7 @@ func (mpv *Mpv) Stop() error {
 	// }
 
 	if cmd.Process != nil {
-		slog.Debug("killing process", "pid", cmd.Process.Pid)
+		log.Debug("killing process", "pid", cmd.Process.Pid)
 
 		// err := cmd.Process.Kill()
 		// if err != nil {
@@ -114,21 +118,21 @@ func (mpv *Mpv) Stop() error {
 		// pid := cmd.Process.Pid
 		pid, err := syscall.Getpgid(cmd.Process.Pid)
 		if err != nil {
-			slog.Error("error getting process group", "pid", cmd.Process.Pid)
+			log.Error("error getting process group", "pid", cmd.Process.Pid)
 			return err
 		}
 		// err = syscall.Kill(-cmd.Process.Pid, syscall.SIGCHLD)
 		// if err != nil {
-		// 	slog.Error("error killing process group", "pgid", pid)
+		// 	log.Error("error killing process group", "pgid", pid)
 		// 	return err
 		// }
 		err = syscall.Kill(-pid, syscall.SIGKILL)
 		if err != nil {
-			slog.Error("error killing process children", "pgid", pid)
+			log.Error("error killing process children", "pgid", pid)
 			return err
 		}
 
-		slog.Debug("killed process group", "pgid", pid)
+		log.Debug("killed process group", "pgid", pid)
 	}
 
 	return nil

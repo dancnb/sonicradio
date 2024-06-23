@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dancnb/sonicradio/config"
@@ -28,7 +29,8 @@ var serverErrMsg = errors.New("Server response not available.")
 
 func NewApi(cfg config.Value) *Api {
 	api := Api{
-		cfg: cfg,
+		cfg:           cfg,
+		stationsCache: make(map[string][]Station),
 	}
 	res, err := api.getServersDNSLookup(HOST)
 	if err != nil {
@@ -49,32 +51,36 @@ type Api struct {
 	servers   []string
 	countries []Country
 	langs     []Language
+
+	stationsMtx   sync.Mutex
+	stationsCache map[string][]Station
 }
 
 func (a *Api) GetLanguages() ([]Language, error) {
 	if len(a.langs) > 0 {
 		return a.langs, nil
 	}
+	log := slog.With("method", "Api.GetLanguages")
 	for i := 0; i < serverMaxRetry; i++ {
 		res, err := a.doServerRequest(http.MethodGet, urlLangs, nil)
 		if err != nil {
-			slog.Error("get languages", "request error", err)
+			log.Error("", "request error", err)
 			time.Sleep(serverRetryMillis * time.Millisecond)
 			continue
 		}
 		var languages []Language
 		err = json.Unmarshal(res, &languages)
 		if err != nil {
-			slog.Error("get languages", "unmarshal error", err)
-			slog.Error("get languages", "response", string(res))
+			log.Error("", "unmarshal error", err)
+			log.Error("", "response", string(res))
 			time.Sleep(serverRetryMillis * time.Millisecond)
 			continue
 		}
-		slog.Info("get languages", "length", len(languages))
+		log.Info("", "length", len(languages))
 		a.langs = languages
 		return languages, nil
 	}
-	slog.Warn("get languages", "", "exceeded max retries")
+	log.Warn("exceeded max retries")
 	return nil, serverErrMsg
 }
 
@@ -82,26 +88,27 @@ func (a *Api) GetCountries() ([]Country, error) {
 	if len(a.countries) > 0 {
 		return a.countries, nil
 	}
+	log := slog.With("method", "Api.GetCountries")
 	for i := 0; i < serverMaxRetry; i++ {
 		res, err := a.doServerRequest(http.MethodGet, urlCountries, nil)
 		if err != nil {
-			slog.Error("get countries", "request error", err)
+			log.Error("", "request error", err)
 			time.Sleep(serverRetryMillis * time.Millisecond)
 			continue
 		}
 		var countries []Country
 		err = json.Unmarshal(res, &countries)
 		if err != nil {
-			slog.Error("get countries", "unmarshal error", err)
-			slog.Error("get countries", "response", string(res))
+			log.Error("", "unmarshal error", err)
+			log.Error("", "response", string(res))
 			time.Sleep(serverRetryMillis * time.Millisecond)
 			continue
 		}
-		slog.Info("get countries", "length", len(countries))
+		log.Info("", "length", len(countries))
 		a.countries = countries
 		return countries, nil
 	}
-	slog.Warn("get countries", "", "exceeded max retries")
+	log.Warn("exceeded max retries")
 	return nil, serverErrMsg
 }
 
@@ -116,28 +123,45 @@ func (a *Api) TopStations() ([]Station, error) {
 
 func (a *Api) stationSearch(s SearchParams) ([]Station, error) {
 	body := s.toFormData()
-	slog.Debug("stationSearch", "request", body)
+	log := slog.With("method", "Api.stationSearch")
+	log.Debug("", "request", body)
+
+	a.stationsMtx.Lock()
+	if v, ok := a.stationsCache[body]; ok && len(v) > 0 {
+		a.stationsMtx.Unlock()
+		log.Debug("stations cache hit", "len", len(v))
+		return v, nil
+	}
+	a.stationsMtx.Unlock()
+	log.Debug("stations cache miss")
+
 	var err error
 	for i := 0; i < serverMaxRetry; i++ {
 		var res []byte
 		res, err = a.doServerRequest(http.MethodPost, urlStations, []byte(body))
 		if err != nil {
-			slog.Error("stationSearch", "request error", err)
+			log.Error("", "request error", err)
 			time.Sleep(serverRetryMillis * time.Millisecond)
 			continue
 		}
 		var stations []Station
 		err = json.Unmarshal(res, &stations)
 		if err != nil {
-			slog.Error("stationSearch", "unmarshal error", err)
-			slog.Error("stationSearch", "response", string(res))
+			log.Error("", "unmarshal error", err)
+			log.Error("", "response", string(res))
 			time.Sleep(serverRetryMillis * time.Millisecond)
 			continue
 		}
-		slog.Info("stationSearch", "length", len(stations))
+		log.Info("", "length", len(stations))
+		if len(stations) > 0 {
+			a.stationsMtx.Lock()
+			a.stationsCache[body] = stations
+			a.stationsMtx.Unlock()
+			log.Debug("stations cache set")
+		}
 		return stations, nil
 	}
-	slog.Warn("stationSearch", "", "exceeded max retries")
+	log.Warn("exceeded max retries")
 	return nil, serverErrMsg
 }
 
@@ -145,6 +169,7 @@ func (a *Api) GetStations(uuids []string) ([]Station, error) {
 	if len(uuids) == 0 {
 		return nil, nil
 	}
+	log := slog.With("method", "Api.GetStations")
 	var reqBody strings.Builder
 	reqBody.WriteString(`uuids=`)
 	for i, uuid := range uuids {
@@ -157,23 +182,23 @@ func (a *Api) GetStations(uuids []string) ([]Station, error) {
 	for i := 0; i < serverMaxRetry; i++ {
 		res, err := a.doServerRequest(http.MethodPost, urlStationsByUUID, []byte(x))
 		if err != nil {
-			slog.Error("get stations", "request error", err)
+			log.Error("", "request error", err)
 			time.Sleep(serverRetryMillis * time.Millisecond)
 			continue
 		}
 		var stations []Station
 		err = json.Unmarshal(res, &stations)
 		if err != nil {
-			slog.Error("get stations", "unmarshal error", err)
-			slog.Error("get stations", "response", string(res))
+			log.Error("", "unmarshal error", err)
+			log.Error("", "response", string(res))
 			time.Sleep(serverRetryMillis * time.Millisecond)
 			continue
 		}
-		slog.Info("get stations", "length", len(stations))
+		log.Info("", "length", len(stations))
 		return stations, nil
 	}
 
-	slog.Warn("get station exceeded max retries")
+	log.Warn("exceeded max retries")
 	return nil, serverErrMsg
 }
 
@@ -218,9 +243,11 @@ func (a *Api) getServerMirrors() ([]string, error) {
 }
 
 func (a *Api) doRequest(method string, url string, body []byte) ([]byte, error) {
+	log := slog.With("method", "Api.doRequest")
+
 	req, err := http.NewRequest(method, url, bytes.NewReader(body))
 	if err != nil {
-		slog.Error("create browser request", slog.String("error", err.Error()))
+		log.Error("create browser request", slog.String("error", err.Error()))
 		return nil, err
 	}
 	ua := fmt.Sprintf("sonicradio/%s", a.cfg.Version)
@@ -229,14 +256,14 @@ func (a *Api) doRequest(method string, url string, body []byte) ([]byte, error) 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		slog.Error("do browser request", slog.String("error", err.Error()))
+		log.Error("do browser request", slog.String("error", err.Error()))
 		return nil, err
 	}
 	defer res.Body.Close()
 
 	b, err := io.ReadAll(res.Body)
 	if err != nil {
-		slog.Error("read browser response", slog.String("error", err.Error()))
+		log.Error("read browser response", slog.String("error", err.Error()))
 		return nil, err
 	}
 	return b, nil
