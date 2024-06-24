@@ -27,11 +27,11 @@ After the installation, the command to run the application:
 │↓/j              |                            down |
 |g/home           |                     go to start |
 |G/end            |                       go to end |
-|p/enter          |                   play selected |
+|enter            |                   play selected |
 |space            |                      play/pause |
 |f                |              toggle as favorite |
 |i                |   station info(not implemented) |
-|s                |    open search(not implemented) |
+|s                |                     open search |
 |/                |                  filter results |
 |esc              |               go to now playing |
 |1                |             go to favorites tab |
