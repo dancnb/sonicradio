@@ -17,8 +17,6 @@ func (t uiTabIndex) String() string {
 		return "Favorites"
 	case browseTabIx:
 		return " Browse "
-		// case historyTabIx:
-		// 	return " History "
 	}
 	return ""
 }

@@ -16,13 +16,6 @@ func Test_getServers(t *testing.T) {
 		t.Error(err)
 	}
 	t.Log(res)
-
-	// ONLY USE THIS if your client is not able to do DNS look-ups
-	// res, err = getServerMirrors()
-	// if err != nil {
-	// 	t.Error(err)
-	// }
-	t.Log(res)
 }
 
 func Test_doRrequest(t *testing.T) {

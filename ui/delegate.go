@@ -176,16 +176,12 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 	fmt.Fprint(w, str)
 }
 
-// Additional short help entries. This satisfies the help.KeyMap interface and
-// is entirely optional.
 func (d *stationDelegate) ShortHelp() []key.Binding {
 	return []key.Binding{
 		d.keymap.playSelected, d.keymap.pause, d.keymap.toggleFavorite,
 	}
 }
 
-// Additional full help entries. This satisfies the help.KeyMap interface and
-// is entirely optional.
 func (d *stationDelegate) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{

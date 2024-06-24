@@ -40,7 +40,6 @@ func NewProgram(cfg *config.Value, b *browser.Api, p player.Player) *tea.Program
 
 func initialModel(cfg *config.Value, b *browser.Api, p player.Player) *model {
 	lipgloss.DefaultRenderer().SetHasDarkBackground(true)
-	// lipgloss.DefaultRenderer().Output().SetBackgroundColor(backgroundColor)
 
 	delegate := newStationDelegate(cfg, p)
 	activeIx := browseTabIx
@@ -283,16 +282,10 @@ func (m *model) initSpinner() tea.Cmd {
 func (m *model) headerView(width int) string {
 	var res strings.Builder
 
-	// hFill := width
-	// gap := headerTop.Render(strings.Repeat(" ", max(0, hFill)))
-	// res.WriteString(gap)
-	// res.WriteString("\n")
-
 	if m.statusMsg != "" {
 		res.WriteString(playStatusStyle.Render(lineChar + " " + m.statusMsg))
 	} else if m.delegate.currPlaying != nil {
 		res.WriteString(m.spinner.View())
-		// res.WriteString(playStatusStyle.Render(playChar))
 		res.WriteString(itemStyle.Render(" " + m.delegate.currPlaying.Name))
 	} else if m.delegate.prevPlaying != nil {
 		res.WriteString(playStatusStyle.Render(pauseChar))

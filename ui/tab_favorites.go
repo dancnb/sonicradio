@@ -84,7 +84,6 @@ func (t *favoritesTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			for i := range its {
 				s := its[i].(browser.Station)
 				if s.Stationuuid == msg.station.Stationuuid {
-					// _, _ = m.delegate.stopStation(s)
 					t.list.RemoveItem(i)
 					break
 				}
