@@ -14,7 +14,7 @@ import (
 var debug = flag.Bool("debug", false, "use -debug arg to log to a file")
 
 const (
-	defVersion  = "0.2.2"
+	defVersion  = "0.2.3"
 	cfgSubDir   = "sonicRadio"
 	cfgFilename = "config.json"
 )
