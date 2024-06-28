@@ -5,15 +5,16 @@ import (
 	"errors"
 	"log/slog"
 	"os/exec"
+	"runtime"
 	"slices"
 	"strings"
-	"syscall"
 )
 
 const (
-	baseCmd  = "mpv"
-	errOut   = "Failed to"
-	titleMsg = "icy-title:"
+	baseCmd        = "mpv"
+	baseCmdWindows = "mpv.exe"
+	errOut         = "Failed to"
+	titleMsg       = "icy-title:"
 )
 
 var baseArgs = []string{"--no-video", "--quiet"}
@@ -36,14 +37,13 @@ func (mpv *Mpv) Play(url string) error {
 
 	args := slices.Clone(baseArgs)
 	args = append(args, url)
-	cmd := exec.Command(baseCmd, args...)
+	cmd := exec.Command(mpv.getBaseCmd(), args...)
 	if errors.Is(cmd.Err, exec.ErrDot) {
 		cmd.Err = nil
 	} else if cmd.Err != nil {
 		log.Error("mpv cmd error", "error", cmd.Err.Error())
 		return cmd.Err
 	}
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Stdout = &bytes.Buffer{}
 	err := cmd.Start()
 	if err != nil {
@@ -55,6 +55,14 @@ func (mpv *Mpv) Play(url string) error {
 	log.Debug("mpv cmd started", "pid", mpv.cmd.Process.Pid)
 
 	return nil
+}
+
+func (mpv *Mpv) getBaseCmd() string {
+	res := baseCmd
+	if runtime.GOOS == "windows" {
+		res = baseCmdWindows
+	}
+	return res
 }
 
 func (mpv *Mpv) Metadata() *Metadata {
@@ -102,33 +110,12 @@ func (mpv *Mpv) Stop() error {
 	mpv.cmd = nil
 	cmd.Stdout = nil
 
-	// err := cmd.Wait()
-	// if err != nil {
-	// 	return err
-	// }
-
 	if cmd.Process != nil {
 		log.Debug("killing process", "pid", cmd.Process.Pid)
 
-		// err := cmd.Process.Kill()
-		// if err != nil {
-		// 	return err
-		// }
-
-		// pid := cmd.Process.Pid
-		pid, err := syscall.Getpgid(cmd.Process.Pid)
+		pid := cmd.Process.Pid
+		err := cmd.Process.Kill()
 		if err != nil {
-			log.Error("error getting process group", "pid", cmd.Process.Pid)
-			return err
-		}
-		// err = syscall.Kill(-cmd.Process.Pid, syscall.SIGCHLD)
-		// if err != nil {
-		// 	log.Error("error killing process group", "pgid", pid)
-		// 	return err
-		// }
-		err = syscall.Kill(-pid, syscall.SIGKILL)
-		if err != nil {
-			log.Error("error killing process children", "pgid", pid)
 			return err
 		}
 
