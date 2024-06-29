@@ -202,6 +202,19 @@ func (a *Api) GetStations(uuids []string) ([]Station, error) {
 	return nil, serverErrMsg
 }
 
+func (a *Api) StationCounter(uuid string) error {
+	log := slog.With("method", "Api.StationCounter")
+	url := urlClickCount + uuid
+	res, err := a.doServerRequest(http.MethodPost, url, nil)
+	if err != nil {
+		log.Error("", "request error", err)
+		time.Sleep(serverRetryMillis * time.Millisecond)
+		return err
+	}
+	log.Info(string(res))
+	return nil
+}
+
 func (a *Api) doServerRequest(method string, path string, body []byte) ([]byte, error) {
 	ix := rand.IntN(len(a.servers))
 	ip := a.servers[ix]

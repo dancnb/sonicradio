@@ -41,7 +41,7 @@ func NewProgram(cfg *config.Value, b *browser.Api, p player.Player) *tea.Program
 func initialModel(cfg *config.Value, b *browser.Api, p player.Player) *model {
 	lipgloss.DefaultRenderer().SetHasDarkBackground(true)
 
-	delegate := newStationDelegate(cfg, p)
+	delegate := newStationDelegate(cfg, p, b)
 	activeIx := browseTabIx
 	if len(cfg.Favorites) > 0 {
 		activeIx = favoriteTabIx

@@ -85,3 +85,11 @@ func Test_getCountries(t *testing.T) {
 	}
 	t.Log(res)
 }
+
+func TestApi_StationCounter(t *testing.T) {
+	a := NewApi(config.Value{Version: "", Debug: true})
+	err := a.StationCounter("748d830c-d934-41e8-bd14-870add931e1d")
+	if err != nil {
+		t.Error(err)
+	}
+}
