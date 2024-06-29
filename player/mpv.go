@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"slices"
 	"strings"
-	"syscall"
 )
 
 const (
@@ -43,7 +42,7 @@ func (mpv *Mpv) Play(url string) error {
 		log.Error("mpv cmd error", "error", cmd.Err.Error())
 		return cmd.Err
 	}
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	// cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Stdout = &bytes.Buffer{}
 	err := cmd.Start()
 	if err != nil {
@@ -110,27 +109,28 @@ func (mpv *Mpv) Stop() error {
 	if cmd.Process != nil {
 		log.Debug("killing process", "pid", cmd.Process.Pid)
 
-		// err := cmd.Process.Kill()
-		// if err != nil {
-		// 	return err
-		// }
-
-		// pid := cmd.Process.Pid
-		pid, err := syscall.Getpgid(cmd.Process.Pid)
+		pid := cmd.Process.Pid
+		err := cmd.Process.Kill()
 		if err != nil {
-			log.Error("error getting process group", "pid", cmd.Process.Pid)
 			return err
 		}
+
+		// pid := cmd.Process.Pid
+		// pid, err := syscall.Getpgid(cmd.Process.Pid)
+		// if err != nil {
+		// 	log.Error("error getting process group", "pid", cmd.Process.Pid)
+		// 	return err
+		// }
 		// err = syscall.Kill(-cmd.Process.Pid, syscall.SIGCHLD)
 		// if err != nil {
 		// 	log.Error("error killing process group", "pgid", pid)
 		// 	return err
 		// }
-		err = syscall.Kill(-pid, syscall.SIGKILL)
-		if err != nil {
-			log.Error("error killing process children", "pgid", pid)
-			return err
-		}
+		// err = syscall.Kill(-pid, syscall.SIGKILL)
+		// if err != nil {
+		// 	log.Error("error killing process children", "pgid", pid)
+		// 	return err
+		// }
 
 		log.Debug("killed process group", "pgid", pid)
 	}
