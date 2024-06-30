@@ -32,19 +32,22 @@ type uiTab interface {
 	Init(m *model) tea.Cmd
 	Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd)
 	View() string
-	List() *list.Model
+
+	Stations() *stationsTab
 	IsFiltering() bool
 	IsSearchEnabled() bool
+	IsInfoEnabled() bool
 }
 
-type baseTab struct {
+type stationsTab struct {
 	uiTab
 	list       list.Model
 	viewMsg    string
 	listKeymap listKeymap
+	infoModel  *infoModel
 }
 
-func (t *baseTab) View() string {
+func (t *stationsTab) View() string {
 	if t.viewMsg != "" {
 		var sections []string
 		availHeight := t.list.Height()
@@ -58,13 +61,13 @@ func (t *baseTab) View() string {
 	return t.list.View()
 }
 
-func (t *baseTab) List() *list.Model { return &t.list }
+func (t *stationsTab) Stations() *stationsTab { return t }
 
-func (t *baseTab) IsFiltering() bool {
+func (t *stationsTab) IsFiltering() bool {
 	return t.list.FilterState() == list.Filtering
 }
 
-func (t *baseTab) toNowPlaying(m *model) {
+func (t *stationsTab) toNowPlaying(m *model) {
 	uuid := ""
 	if m.delegate.currPlaying != nil {
 		uuid = m.delegate.currPlaying.Stationuuid
@@ -74,7 +77,7 @@ func (t *baseTab) toNowPlaying(m *model) {
 		return
 	}
 	selIndex := -1
-	items := t.List().VisibleItems()
+	items := t.list.VisibleItems()
 	for ix := range items {
 		if items[ix].(browser.Station).Stationuuid == uuid {
 			selIndex = ix
@@ -83,12 +86,28 @@ func (t *baseTab) toNowPlaying(m *model) {
 	}
 	slog.Debug("method", "ui.baseTab.toNowPlaying", "selIndex", selIndex)
 	if selIndex > -1 {
-		t.List().Select(selIndex)
+		t.list.Select(selIndex)
 	}
 }
 
-func (t *baseTab) IsSearchEnabled() bool {
+func (t *stationsTab) IsSearchEnabled() bool {
 	return false
+}
+
+func (t *stationsTab) IsInfoEnabled() bool {
+	return t.infoModel != nil && t.infoModel.enabled
+}
+
+func (*stationsTab) newSizeMsg(sizeMsg tea.WindowSizeMsg, m *model) tea.WindowSizeMsg {
+	availableHeight := sizeMsg.Height - m.headerHeight
+	newSizeMsg := tea.WindowSizeMsg{Width: sizeMsg.Width, Height: availableHeight}
+	return newSizeMsg
+}
+
+func (t *stationsTab) initInfoModel(m *model, msg toggleInfoMsg) tea.Cmd {
+	t.listKeymap.setEnabled(false)
+	t.infoModel.setSize(m.width, m.totHeight-m.headerHeight)
+	return t.infoModel.Init(msg.station)
 }
 
 func createList(delegate *stationDelegate, width int, height int) list.Model {

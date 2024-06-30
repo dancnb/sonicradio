@@ -91,7 +91,7 @@ var orderView = map[orderIx]string{
 func newSearchModel(browser *browser.Api) *searchModel {
 	k := newSearchKeymap()
 	inputs := []textinput.Model{
-		makeInput("Name          ", "---", k),
+		makeInput("Name          ", "leave empty for all", k),
 		makeInput("Tags          ", "comma separated list", k),
 		makeInput("Country       ", "---", k),
 		makeInput("Language      ", "---", k),
@@ -120,6 +120,7 @@ func newSearchModel(browser *browser.Api) *searchModel {
 func makeInput(prompt, placeholder string, keymap searchKeymap) textinput.Model {
 	input := textinput.New()
 	input.Cursor.SetMode(cursor.CursorBlink)
+	prompt = padFieldName(prompt)
 	textInputSyle(&input, prompt, placeholder)
 	input.PromptStyle = searchPromptStyle
 	input.KeyMap.NextSuggestion = keymap.nextSugg
@@ -324,23 +325,23 @@ func (s *searchModel) View() string {
 	if s.orderActive {
 		orderPrompt = "Enter #       "
 	}
-	b.WriteString(searchPromptStyle.Render(orderPrompt))
+	b.WriteString(searchPromptStyle.Render(padFieldName(orderPrompt)))
 	ordS := s.getOrderString(orderVotes)
 	b.WriteString(s.getOrderStyle(orderVotes).Render(ordS))
 	b.WriteRune('\n')
 	for i := orderClickcount; i <= orderCodec; i++ {
-		b.WriteString(searchPromptStyle.Render("              "))
+		b.WriteString(searchPromptStyle.Render(padFieldName("")))
 		ordS := s.getOrderString(i)
 		b.WriteString(s.getOrderStyle(i).Render(ordS))
 		b.WriteRune('\n')
 	}
-	b.WriteString(searchPromptStyle.Render("              "))
+	b.WriteString(searchPromptStyle.Render(padFieldName("")))
 	ordS = s.getOrderString(orderRand)
 	b.WriteString(s.getOrderStyle(orderRand).Render(ordS))
 	b.WriteRune('\n')
 
 	b.WriteRune('\n')
-	b.WriteString(searchPromptStyle.Render("Reverse       "))
+	b.WriteString(searchPromptStyle.Render(padFieldName("Reverse       ")))
 	rev := "off"
 	if s.reverse {
 		rev = "on"

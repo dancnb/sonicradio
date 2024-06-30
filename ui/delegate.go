@@ -55,11 +55,20 @@ func (d *stationDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	}
 
 	switch msg := msg.(type) {
+	case toggleInfoMsg:
+		if !msg.enable {
+			d.keymap.info.SetEnabled(true)
+		}
+
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, d.keymap.toggleFavorite):
 			added := d.cfg.ToggleFavorite(selStation.Stationuuid)
 			return func() tea.Msg { return toggleFavoriteMsg{added, selStation} }
+
+		case key.Matches(msg, d.keymap.info):
+			d.keymap.info.SetEnabled(false)
+			return func() tea.Msg { return toggleInfoMsg{enable: true, station: selStation} }
 		}
 	}
 
@@ -82,7 +91,7 @@ func (d *stationDelegate) increaseCounter(station browser.Station) {
 }
 
 func (d *stationDelegate) playStation(station browser.Station) error {
-	log := slog.With("method", "stationDelegate.playStation")
+	log := slog.With("method", "ui.stationDelegate.playStation")
 
 	go d.increaseCounter(station)
 
@@ -99,7 +108,7 @@ func (d *stationDelegate) playStation(station browser.Station) error {
 }
 
 func (d *stationDelegate) stopStation(station browser.Station) (wasPlaying bool, err error) {
-	log := slog.With("method", "stationDelegate.stopStation")
+	log := slog.With("method", "ui.stationDelegate.stopStation")
 	if d.currPlaying != nil && d.currPlaying.Stationuuid == station.Stationuuid {
 		log.Debug("stopping", "id", d.currPlaying.Stationuuid)
 		d.prevPlaying = &station

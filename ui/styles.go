@@ -83,10 +83,21 @@ var (
 	orderByStyle      = secondaryColorStyle.Copy()
 	orderBySelStyle   = primaryColorStyle.Copy()
 
+	// station info
+	infoFieldNameStyle  = primaryColorStyle.Copy().Bold(false).MarginLeft(3)
+	infoFieldValueStyle = secondaryColorStyle.Copy()
+
 	// general
 	backgroundColor = termenv.RGBColor("#282c34")
 	docStyle        = lipgloss.NewStyle().Padding(1, 2, 0, 2)
 )
+
+func padFieldName(v string) string {
+	for i := len(v); i < 22; i++ {
+		v += " "
+	}
+	return v
+}
 
 func textInputSyle(textInput *textinput.Model, prompt, placeholder string) {
 	textInput.Prompt = prompt

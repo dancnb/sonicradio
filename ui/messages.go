@@ -39,6 +39,11 @@ type (
 		station browser.Station
 	}
 
+	toggleInfoMsg struct {
+		enable  bool
+		station browser.Station
+	}
+
 	playRespMsg struct {
 		err string
 	}

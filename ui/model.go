@@ -9,7 +9,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -47,12 +49,16 @@ func initialModel(cfg *config.Value, b *browser.Api, p player.Player) *model {
 		activeIx = favoriteTabIx
 	}
 
+	infoModel := newInfoModel(b)
 	m := model{
-		cfg:       cfg,
-		browser:   b,
-		player:    p,
-		delegate:  delegate,
-		tabs:      []uiTab{newFavoritesTab(), newBrowseTab(b)},
+		cfg:      cfg,
+		browser:  b,
+		player:   p,
+		delegate: delegate,
+		tabs: []uiTab{
+			newFavoritesTab(infoModel),
+			newBrowseTab(b, infoModel),
+		},
 		activeTab: activeIx,
 		statusMsg: noPlayingMsg,
 	}
@@ -104,9 +110,9 @@ func (m *model) Init() tea.Cmd {
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	logTeaMsg(msg, "ui.model.Update")
+	log := slog.With("method", "ui.model.Update")
 	activeTab := m.tabs[m.activeTab]
 
-	log := slog.With("method", "ui.model.Update")
 	switch msg := msg.(type) {
 	//
 	// messages that need to reach all tabs
@@ -185,16 +191,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.String() == "ctrl+c" {
 			m.quit()
 			return m, tea.Quit
-		} else if activeTab.IsSearchEnabled() {
-			break
-		} else if activeTab.IsFiltering() {
+		} else if activeTab.IsSearchEnabled() || activeTab.IsFiltering() {
 			break
 		}
 
 		d := m.delegate
-
-		switch {
-		case key.Matches(msg, d.keymap.pause):
+		if key.Matches(msg, d.keymap.pause) {
 			m.titleMsg = ""
 			m.spinner = nil
 			if d.currPlaying != nil {
@@ -212,20 +214,25 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// TODO handle enter for other tabs if necessary
 					return m, nil
 				}
-				selStation, ok := activeTab.List().SelectedItem().(browser.Station)
+				selStation, ok := activeTab.Stations().list.SelectedItem().(browser.Station)
 				if ok {
 					m.statusMsg = fmt.Sprintf("Connecting to %s...", selStation.Name)
 					cmds := []tea.Cmd{m.initSpinner(), d.playCmd(&selStation)}
 					return m, tea.Batch(cmds...)
 				}
 			}
+		}
 
-		case key.Matches(msg, d.keymap.playSelected):
+		if activeTab.IsInfoEnabled() {
+			break
+		}
+
+		if key.Matches(msg, d.keymap.playSelected) {
 			if m.activeTab != favoriteTabIx && m.activeTab != browseTabIx {
 				// TODO handle enter for other tabs if necessary
 				return m, nil
 			}
-			selStation, ok := activeTab.List().SelectedItem().(browser.Station)
+			selStation, ok := activeTab.Stations().list.SelectedItem().(browser.Station)
 			if ok {
 				m.titleMsg = ""
 				m.spinner = nil
@@ -325,8 +332,8 @@ func (m *model) headerView(width int) string {
 }
 
 func (m model) View() string {
-	log := slog.With("method", "ui.model.View")
-	log.Debug("", "statusMsg", m.statusMsg, "titleMsg", m.titleMsg)
+	// log := slog.With("method", "ui.model.View")
+	// log.Debug("", "statusMsg", m.statusMsg, "titleMsg", m.titleMsg)
 	if !m.ready {
 		return loadingMsg
 	}
@@ -382,8 +389,10 @@ func (m *model) topStationsCmd() tea.Msg {
 func logTeaMsg(msg tea.Msg, tag string) {
 	log := slog.With("method", tag)
 	switch msg.(type) {
-	case favoritesStationRespMsg, topStationsRespMsg, searchRespMsg:
+	case favoritesStationRespMsg, topStationsRespMsg, searchRespMsg, toggleInfoMsg:
 		log.Debug("tea.Msg", "type", fmt.Sprintf("%T", msg))
+	case cursor.BlinkMsg, spinner.TickMsg, list.FilterMatchesMsg:
+		break
 	default:
 		log.Debug("tea.Msg", "type", fmt.Sprintf("%T", msg), "value", msg, "#", fmt.Sprintf("%#v", msg))
 	}

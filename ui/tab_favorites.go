@@ -8,15 +8,16 @@ import (
 )
 
 type favoritesTab struct {
-	baseTab
+	stationsTab
 }
 
-func newFavoritesTab() *favoritesTab {
+func newFavoritesTab(infoModel *infoModel) *favoritesTab {
 	k := newListKeymap()
 
 	m := &favoritesTab{
-		baseTab: baseTab{
+		stationsTab: stationsTab{
 			listKeymap: k,
+			infoModel:  infoModel,
 		},
 	}
 	return m
@@ -44,6 +45,16 @@ func (t *favoritesTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	logTeaMsg(msg, "ui.favoritesTab.Update")
 
 	var cmds []tea.Cmd
+
+	if t.IsInfoEnabled() {
+		infoModelMsg := msg
+		if sizeMsg, ok := msg.(tea.WindowSizeMsg); ok {
+			infoModelMsg = t.newSizeMsg(sizeMsg, m)
+		}
+		im, cmd := t.infoModel.Update(infoModelMsg)
+		t.infoModel = im
+		cmds = append(cmds, cmd)
+	}
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -94,7 +105,19 @@ func (t *favoritesTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			t.viewMsg = noFavoritesAddedMsg
 		}
 
+	case toggleInfoMsg:
+		if msg.enable {
+			cmds = append(cmds, t.initInfoModel(m, msg))
+			return m, tea.Batch(cmds...)
+		} else {
+			t.listKeymap.setEnabled(true)
+		}
+
 	case tea.KeyMsg:
+		if t.IsInfoEnabled() {
+			return m, tea.Batch(cmds...)
+		}
+
 		if key.Matches(msg, t.listKeymap.toNowPlaying) {
 			newListModel, cmd := t.list.Update(msg)
 			t.list = newListModel
@@ -128,4 +151,11 @@ func (t *favoritesTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
+}
+
+func (t *favoritesTab) View() string {
+	if t.IsInfoEnabled() {
+		return t.infoModel.View()
+	}
+	return t.stationsTab.View()
 }

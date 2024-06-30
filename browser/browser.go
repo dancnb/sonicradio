@@ -23,6 +23,7 @@ const (
 	backup_server     = "https://de1.api.radio-browser.info/json/servers"
 	serverMaxRetry    = 5
 	serverRetryMillis = 200
+	voteTimeout       = 10 * time.Minute
 )
 
 var serverErrMsg = errors.New("Server response not available.")
@@ -31,13 +32,14 @@ func NewApi(cfg config.Value) *Api {
 	api := Api{
 		cfg:           cfg,
 		stationsCache: make(map[string][]Station),
+		stationVotes:  make(map[string]time.Time),
 	}
 	res, err := api.getServersDNSLookup(HOST)
 	if err != nil {
 		res, err = api.getServerMirrors()
 		if err != nil {
 			msg := fmt.Errorf("could not retrieve %s servers: %w", HOST, err)
-			slog.Info(msg.Error())
+			slog.Error(msg.Error())
 		}
 	}
 	slog.Debug("browser servers " + strings.Join(res, "; "))
@@ -54,6 +56,8 @@ type Api struct {
 
 	stationsMtx   sync.Mutex
 	stationsCache map[string][]Station
+
+	stationVotes map[string]time.Time
 }
 
 func (a *Api) GetLanguages() ([]Language, error) {
@@ -76,7 +80,7 @@ func (a *Api) GetLanguages() ([]Language, error) {
 			time.Sleep(serverRetryMillis * time.Millisecond)
 			continue
 		}
-		log.Info("", "length", len(languages))
+		log.Debug("", "length", len(languages))
 		a.langs = languages
 		return languages, nil
 	}
@@ -104,7 +108,7 @@ func (a *Api) GetCountries() ([]Country, error) {
 			time.Sleep(serverRetryMillis * time.Millisecond)
 			continue
 		}
-		log.Info("", "length", len(countries))
+		log.Debug("", "length", len(countries))
 		a.countries = countries
 		return countries, nil
 	}
@@ -152,7 +156,7 @@ func (a *Api) stationSearch(s SearchParams) ([]Station, error) {
 			time.Sleep(serverRetryMillis * time.Millisecond)
 			continue
 		}
-		log.Info("", "length", len(stations))
+		log.Debug("", "length", len(stations))
 		if len(stations) > 0 {
 			a.stationsMtx.Lock()
 			a.stationsCache[body] = stations
@@ -194,7 +198,7 @@ func (a *Api) GetStations(uuids []string) ([]Station, error) {
 			time.Sleep(serverRetryMillis * time.Millisecond)
 			continue
 		}
-		log.Info("", "length", len(stations))
+		log.Debug("", "length", len(stations))
 		return stations, nil
 	}
 
@@ -208,10 +212,30 @@ func (a *Api) StationCounter(uuid string) error {
 	res, err := a.doServerRequest(http.MethodPost, url, nil)
 	if err != nil {
 		log.Error("", "request error", err)
-		time.Sleep(serverRetryMillis * time.Millisecond)
 		return err
 	}
-	log.Info(string(res))
+	log.Debug(string(res))
+	return nil
+}
+
+var errVoteTimeout = errors.New("Station was voted recently")
+
+func (a *Api) StationVote(uuid string) error {
+	log := slog.With("method", "Api.StationVote")
+
+	if voteTime, ok := a.stationVotes[uuid]; ok && time.Now().Before(voteTime.Add(voteTimeout)) {
+		log.Debug(fmt.Sprintf("already voted %s at %v", uuid, voteTime))
+		return errVoteTimeout
+	}
+	a.stationVotes[uuid] = time.Now()
+
+	url := urlVote + uuid
+	res, err := a.doServerRequest(http.MethodPost, url, nil)
+	if err != nil {
+		log.Error("", "request error", err)
+		return err
+	}
+	log.Debug(string(res))
 	return nil
 }
 
