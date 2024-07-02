@@ -82,7 +82,7 @@ func (t *favoritesTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		if sm == "" && len(notFound) > 0 {
 			sm = statusMsg(missingFavorites)
 		}
-		m.updateStatus(sm)
+		m.updateStatus(string(sm))
 		cmd := t.list.SetItems(items)
 		cmds = append(cmds, cmd)
 

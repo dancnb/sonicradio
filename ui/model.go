@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"log/slog"
+	"math"
 	"os"
 	"os/signal"
 	"strings"
@@ -28,8 +29,10 @@ const (
 	// header status messages
 	noPlayingMsg     = "Nothing playing"
 	missingFavorites = "Some stations not found"
+	prevTermErr      = "Could not terminate previous playback!"
 
 	playerPollInterval = 500 * time.Millisecond
+	statusMsgTimeout   = 2 * time.Second
 )
 
 func NewProgram(cfg *config.Value, b *browser.Api, p player.Player) *tea.Program {
@@ -60,7 +63,9 @@ func initialModel(cfg *config.Value, b *browser.Api, p player.Player) *model {
 			newBrowseTab(b, infoModel),
 		},
 		activeTab: activeIx,
+		statusCh:  make(chan string),
 	}
+	go m.statusHandler()
 	return &m
 }
 
@@ -95,12 +100,30 @@ type model struct {
 	activeTab uiTabIndex
 
 	statusMsg string // display currently performed action or encountered error
-	titleMsg  string // display station metadata (song name)
-	spinner   *spinner.Model
+	statusCh  chan string
+
+	titleMsg string // display station metadata (song name)
+	spinner  *spinner.Model
 
 	width        int
 	totHeight    int
 	headerHeight int
+}
+
+func (m *model) statusHandler() {
+	t := time.NewTimer(math.MaxInt64)
+	defer t.Stop()
+
+	for {
+		select {
+		case <-t.C:
+			m.statusMsg = ""
+		case status := <-m.statusCh:
+			m.statusMsg = status
+			t.Stop()
+			t.Reset(statusMsgTimeout)
+		}
+	}
 }
 
 func (m *model) Init() tea.Cmd {
@@ -144,21 +167,21 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return nil, tea.Quit
 
 	case playRespMsg:
-		m.statusMsg = msg.err
+		m.updateStatus(msg.err)
 		if msg.err != "" {
 			m.spinner = nil
 			d := m.delegate
 			if d.currPlaying != nil {
 				_, err := d.stopStation(*d.currPlaying)
 				if err != nil {
-					m.statusMsg = "Could not terminate previous playback!"
+					m.updateStatus(prevTermErr)
 					return m, nil
 				}
 			}
 		}
 		return m, nil
 	case statusMsg:
-		m.updateStatus(msg)
+		m.updateStatus(string(msg))
 		return m, nil
 
 	case titleMsg:
@@ -201,11 +224,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if d.currPlaying != nil {
 				_, err := d.stopStation(*d.currPlaying)
 				if err != nil {
-					m.statusMsg = "Could not terminate previous playback!"
+					m.updateStatus(prevTermErr)
 					return m, nil
 				}
 			} else if d.prevPlaying != nil {
-				m.statusMsg = fmt.Sprintf("Connecting to %s...", d.prevPlaying.Name)
+				m.updateStatus(fmt.Sprintf("Connecting to %s...", d.prevPlaying.Name))
 				cmds := []tea.Cmd{m.initSpinner(), d.playCmd(d.prevPlaying)}
 				return m, tea.Batch(cmds...)
 			} else {
@@ -215,7 +238,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				selStation, ok := activeTab.Stations().list.SelectedItem().(browser.Station)
 				if ok {
-					m.statusMsg = fmt.Sprintf("Connecting to %s...", selStation.Name)
+					m.updateStatus(fmt.Sprintf("Connecting to %s...", selStation.Name))
 					cmds := []tea.Cmd{m.initSpinner(), d.playCmd(&selStation)}
 					return m, tea.Batch(cmds...)
 				}
@@ -237,10 +260,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.spinner = nil
 				_, err := d.stopStation(selStation)
 				if err != nil {
-					m.statusMsg = "Could not terminate previous playback!"
+					m.updateStatus(prevTermErr)
 					return m, nil
 				}
-				m.statusMsg = fmt.Sprintf("Connecting to %s...", selStation.Name)
+				m.updateStatus(fmt.Sprintf("Connecting to %s...", selStation.Name))
 				cmds := []tea.Cmd{m.initSpinner(), d.playCmd(&selStation)}
 				return m, tea.Batch(cmds...)
 			}
@@ -255,10 +278,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return model, cmd
 }
 
-func (m *model) updateStatus(msg statusMsg) {
-	if msg != "" {
-		m.statusMsg = string(msg)
-	}
+func (m *model) updateStatus(msg string) {
+	go func() {
+		m.statusCh <- msg
+	}()
 }
 
 func (m *model) quit() {
@@ -287,10 +310,15 @@ func (m *model) initSpinner() tea.Cmd {
 
 func (m *model) headerView(width int) string {
 	var res strings.Builder
-	appNameVers := fmt.Sprintf("sonicradio v%v", m.cfg.Version)
-	fill := width - lipgloss.Width(appNameVers) - 2*padDist
-	res.WriteString(statusBarStyle.Render(strings.Repeat(" ", max(0, fill))))
-	res.WriteString(statusBarStyle.Render(appNameVers))
+	status := ""
+	if len(m.statusMsg) > 0 {
+		status = statusBarStyle.Render(m.statusMsg)
+	}
+	res.WriteString(status)
+	appNameVers := statusBarStyle.Render(fmt.Sprintf("sonicradio v%v", m.cfg.Version))
+	fill := max(0, width-lipgloss.Width(status)-lipgloss.Width(appNameVers)-2*padDist)
+	res.WriteString(statusBarStyle.Render(strings.Repeat(" ", fill)))
+	res.WriteString(appNameVers)
 	res.WriteString("\n\n")
 
 	if m.delegate.currPlaying != nil {
@@ -337,8 +365,6 @@ func (m *model) headerView(width int) string {
 }
 
 func (m model) View() string {
-	// log := slog.With("method", "ui.model.View")
-	// log.Debug("", "statusMsg", m.statusMsg, "titleMsg", m.titleMsg)
 	if !m.ready {
 		return loadingMsg
 	}
