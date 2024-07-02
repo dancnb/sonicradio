@@ -138,8 +138,14 @@ func (i *infoModel) View() string {
 }
 
 func (i *infoModel) renderInfoField(b *strings.Builder, fieldName, fieldValue string) {
-	b.WriteString(infoFieldNameStyle.Render(padFieldName(fieldName)))
-	b.WriteString(infoFieldValueStyle.Render(strings.TrimSpace(fieldValue)))
+	fnRender := infoFieldNameStyle.Render(padFieldName(fieldName))
+	b.WriteString(fnRender)
+	fnw := lipgloss.Width(fnRender)
+	fv := strings.TrimSpace(fieldValue)
+	for fnw+lipgloss.Width(infoFieldValueStyle.Render(fv)) > i.width && len(fv) > 0 {
+		fv = fv[:len(fv)-1]
+	}
+	b.WriteString(infoFieldValueStyle.Render(fv))
 	b.WriteString("\n")
 }
 
