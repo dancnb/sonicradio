@@ -30,9 +30,10 @@ const (
 	noPlayingMsg     = "Nothing playing"
 	missingFavorites = "Some stations not found"
 	prevTermErr      = "Could not terminate previous playback!"
+	voteSuccesful    = "Station was voted successfully"
 
 	playerPollInterval = 500 * time.Millisecond
-	statusMsgTimeout   = 2 * time.Second
+	statusMsgTimeout   = 3 * time.Second
 )
 
 func NewProgram(cfg *config.Value, b *browser.Api, p player.Player) *tea.Program {
@@ -63,7 +64,7 @@ func initialModel(cfg *config.Value, b *browser.Api, p player.Player) *model {
 			newBrowseTab(b, infoModel),
 		},
 		activeTab: activeIx,
-		statusCh:  make(chan string),
+		statusCh:  make(chan struct{}),
 	}
 	go m.statusHandler()
 	return &m
@@ -100,7 +101,7 @@ type model struct {
 	activeTab uiTabIndex
 
 	statusMsg string // display currently performed action or encountered error
-	statusCh  chan string
+	statusCh  chan struct{}
 
 	titleMsg string // display station metadata (song name)
 	spinner  *spinner.Model
@@ -118,8 +119,7 @@ func (m *model) statusHandler() {
 		select {
 		case <-t.C:
 			m.statusMsg = ""
-		case status := <-m.statusCh:
-			m.statusMsg = status
+		case <-m.statusCh:
 			t.Stop()
 			t.Reset(statusMsgTimeout)
 		}
@@ -279,8 +279,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) updateStatus(msg string) {
+	slog.Debug("updateStatus", "old", m.statusMsg, "new", msg)
+	m.statusMsg = msg
 	go func() {
-		m.statusCh <- msg
+		m.statusCh <- struct{}{}
 	}()
 }
 

@@ -72,9 +72,13 @@ func (i *infoModel) Update(msg tea.Msg) (*infoModel, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, i.keymap.vote):
-			go func() {
-				_ = i.b.StationVote(i.station.Stationuuid)
-			}()
+			err := i.b.StationVote(i.station.Stationuuid)
+			return i, func() tea.Msg {
+				if err != nil {
+					return statusMsg(err.Error())
+				}
+				return statusMsg(voteSuccesful)
+			}
 		case key.Matches(msg, i.keymap.cancel):
 			return i, func() tea.Msg {
 				i.setEnabled(false)

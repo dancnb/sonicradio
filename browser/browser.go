@@ -26,7 +26,7 @@ const (
 	voteTimeout       = 10 * time.Minute
 )
 
-var serverErrMsg = errors.New("Server response not available.")
+var serverErrMsg = errors.New("Server response not available")
 
 func NewApi(cfg config.Value) *Api {
 	api := Api{
@@ -219,6 +219,8 @@ func (a *Api) StationCounter(uuid string) error {
 }
 
 var errVoteTimeout = errors.New("Station was voted recently")
+var errVoteReq = errors.New("Vote request error")
+var errVoteOften = errors.New("You are voting for the same station too often")
 
 func (a *Api) StationVote(uuid string) error {
 	log := slog.With("method", "Api.StationVote")
@@ -233,9 +235,19 @@ func (a *Api) StationVote(uuid string) error {
 	res, err := a.doServerRequest(http.MethodPost, url, nil)
 	if err != nil {
 		log.Error("", "request error", err)
-		return err
+		return errVoteReq
 	}
 	log.Debug(string(res))
+	var voteRes struct {
+		Ok      bool
+		Message string
+	}
+	err = json.Unmarshal(res, &voteRes)
+	if err != nil {
+		return errVoteReq
+	} else if strings.Contains(voteRes.Message, "you are voting for the same station too often") {
+		return errVoteOften
+	}
 	return nil
 }
 
