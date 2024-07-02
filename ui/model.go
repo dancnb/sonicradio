@@ -60,7 +60,6 @@ func initialModel(cfg *config.Value, b *browser.Api, p player.Player) *model {
 			newBrowseTab(b, infoModel),
 		},
 		activeTab: activeIx,
-		statusMsg: noPlayingMsg,
 	}
 	return &m
 }
@@ -288,15 +287,21 @@ func (m *model) initSpinner() tea.Cmd {
 
 func (m *model) headerView(width int) string {
 	var res strings.Builder
+	appNameVers := fmt.Sprintf("sonicradio v%v", m.cfg.Version)
+	fill := width - lipgloss.Width(appNameVers) - 2*padDist
+	res.WriteString(statusBarStyle.Render(strings.Repeat(" ", max(0, fill))))
+	res.WriteString(statusBarStyle.Render(appNameVers))
+	res.WriteString("\n\n")
 
-	if m.statusMsg != "" {
-		res.WriteString(playStatusStyle.Render(lineChar + " " + m.statusMsg))
-	} else if m.delegate.currPlaying != nil {
+	if m.delegate.currPlaying != nil {
 		res.WriteString(m.spinner.View())
 		res.WriteString(itemStyle.Render(" " + m.delegate.currPlaying.Name))
 	} else if m.delegate.prevPlaying != nil {
 		res.WriteString(playStatusStyle.Render(pauseChar))
 		res.WriteString(itemStyle.Render(" " + m.delegate.prevPlaying.Name))
+	} else {
+		res.WriteString(playStatusStyle.Render(lineChar + " " + noPlayingMsg))
+
 	}
 	res.WriteString("\n")
 	if m.titleMsg != "" {
@@ -324,7 +329,7 @@ func (m *model) headerView(width int) string {
 		lipgloss.Top,
 		renderedTabs...,
 	)
-	hFill := width - lipgloss.Width(row)
+	hFill := width - lipgloss.Width(row) - 2*padDist
 	gap := tabGap.Render(strings.Repeat(" ", max(0, hFill)))
 	res.WriteString(lipgloss.JoinHorizontal(lipgloss.Bottom, row, gap) + "\n\n")
 

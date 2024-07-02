@@ -9,6 +9,7 @@ import (
 
 const (
 	tabGapDistance = 2
+	padDist        = 2
 )
 
 var (
@@ -44,7 +45,7 @@ var (
 				Border(lipgloss.BlockBorder(), false, false, false, true).
 				BorderForeground(basePrimaryColor)
 
-	viewStyle    = secondaryColorStyle.Copy().PaddingLeft(2)
+	viewStyle    = secondaryColorStyle.Copy().PaddingLeft(padDist)
 	noItemsStyle = secondaryColorStyle.Copy().PaddingLeft(3)
 
 	// tabs
@@ -89,7 +90,8 @@ var (
 
 	// general
 	backgroundColor = termenv.RGBColor("#282c34")
-	docStyle        = lipgloss.NewStyle().Padding(1, 2, 0, 2)
+	docStyle        = lipgloss.NewStyle().Padding(1, padDist, 0, padDist)
+	statusBarStyle  = lipgloss.NewStyle().Background(baseSecondColor).Foreground(invertedPrimaryColor)
 )
 
 func padFieldName(v string) string {

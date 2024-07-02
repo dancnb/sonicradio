@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/dancnb/sonicradio/browser"
 	"github.com/dancnb/sonicradio/config"
 	"github.com/dancnb/sonicradio/player"
@@ -149,8 +150,12 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		prefix = fmt.Sprintf(" %s", prefix)
 	}
 
+	listWidth := m.Width()
 	if isCurr || isPrev {
-		res.WriteString(nowPlayingPrefixStyle.Render(prefix))
+		prefixRender := nowPlayingPrefixStyle.Render(prefix)
+		res.WriteString(prefixRender)
+		maxWidth := max(listWidth-lipgloss.Width(prefixRender)-padDist, 0)
+
 		itStyle := nowPlayingStyle
 		descStyle := nowPlayingDescStyle
 		if isSel {
@@ -158,36 +163,58 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 			descStyle = selNowPlayingDescStyle
 		}
 
-		res.WriteString(itStyle.Render(name))
-		w := m.Width()
-		hFill := max(w-utf8.RuneCountInString(prefix)-utf8.RuneCountInString(name), 0)
+		for lipgloss.Width(itStyle.Render(name)) > maxWidth-1 && len(name) > 0 {
+			name = name[:len(name)-1]
+		}
+		nameRender := itStyle.Render(name)
+		res.WriteString(nameRender)
+		hFill := max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(nameRender)-padDist-1, 0)
 		res.WriteString(itStyle.Render(strings.Repeat(" ", hFill)))
 		res.WriteString("\n")
+
 		res.WriteString(nowPlayingPrefixStyle.Render(strings.Repeat(" ", utf8.RuneCountInString(prefix))))
-		res.WriteString(descStyle.Render(s.Description()))
-		hFill = max(w-utf8.RuneCountInString(prefix)-utf8.RuneCountInString(s.Description()), 0)
+		desc := s.Description()
+		for lipgloss.Width(descStyle.Render(desc)) > maxWidth-1 && len(desc) > 0 {
+			desc = desc[:len(desc)-1]
+		}
+		descRender := descStyle.Render(desc)
+		res.WriteString(descRender)
+		hFill = max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(descRender)-padDist-1, 0)
 		res.WriteString(descStyle.Render(strings.Repeat(" ", hFill)))
 
 		str = res.String()
 		str = selectedBorderStyle.Render(str)
 	} else {
-		res.WriteString(prefixStyle.Render(prefix))
+		prefixRender := prefixStyle.Render(prefix)
+		res.WriteString(prefixRender)
+		maxWidth := max(listWidth-lipgloss.Width(prefixRender)-padDist, 0)
+
 		itStyle := itemStyle
 		descStyle := descStyle
 		if isSel {
 			itStyle = selItemStyle
 			descStyle = selDescStyle
 		}
-		res.WriteString(itStyle.Render(name))
 
-		w := m.Width()
-		hFill := max(w-utf8.RuneCountInString(prefix)-utf8.RuneCountInString(name), 0)
+		for lipgloss.Width(itStyle.Render(name)) > maxWidth && len(name) > 0 {
+			name = name[:len(name)-1]
+		}
+		nameRender := itStyle.Render(name)
+		res.WriteString(nameRender)
+		hFill := max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(nameRender)-padDist, 0)
 		res.WriteString(itStyle.Render(strings.Repeat(" ", hFill)))
 		res.WriteString("\n")
+
 		res.WriteString(prefixStyle.Render(strings.Repeat(" ", utf8.RuneCountInString(prefix))))
-		res.WriteString(descStyle.Render(s.Description()))
-		hFill = max(w-utf8.RuneCountInString(prefix)-utf8.RuneCountInString(s.Description()), 0)
+		desc := s.Description()
+		for lipgloss.Width(descStyle.Render(desc)) > maxWidth && len(desc) > 0 {
+			desc = desc[:len(desc)-1]
+		}
+		descRender := descStyle.Render(desc)
+		res.WriteString(descRender)
+		hFill = max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(descRender)-padDist, 0)
 		res.WriteString(descStyle.Render(strings.Repeat(" ", hFill)))
+
 		str = res.String()
 	}
 
