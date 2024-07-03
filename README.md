@@ -44,7 +44,7 @@ After the installation, the command to run the application:
 ## TODO
 
 - [x] Search stations section
-- [ ] Display rich station information
+- [x] Display rich station information
 - [ ] Configuration section
 
 ## License
