@@ -33,7 +33,7 @@ const (
 	voteSuccesful    = "Station was voted successfully"
 
 	playerPollInterval = 500 * time.Millisecond
-	statusMsgTimeout   = 3 * time.Second
+	statusMsgTimeout   = 1 * time.Second
 )
 
 func NewProgram(cfg *config.Value, b *browser.Api, p player.Player) *tea.Program {
@@ -167,8 +167,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return nil, tea.Quit
 
 	case playRespMsg:
-		m.updateStatus(msg.err)
 		if msg.err != "" {
+			m.updateStatus(msg.err)
 			m.spinner = nil
 			d := m.delegate
 			if d.currPlaying != nil {
@@ -314,10 +314,10 @@ func (m *model) headerView(width int) string {
 	var res strings.Builder
 	status := ""
 	if len(m.statusMsg) > 0 {
-		status = statusBarStyle.Render(m.statusMsg)
+		status = statusBarStyle.Render(strings.Repeat(" ", padDist) + m.statusMsg)
 	}
 	res.WriteString(status)
-	appNameVers := statusBarStyle.Render(fmt.Sprintf("sonicradio v%v", m.cfg.Version))
+	appNameVers := statusBarStyle.Render(fmt.Sprintf("sonicradio v%v  ", m.cfg.Version))
 	fill := max(0, width-lipgloss.Width(status)-lipgloss.Width(appNameVers)-2*padDist)
 	res.WriteString(statusBarStyle.Render(strings.Repeat(" ", fill)))
 	res.WriteString(appNameVers)
