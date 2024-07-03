@@ -105,8 +105,8 @@ func (s Station) Description() string {
 	if strings.TrimSpace(s.Language) != "" {
 		desc += ", " + s.Language
 	}
-	desc = fmt.Sprintf("Votes: %[2]d %[1]s %[3]d kbps %[1]s %[4]s %[1]s %[5]s",
-		separator, s.Votes, s.Bitrate, desc, s.Tags)
+	desc = fmt.Sprintf("Votes: %[2]d, Clicks: %[6]d %[1]s %[3]d kbps %[1]s %[4]s %[1]s %[5]s",
+		separator, s.Votes, s.Bitrate, desc, s.Tags, s.Clickcount)
 	desc = strings.TrimSpace(desc)
 	desc = strings.Trim(desc, "|")
 	desc = strings.TrimSpace(desc)

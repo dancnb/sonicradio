@@ -3,13 +3,16 @@ package ui
 import (
 	"fmt"
 	"log/slog"
+	"math"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -26,8 +29,11 @@ const (
 	// header status messages
 	noPlayingMsg     = "Nothing playing"
 	missingFavorites = "Some stations not found"
+	prevTermErr      = "Could not terminate previous playback!"
+	voteSuccesful    = "Station was voted successfully"
 
 	playerPollInterval = 500 * time.Millisecond
+	statusMsgTimeout   = 1 * time.Second
 )
 
 func NewProgram(cfg *config.Value, b *browser.Api, p player.Player) *tea.Program {
@@ -47,15 +53,20 @@ func initialModel(cfg *config.Value, b *browser.Api, p player.Player) *model {
 		activeIx = favoriteTabIx
 	}
 
+	infoModel := newInfoModel(b)
 	m := model{
-		cfg:       cfg,
-		browser:   b,
-		player:    p,
-		delegate:  delegate,
-		tabs:      []uiTab{newFavoritesTab(), newBrowseTab(b)},
+		cfg:      cfg,
+		browser:  b,
+		player:   p,
+		delegate: delegate,
+		tabs: []uiTab{
+			newFavoritesTab(infoModel),
+			newBrowseTab(b, infoModel),
+		},
 		activeTab: activeIx,
-		statusMsg: noPlayingMsg,
+		statusCh:  make(chan struct{}),
 	}
+	go m.statusHandler()
 	return &m
 }
 
@@ -90,12 +101,29 @@ type model struct {
 	activeTab uiTabIndex
 
 	statusMsg string // display currently performed action or encountered error
-	titleMsg  string // display station metadata (song name)
-	spinner   *spinner.Model
+	statusCh  chan struct{}
+
+	titleMsg string // display station metadata (song name)
+	spinner  *spinner.Model
 
 	width        int
 	totHeight    int
 	headerHeight int
+}
+
+func (m *model) statusHandler() {
+	t := time.NewTimer(math.MaxInt64)
+	defer t.Stop()
+
+	for {
+		select {
+		case <-t.C:
+			m.statusMsg = ""
+		case <-m.statusCh:
+			t.Stop()
+			t.Reset(statusMsgTimeout)
+		}
+	}
 }
 
 func (m *model) Init() tea.Cmd {
@@ -104,9 +132,9 @@ func (m *model) Init() tea.Cmd {
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	logTeaMsg(msg, "ui.model.Update")
+	log := slog.With("method", "ui.model.Update")
 	activeTab := m.tabs[m.activeTab]
 
-	log := slog.With("method", "ui.model.Update")
 	switch msg := msg.(type) {
 	//
 	// messages that need to reach all tabs
@@ -139,21 +167,21 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return nil, tea.Quit
 
 	case playRespMsg:
-		m.statusMsg = msg.err
 		if msg.err != "" {
+			m.updateStatus(msg.err)
 			m.spinner = nil
 			d := m.delegate
 			if d.currPlaying != nil {
 				_, err := d.stopStation(*d.currPlaying)
 				if err != nil {
-					m.statusMsg = "Could not terminate previous playback!"
+					m.updateStatus(prevTermErr)
 					return m, nil
 				}
 			}
 		}
 		return m, nil
 	case statusMsg:
-		m.updateStatus(msg)
+		m.updateStatus(string(msg))
 		return m, nil
 
 	case titleMsg:
@@ -185,26 +213,22 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.String() == "ctrl+c" {
 			m.quit()
 			return m, tea.Quit
-		} else if activeTab.IsSearchEnabled() {
-			break
-		} else if activeTab.IsFiltering() {
+		} else if activeTab.IsSearchEnabled() || activeTab.IsFiltering() {
 			break
 		}
 
 		d := m.delegate
-
-		switch {
-		case key.Matches(msg, d.keymap.pause):
+		if key.Matches(msg, d.keymap.pause) {
 			m.titleMsg = ""
 			m.spinner = nil
 			if d.currPlaying != nil {
 				_, err := d.stopStation(*d.currPlaying)
 				if err != nil {
-					m.statusMsg = "Could not terminate previous playback!"
+					m.updateStatus(prevTermErr)
 					return m, nil
 				}
 			} else if d.prevPlaying != nil {
-				m.statusMsg = fmt.Sprintf("Connecting to %s...", d.prevPlaying.Name)
+				m.updateStatus(fmt.Sprintf("Connecting to %s...", d.prevPlaying.Name))
 				cmds := []tea.Cmd{m.initSpinner(), d.playCmd(d.prevPlaying)}
 				return m, tea.Batch(cmds...)
 			} else {
@@ -212,29 +236,34 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// TODO handle enter for other tabs if necessary
 					return m, nil
 				}
-				selStation, ok := activeTab.List().SelectedItem().(browser.Station)
+				selStation, ok := activeTab.Stations().list.SelectedItem().(browser.Station)
 				if ok {
-					m.statusMsg = fmt.Sprintf("Connecting to %s...", selStation.Name)
+					m.updateStatus(fmt.Sprintf("Connecting to %s...", selStation.Name))
 					cmds := []tea.Cmd{m.initSpinner(), d.playCmd(&selStation)}
 					return m, tea.Batch(cmds...)
 				}
 			}
+		}
 
-		case key.Matches(msg, d.keymap.playSelected):
+		if activeTab.IsInfoEnabled() {
+			break
+		}
+
+		if key.Matches(msg, d.keymap.playSelected) {
 			if m.activeTab != favoriteTabIx && m.activeTab != browseTabIx {
 				// TODO handle enter for other tabs if necessary
 				return m, nil
 			}
-			selStation, ok := activeTab.List().SelectedItem().(browser.Station)
+			selStation, ok := activeTab.Stations().list.SelectedItem().(browser.Station)
 			if ok {
 				m.titleMsg = ""
 				m.spinner = nil
 				_, err := d.stopStation(selStation)
 				if err != nil {
-					m.statusMsg = "Could not terminate previous playback!"
+					m.updateStatus(prevTermErr)
 					return m, nil
 				}
-				m.statusMsg = fmt.Sprintf("Connecting to %s...", selStation.Name)
+				m.updateStatus(fmt.Sprintf("Connecting to %s...", selStation.Name))
 				cmds := []tea.Cmd{m.initSpinner(), d.playCmd(&selStation)}
 				return m, tea.Batch(cmds...)
 			}
@@ -249,10 +278,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return model, cmd
 }
 
-func (m *model) updateStatus(msg statusMsg) {
-	if msg != "" {
-		m.statusMsg = string(msg)
-	}
+func (m *model) updateStatus(msg string) {
+	slog.Debug("updateStatus", "old", m.statusMsg, "new", msg)
+	m.statusMsg = msg
+	go func() {
+		m.statusCh <- struct{}{}
+	}()
 }
 
 func (m *model) quit() {
@@ -281,15 +312,26 @@ func (m *model) initSpinner() tea.Cmd {
 
 func (m *model) headerView(width int) string {
 	var res strings.Builder
+	status := ""
+	if len(m.statusMsg) > 0 {
+		status = statusBarStyle.Render(strings.Repeat(" ", padDist) + m.statusMsg)
+	}
+	res.WriteString(status)
+	appNameVers := statusBarStyle.Render(fmt.Sprintf("sonicradio v%v  ", m.cfg.Version))
+	fill := max(0, width-lipgloss.Width(status)-lipgloss.Width(appNameVers)-2*padDist)
+	res.WriteString(statusBarStyle.Render(strings.Repeat(" ", fill)))
+	res.WriteString(appNameVers)
+	res.WriteString("\n\n")
 
-	if m.statusMsg != "" {
-		res.WriteString(playStatusStyle.Render(lineChar + " " + m.statusMsg))
-	} else if m.delegate.currPlaying != nil {
+	if m.delegate.currPlaying != nil {
 		res.WriteString(m.spinner.View())
 		res.WriteString(itemStyle.Render(" " + m.delegate.currPlaying.Name))
 	} else if m.delegate.prevPlaying != nil {
 		res.WriteString(playStatusStyle.Render(pauseChar))
 		res.WriteString(itemStyle.Render(" " + m.delegate.prevPlaying.Name))
+	} else {
+		res.WriteString(playStatusStyle.Render(lineChar + " " + noPlayingMsg))
+
 	}
 	res.WriteString("\n")
 	if m.titleMsg != "" {
@@ -317,7 +359,7 @@ func (m *model) headerView(width int) string {
 		lipgloss.Top,
 		renderedTabs...,
 	)
-	hFill := width - lipgloss.Width(row)
+	hFill := width - lipgloss.Width(row) - 2*padDist
 	gap := tabGap.Render(strings.Repeat(" ", max(0, hFill)))
 	res.WriteString(lipgloss.JoinHorizontal(lipgloss.Bottom, row, gap) + "\n\n")
 
@@ -325,8 +367,6 @@ func (m *model) headerView(width int) string {
 }
 
 func (m model) View() string {
-	log := slog.With("method", "ui.model.View")
-	log.Debug("", "statusMsg", m.statusMsg, "titleMsg", m.titleMsg)
 	if !m.ready {
 		return loadingMsg
 	}
@@ -382,8 +422,10 @@ func (m *model) topStationsCmd() tea.Msg {
 func logTeaMsg(msg tea.Msg, tag string) {
 	log := slog.With("method", tag)
 	switch msg.(type) {
-	case favoritesStationRespMsg, topStationsRespMsg, searchRespMsg:
+	case favoritesStationRespMsg, topStationsRespMsg, searchRespMsg, toggleInfoMsg:
 		log.Debug("tea.Msg", "type", fmt.Sprintf("%T", msg))
+	case cursor.BlinkMsg, spinner.TickMsg, list.FilterMatchesMsg:
+		break
 	default:
 		log.Debug("tea.Msg", "type", fmt.Sprintf("%T", msg), "value", msg, "#", fmt.Sprintf("%#v", msg))
 	}

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dancnb/sonicradio/config"
 )
@@ -90,6 +91,19 @@ func TestApi_StationCounter(t *testing.T) {
 	a := NewApi(config.Value{Version: "", Debug: true})
 	err := a.StationCounter("748d830c-d934-41e8-bd14-870add931e1d")
 	if err != nil {
+		t.Error(err)
+	}
+}
+
+func TestApi_StationVote(t *testing.T) {
+	a := NewApi(config.Value{Version: "", Debug: true})
+	err := a.StationVote("748d830c-d934-41e8-bd14-870add931e1d")
+	if err != nil {
+		t.Error(err)
+	}
+	time.Sleep(300 * time.Millisecond)
+	err = a.StationVote("748d830c-d934-41e8-bd14-870add931e1d")
+	if err != errVoteTimeout {
 		t.Error(err)
 	}
 }

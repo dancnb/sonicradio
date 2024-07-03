@@ -8,17 +8,18 @@ import (
 )
 
 type browseTab struct {
-	baseTab
+	stationsTab
 	defTopStations []browser.Station
 	searchModel    *searchModel
 }
 
-func newBrowseTab(browser *browser.Api) *browseTab {
+func newBrowseTab(browser *browser.Api, infoModel *infoModel) *browseTab {
 	k := newListKeymap()
 
 	m := &browseTab{
-		baseTab: baseTab{
+		stationsTab: stationsTab{
 			listKeymap: k,
+			infoModel:  infoModel,
 		},
 		searchModel: newSearchModel(browser),
 	}
@@ -48,18 +49,22 @@ func (t *browseTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	var cmds []tea.Cmd
 
-	if t.searchModel.isEnabled() {
+	if t.IsSearchEnabled() {
+		searchModelMsg := msg
 		if sizeMsg, ok := msg.(tea.WindowSizeMsg); ok {
-			availableHeight := sizeMsg.Height - m.headerHeight
-			newSizeMsg := tea.WindowSizeMsg{Width: sizeMsg.Width, Height: availableHeight}
-			sm, cmd := t.searchModel.Update(newSizeMsg)
-			t.searchModel = sm.(*searchModel)
-			cmds = append(cmds, cmd)
-		} else {
-			sm, cmd := t.searchModel.Update(msg)
-			t.searchModel = sm.(*searchModel)
-			cmds = append(cmds, cmd)
+			searchModelMsg = t.newSizeMsg(sizeMsg, m)
 		}
+		sm, cmd := t.searchModel.Update(searchModelMsg)
+		t.searchModel = sm.(*searchModel)
+		cmds = append(cmds, cmd)
+	} else if t.IsInfoEnabled() {
+		infoModelMsg := msg
+		if sizeMsg, ok := msg.(tea.WindowSizeMsg); ok {
+			infoModelMsg = t.newSizeMsg(sizeMsg, m)
+		}
+		im, cmd := t.infoModel.Update(infoModelMsg)
+		t.infoModel = im
+		cmds = append(cmds, cmd)
 	}
 
 	switch msg := msg.(type) {
@@ -68,7 +73,7 @@ func (t *browseTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		t.list.SetSize(msg.Width-h, msg.Height-m.headerHeight-v)
 
 	case topStationsRespMsg:
-		m.updateStatus(msg.statusMsg)
+		m.updateStatus(string(msg.statusMsg))
 		t.viewMsg = string(msg.viewMsg)
 		copy(t.defTopStations, msg.stations)
 		cmd := t.setStations(msg.stations)
@@ -79,14 +84,22 @@ func (t *browseTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.cancelled {
 			// do nothing, list already has top stations
 		} else {
-			m.updateStatus(msg.statusMsg)
+			m.updateStatus(string(msg.statusMsg))
 			t.viewMsg = string(msg.viewMsg)
 			cmd := t.setStations(msg.stations)
 			cmds = append(cmds, cmd)
 		}
 
+	case toggleInfoMsg:
+		if msg.enable {
+			cmds = append(cmds, t.initInfoModel(m, msg))
+			return m, tea.Batch(cmds...)
+		} else {
+			t.listKeymap.setEnabled(true)
+		}
+
 	case tea.KeyMsg:
-		if t.searchModel.isEnabled() {
+		if t.IsSearchEnabled() || t.IsInfoEnabled() {
 			return m, tea.Batch(cmds...)
 		}
 
@@ -134,15 +147,17 @@ func (t *browseTab) setStations(stations []browser.Station) tea.Cmd {
 		items[i] = stations[i]
 	}
 	cmd := t.list.SetItems(items)
-	t.List().Select(0)
+	t.list.Select(0)
 	return cmd
 }
 
 func (t *browseTab) View() string {
-	if t.searchModel.isEnabled() {
+	if t.IsSearchEnabled() {
 		return t.searchModel.View()
+	} else if t.IsInfoEnabled() {
+		return t.infoModel.View()
 	}
-	return t.baseTab.View()
+	return t.stationsTab.View()
 }
 
 func (t *browseTab) IsSearchEnabled() bool {

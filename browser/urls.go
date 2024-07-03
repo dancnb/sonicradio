@@ -7,4 +7,5 @@ const (
 	urlCountries      = "/json/countries"
 	urlLangs          = "/json/languages"
 	urlTags           = "/json/tags "
+	urlVote           = "/json/vote/"
 )
