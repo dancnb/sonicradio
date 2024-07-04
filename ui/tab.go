@@ -121,10 +121,10 @@ func createList(delegate *stationDelegate, width int, height int) list.Model {
 	l.Styles.NoItems = noItemsStyle
 	l.FilterInput.ShowSuggestions = true
 	l.KeyMap.Quit.SetKeys("q")
-	l.KeyMap.PrevPage.SetKeys("pgup", "u")
-	l.KeyMap.PrevPage.SetHelp("u/pgup", "prev page")
-	l.KeyMap.NextPage.SetKeys("pgdown", "d")
-	l.KeyMap.NextPage.SetHelp("d/pgdn", "next page")
+	l.KeyMap.PrevPage.SetKeys("pgup", "ctrl+b")
+	l.KeyMap.PrevPage.SetHelp("ctrl+b/pgup", "prev page")
+	l.KeyMap.NextPage.SetKeys("pgdown", "ctrl+f")
+	l.KeyMap.NextPage.SetHelp("ctrl+f/pgdn", "next page")
 	h, v := docStyle.GetFrameSize()
 	l.SetSize(width-h, height-v)
 

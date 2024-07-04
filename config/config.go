@@ -42,6 +42,25 @@ func (v *Value) ToggleFavorite(uuid string) bool {
 	return false
 }
 
+func (v *Value) DeleteFavorite(uuid string) bool {
+	l1 := len(v.Favorites)
+	v.Favorites = slices.DeleteFunc(v.Favorites, func(el string) bool { return el == uuid })
+	l2 := len(v.Favorites)
+	return l2 != l1
+}
+
+func (v *Value) InsertFavorite(uuid string, idx int) bool {
+	if slices.Contains(v.Favorites, uuid) {
+		return false
+	}
+	if idx >= len(v.Favorites) {
+		v.Favorites = append(v.Favorites, uuid)
+		return true
+	}
+	v.Favorites = slices.Insert(v.Favorites, idx, uuid)
+	return true
+}
+
 func Load() (Value, error) {
 	flag.Parse()
 	versionVal := os.Getenv("SONIC_VERSION")
