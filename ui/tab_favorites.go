@@ -8,17 +8,14 @@ import (
 )
 
 type favoritesTab struct {
-	stationsTab
+	stationsTabBase
 }
 
 func newFavoritesTab(infoModel *infoModel) *favoritesTab {
 	k := newListKeymap()
 
 	m := &favoritesTab{
-		stationsTab: stationsTab{
-			listKeymap: k,
-			infoModel:  infoModel,
-		},
+		stationsTabBase: newStationsTab(k, infoModel),
 	}
 	return m
 }
@@ -29,7 +26,7 @@ func (t *favoritesTab) createList(delegate *stationDelegate, width int, height i
 		return []key.Binding{t.listKeymap.search}
 	}
 	l.AdditionalFullHelpKeys = func() []key.Binding {
-		return []key.Binding{t.listKeymap.search, t.listKeymap.toNowPlaying, t.listKeymap.toBrowser, t.listKeymap.prevTab, t.listKeymap.nextTab}
+		return []key.Binding{t.listKeymap.search, t.listKeymap.digitHelp, t.listKeymap.toNowPlaying, t.listKeymap.prevTab, t.listKeymap.nextTab}
 	}
 
 	return l
@@ -172,15 +169,14 @@ func (t *favoritesTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.toBrowseTab()
 			return m.tabs[browseTabIx].Update(m, msg)
 
-		case key.Matches(msg, t.listKeymap.toBrowser):
-			m.toBrowseTab()
-
 		case key.Matches(msg, t.listKeymap.nextTab):
 			m.toBrowseTab()
 
 		case key.Matches(msg, t.listKeymap.prevTab):
 			m.toBrowseTab()
 
+		case key.Matches(msg, t.listKeymap.digits...):
+			t.doJump(msg)
 		}
 	}
 
@@ -195,5 +191,5 @@ func (t *favoritesTab) View() string {
 	if t.IsInfoEnabled() {
 		return t.infoModel.View()
 	}
-	return t.stationsTab.View()
+	return t.stationsTabBase.View()
 }

@@ -2,6 +2,8 @@ package ui
 
 import (
 	"log/slog"
+	"strconv"
+	"time"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -32,22 +34,66 @@ type uiTab interface {
 	Init(m *model) tea.Cmd
 	Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd)
 	View() string
+}
 
-	Stations() *stationsTab
+type stationTab interface {
+	uiTab
+	Stations() *stationsTabBase
 	IsFiltering() bool
 	IsSearchEnabled() bool
 	IsInfoEnabled() bool
 }
 
-type stationsTab struct {
+const jumpTimeout = 250 * time.Millisecond
+
+type jumpInfo struct {
+	position int
+	last     time.Time
+}
+
+func (jump jumpInfo) isActive() bool {
+	return jump.last.Add(jumpTimeout).After(time.Now())
+}
+
+type stationsTabBase struct {
 	uiTab
 	list       list.Model
 	viewMsg    string
 	listKeymap listKeymap
+	jump       jumpInfo
 	infoModel  *infoModel
 }
 
-func (t *stationsTab) View() string {
+func newStationsTab(k listKeymap, infoModel *infoModel) stationsTabBase {
+	t := stationsTabBase{
+		listKeymap: k,
+		infoModel:  infoModel,
+	}
+	return t
+}
+
+func (t *stationsTabBase) doJump(msg tea.KeyMsg) {
+	jumpIdx := t.jumpIdx(msg)
+	if jumpIdx > 0 && jumpIdx <= len(t.list.Items()) {
+		t.list.Select(jumpIdx - 1)
+	}
+}
+
+func (t *stationsTabBase) jumpIdx(msg tea.Msg) int {
+	log := slog.With("method", "ui.stattionsTab.getJumpIdx")
+	digit, _ := strconv.Atoi(msg.(tea.KeyMsg).String())
+	log.Debug("", "digit", digit, "oldPos", t.jump.position)
+	if t.jump.isActive() {
+		t.jump.position = t.jump.position*10 + digit
+	} else {
+		t.jump.position = digit
+	}
+	t.jump.last = time.Now()
+	log.Debug("", "newPos", t.jump.position)
+	return t.jump.position
+}
+
+func (t *stationsTabBase) View() string {
 	if t.viewMsg != "" {
 		var sections []string
 		availHeight := t.list.Height()
@@ -61,13 +107,13 @@ func (t *stationsTab) View() string {
 	return t.list.View()
 }
 
-func (t *stationsTab) Stations() *stationsTab { return t }
+func (t *stationsTabBase) Stations() *stationsTabBase { return t }
 
-func (t *stationsTab) IsFiltering() bool {
+func (t *stationsTabBase) IsFiltering() bool {
 	return t.list.FilterState() == list.Filtering
 }
 
-func (t *stationsTab) toNowPlaying(m *model) {
+func (t *stationsTabBase) toNowPlaying(m *model) {
 	uuid := ""
 	if m.delegate.currPlaying != nil {
 		uuid = m.delegate.currPlaying.Stationuuid
@@ -90,21 +136,21 @@ func (t *stationsTab) toNowPlaying(m *model) {
 	}
 }
 
-func (t *stationsTab) IsSearchEnabled() bool {
+func (t *stationsTabBase) IsSearchEnabled() bool {
 	return false
 }
 
-func (t *stationsTab) IsInfoEnabled() bool {
+func (t *stationsTabBase) IsInfoEnabled() bool {
 	return t.infoModel != nil && t.infoModel.enabled
 }
 
-func (*stationsTab) newSizeMsg(sizeMsg tea.WindowSizeMsg, m *model) tea.WindowSizeMsg {
+func (*stationsTabBase) newSizeMsg(sizeMsg tea.WindowSizeMsg, m *model) tea.WindowSizeMsg {
 	availableHeight := sizeMsg.Height - m.headerHeight
 	newSizeMsg := tea.WindowSizeMsg{Width: sizeMsg.Width, Height: availableHeight}
 	return newSizeMsg
 }
 
-func (t *stationsTab) initInfoModel(m *model, msg toggleInfoMsg) tea.Cmd {
+func (t *stationsTabBase) initInfoModel(m *model, msg toggleInfoMsg) tea.Cmd {
 	t.listKeymap.setEnabled(false)
 	t.infoModel.setSize(m.width, m.totHeight-m.headerHeight)
 	return t.infoModel.Init(msg.station)
