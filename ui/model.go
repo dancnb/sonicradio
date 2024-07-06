@@ -200,7 +200,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.String() == "ctrl+c" {
 			m.quit()
 			return m, tea.Quit
-		} else if activeTab.IsSearchEnabled() || activeTab.IsFiltering() {
+		} else if activeTab, ok := activeTab.(stationTab); ok && (activeTab.IsSearchEnabled() || activeTab.IsFiltering()) {
 			break
 		}
 
@@ -219,11 +219,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds := []tea.Cmd{m.initSpinner(), d.playCmd(d.prevPlaying)}
 				return m, tea.Batch(cmds...)
 			} else {
-				if m.activeTabIdx != favoriteTabIx && m.activeTabIdx != browseTabIx {
+				activeTab, ok := activeTab.(stationTab)
+				if !ok {
 					// TODO handle enter for other tabs if necessary
 					return m, nil
 				}
 				selStation, ok := activeTab.Stations().list.SelectedItem().(browser.Station)
+
 				if ok {
 					m.updateStatus(fmt.Sprintf("Connecting to %s...", selStation.Name))
 					cmds := []tea.Cmd{m.initSpinner(), d.playCmd(&selStation)}
@@ -232,12 +234,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		if activeTab.IsInfoEnabled() {
+		if activeTab, ok := activeTab.(stationTab); ok && activeTab.IsInfoEnabled() {
 			break
 		}
 
 		if key.Matches(msg, d.keymap.playSelected) {
-			if m.activeTabIdx != favoriteTabIx && m.activeTabIdx != browseTabIx {
+			activeTab, ok := activeTab.(stationTab)
+			if !ok {
 				// TODO handle enter for other tabs if necessary
 				return m, nil
 			}

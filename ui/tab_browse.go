@@ -8,7 +8,7 @@ import (
 )
 
 type browseTab struct {
-	stationsTab
+	stationsTabBase
 	defTopStations []browser.Station
 	searchModel    *searchModel
 }
@@ -17,11 +17,8 @@ func newBrowseTab(browser *browser.Api, infoModel *infoModel) *browseTab {
 	k := newListKeymap()
 
 	m := &browseTab{
-		stationsTab: stationsTab{
-			listKeymap: k,
-			infoModel:  infoModel,
-		},
-		searchModel: newSearchModel(browser),
+		stationsTabBase: newStationsTab(k, infoModel),
+		searchModel:     newSearchModel(browser),
 	}
 	return m
 }
@@ -32,7 +29,7 @@ func (t *browseTab) createList(delegate *stationDelegate, width int, height int)
 		return []key.Binding{t.listKeymap.search}
 	}
 	l.AdditionalFullHelpKeys = func() []key.Binding {
-		return []key.Binding{t.listKeymap.search, t.listKeymap.toNowPlaying, t.listKeymap.toFavorites, t.listKeymap.prevTab, t.listKeymap.nextTab}
+		return []key.Binding{t.listKeymap.search, t.listKeymap.digitHelp, t.listKeymap.toNowPlaying, t.listKeymap.prevTab, t.listKeymap.nextTab}
 	}
 
 	return l
@@ -125,12 +122,14 @@ func (t *browseTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, t.searchModel.Init())
 			return m, tea.Batch(cmds...)
 
-		case key.Matches(msg, t.listKeymap.toFavorites):
-			m.toFavoritesTab()
 		case key.Matches(msg, t.listKeymap.nextTab):
 			m.toFavoritesTab()
+
 		case key.Matches(msg, t.listKeymap.prevTab):
 			m.toFavoritesTab()
+
+		case key.Matches(msg, t.listKeymap.digits...):
+			t.doJump(msg)
 		}
 	}
 
@@ -157,7 +156,7 @@ func (t *browseTab) View() string {
 	} else if t.IsInfoEnabled() {
 		return t.infoModel.View()
 	}
-	return t.stationsTab.View()
+	return t.stationsTabBase.View()
 }
 
 func (t *browseTab) IsSearchEnabled() bool {
