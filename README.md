@@ -30,7 +30,9 @@ After the installation, the command to run the application:
 |enter            |                   play selected |
 |space            |                      play/pause |
 |f                |              toggle as favorite |
-|i                |   station info(not implemented) |
+|i                |                    station info |
+|d                |                  delete station |
+|p                |           paste deleted station |
 |s                |                     open search |
 |/                |                  filter results |
 |esc              |               go to now playing |
