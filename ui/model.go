@@ -48,10 +48,6 @@ func initialModel(cfg *config.Value, b *browser.Api, p player.Player) *model {
 	lipgloss.DefaultRenderer().SetHasDarkBackground(true)
 
 	delegate := newStationDelegate(cfg, p, b)
-	activeIx := browseTabIx
-	if len(cfg.Favorites) > 0 {
-		activeIx = favoriteTabIx
-	}
 
 	infoModel := newInfoModel(b)
 	m := model{
@@ -63,9 +59,15 @@ func initialModel(cfg *config.Value, b *browser.Api, p player.Player) *model {
 			newFavoritesTab(infoModel),
 			newBrowseTab(b, infoModel),
 		},
-		activeTab: activeIx,
-		statusCh:  make(chan struct{}),
+		statusCh: make(chan struct{}),
 	}
+
+	if len(cfg.Favorites) > 0 {
+		m.toFavoritesTab()
+	} else {
+		m.toBrowseTab()
+	}
+
 	go m.statusHandler()
 	return &m
 }
@@ -97,8 +99,8 @@ type model struct {
 	player   player.Player
 	delegate *stationDelegate
 
-	tabs      []uiTab
-	activeTab uiTabIndex
+	tabs         []uiTab
+	activeTabIdx uiTabIndex
 
 	statusMsg string // display currently performed action or encountered error
 	statusCh  chan struct{}
@@ -111,21 +113,6 @@ type model struct {
 	headerHeight int
 }
 
-func (m *model) statusHandler() {
-	t := time.NewTimer(math.MaxInt64)
-	defer t.Stop()
-
-	for {
-		select {
-		case <-t.C:
-			m.statusMsg = ""
-		case <-m.statusCh:
-			t.Stop()
-			t.Reset(statusMsgTimeout)
-		}
-	}
-}
-
 func (m *model) Init() tea.Cmd {
 	return nil
 }
@@ -133,7 +120,7 @@ func (m *model) Init() tea.Cmd {
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	logTeaMsg(msg, "ui.model.Update")
 	log := slog.With("method", "ui.model.Update")
-	activeTab := m.tabs[m.activeTab]
+	activeTab := m.tabs[m.activeTabIdx]
 
 	switch msg := msg.(type) {
 	//
@@ -232,7 +219,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds := []tea.Cmd{m.initSpinner(), d.playCmd(d.prevPlaying)}
 				return m, tea.Batch(cmds...)
 			} else {
-				if m.activeTab != favoriteTabIx && m.activeTab != browseTabIx {
+				if m.activeTabIdx != favoriteTabIx && m.activeTabIdx != browseTabIx {
 					// TODO handle enter for other tabs if necessary
 					return m, nil
 				}
@@ -250,7 +237,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if key.Matches(msg, d.keymap.playSelected) {
-			if m.activeTab != favoriteTabIx && m.activeTab != browseTabIx {
+			if m.activeTabIdx != favoriteTabIx && m.activeTabIdx != browseTabIx {
 				// TODO handle enter for other tabs if necessary
 				return m, nil
 			}
@@ -276,6 +263,30 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	//
 	model, cmd := activeTab.Update(m, msg)
 	return model, cmd
+}
+
+func (m *model) statusHandler() {
+	t := time.NewTimer(math.MaxInt64)
+	defer t.Stop()
+
+	for {
+		select {
+		case <-t.C:
+			m.statusMsg = ""
+		case <-m.statusCh:
+			t.Stop()
+			t.Reset(statusMsgTimeout)
+		}
+	}
+}
+
+func (m *model) toFavoritesTab() {
+	m.delegate.keymap.toggleFavorite.SetEnabled(false)
+	m.activeTabIdx = favoriteTabIx
+}
+func (m *model) toBrowseTab() {
+	m.delegate.keymap.toggleFavorite.SetEnabled(true)
+	m.activeTabIdx = browseTabIx
 }
 
 func (m *model) updateStatus(msg string) {
@@ -346,8 +357,8 @@ func (m *model) headerView(width int) string {
 	var renderedTabs []string
 	renderedTabs = append(renderedTabs, tabGap.Render(strings.Repeat(" ", tabGapDistance)))
 	for i := range m.tabs {
-		if i == int(m.activeTab) {
-			renderedTabs = append(renderedTabs, activeTab.Render(m.activeTab.String()))
+		if i == int(m.activeTabIdx) {
+			renderedTabs = append(renderedTabs, activeTab.Render(m.activeTabIdx.String()))
 		} else {
 			renderedTabs = append(renderedTabs, inactiveTab.Render(uiTabIndex(i).String()))
 		}
@@ -374,7 +385,7 @@ func (m model) View() string {
 	var doc strings.Builder
 	header := m.headerView(m.width)
 	doc.WriteString(header)
-	tabView := m.tabs[m.activeTab].View()
+	tabView := m.tabs[m.activeTabIdx].View()
 	doc.WriteString(tabView)
 	return docStyle.Render(doc.String())
 }

@@ -134,15 +134,53 @@ func (t *favoritesTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.quit()
 			return m, tea.Quit
 
+		case key.Matches(msg, m.delegate.keymap.delete):
+			selStation, ok := t.list.SelectedItem().(browser.Station)
+			if !ok {
+				break
+			}
+			m.cfg.DeleteFavorite(selStation.Stationuuid)
+			t.viewMsg = ""
+			if len(m.cfg.Favorites) == 0 {
+				t.viewMsg = noFavoritesAddedMsg
+			}
+
+		case key.Matches(msg, m.delegate.keymap.pasteAfter):
+			if m.delegate.deleted == nil {
+				break
+			}
+			idx := t.list.Index()
+			if len(m.cfg.Favorites) > 0 {
+				idx++
+			}
+			m.cfg.InsertFavorite(m.delegate.deleted.Stationuuid, idx)
+			if len(m.cfg.Favorites) > 0 {
+				t.viewMsg = ""
+			}
+
+		case key.Matches(msg, m.delegate.keymap.pasteBefore):
+			if m.delegate.deleted == nil {
+				break
+			}
+			idx := t.list.Index()
+			m.cfg.InsertFavorite(m.delegate.deleted.Stationuuid, idx)
+			if len(m.cfg.Favorites) > 0 {
+				t.viewMsg = ""
+			}
+
 		case key.Matches(msg, t.listKeymap.search):
-			m.activeTab = browseTabIx
+			m.toBrowseTab()
 			return m.tabs[browseTabIx].Update(m, msg)
+
 		case key.Matches(msg, t.listKeymap.toBrowser):
-			m.activeTab = browseTabIx
+			m.toBrowseTab()
+
 		case key.Matches(msg, t.listKeymap.nextTab):
-			m.activeTab = browseTabIx
+			m.toBrowseTab()
+
 		case key.Matches(msg, t.listKeymap.prevTab):
-			m.activeTab = browseTabIx
+			m.toBrowseTab()
+
 		}
 	}
 

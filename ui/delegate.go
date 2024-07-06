@@ -39,6 +39,7 @@ type stationDelegate struct {
 	cfg         *config.Value
 	prevPlaying *browser.Station
 	currPlaying *browser.Station
+	deleted     *browser.Station
 	keymap      *delegateKeyMap
 
 	defaultDelegate list.DefaultDelegate
@@ -50,10 +51,7 @@ func (d *stationDelegate) Spacing() int { return d.defaultDelegate.Spacing() }
 
 func (d *stationDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	logTeaMsg(msg, "ui.stationDelegate.Update")
-	selStation, ok := m.SelectedItem().(browser.Station)
-	if !ok {
-		return nil
-	}
+	selStation, isSel := m.SelectedItem().(browser.Station)
 
 	switch msg := msg.(type) {
 	case toggleInfoMsg:
@@ -63,17 +61,68 @@ func (d *stationDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 
 	case tea.KeyMsg:
 		switch {
+		case key.Matches(msg, d.keymap.info):
+			if !isSel {
+				break
+			}
+			d.keymap.info.SetEnabled(false)
+			return func() tea.Msg { return toggleInfoMsg{enable: true, station: selStation} }
+
 		case key.Matches(msg, d.keymap.toggleFavorite):
+			if !isSel {
+				break
+			}
 			added := d.cfg.ToggleFavorite(selStation.Stationuuid)
 			return func() tea.Msg { return toggleFavoriteMsg{added, selStation} }
 
-		case key.Matches(msg, d.keymap.info):
-			d.keymap.info.SetEnabled(false)
-			return func() tea.Msg { return toggleInfoMsg{enable: true, station: selStation} }
+		case key.Matches(msg, d.keymap.delete):
+			if !isSel {
+				break
+			}
+			idx := m.Index()
+			m.RemoveItem(idx)
+			d.deleted = &selStation
+
+		case key.Matches(msg, d.keymap.pasteAfter):
+			if !d.shouldPaste(m) {
+				break
+			}
+			idx := m.Index()
+			if len(m.Items()) > 0 {
+				idx++
+				m.Select(idx)
+			}
+			cmd := m.InsertItem(idx, *d.deleted)
+			d.deleted = nil
+			return cmd
+
+		case key.Matches(msg, d.keymap.pasteBefore):
+			if !d.shouldPaste(m) {
+				break
+			}
+			idx := m.Index()
+			cmd := m.InsertItem(idx, *d.deleted)
+			d.deleted = nil
+			return cmd
 		}
 	}
 
 	return nil
+}
+
+func (d *stationDelegate) shouldPaste(m *list.Model) bool {
+	if d.deleted == nil {
+		return false
+	}
+	its := m.Items()
+	dupl := false
+	for ii := range its {
+		if d.deleted.Stationuuid == its[ii].(browser.Station).Stationuuid {
+			dupl = true
+			break
+		}
+	}
+	return !dupl
 }
 
 func (d *stationDelegate) playCmd(s *browser.Station) tea.Cmd {
@@ -230,7 +279,7 @@ func (d *stationDelegate) ShortHelp() []key.Binding {
 func (d *stationDelegate) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{
-			d.keymap.playSelected, d.keymap.pause, d.keymap.toggleFavorite, d.keymap.info,
+			d.keymap.playSelected, d.keymap.pause, d.keymap.info, d.keymap.toggleFavorite, d.keymap.delete, d.keymap.pasteAfter, d.keymap.pasteBefore,
 		},
 	}
 }
@@ -251,7 +300,19 @@ func newDelegateKeyMap() *delegateKeyMap {
 		),
 		toggleFavorite: key.NewBinding(
 			key.WithKeys("f"),
-			key.WithHelp("f", "set favorite"),
+			key.WithHelp("f", "favorite station"),
+		),
+		delete: key.NewBinding(
+			key.WithKeys("d"),
+			key.WithHelp("d", "delete"),
+		),
+		pasteAfter: key.NewBinding(
+			key.WithKeys("p"),
+			key.WithHelp("p", "paste after"),
+		),
+		pasteBefore: key.NewBinding(
+			key.WithKeys("P"),
+			key.WithHelp("shift+p", "paste at"),
 		),
 	}
 }
@@ -261,4 +322,7 @@ type delegateKeyMap struct {
 	playSelected   key.Binding
 	info           key.Binding
 	toggleFavorite key.Binding
+	delete         key.Binding
+	pasteAfter     key.Binding
+	pasteBefore    key.Binding
 }
