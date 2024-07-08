@@ -36,8 +36,7 @@ After the installation, the command to run the application:
 |s                |                     open search |
 |/                |                  filter results |
 |esc              |               go to now playing |
-|1                |             go to favorites tab |
-|2                |       go to station browser tab |
+|#                |            go to station number |
 |←/h/shift+tab    |                  go to prev tab |
 |→/l/tab          |                  go to next tab |
 |?                |                     toggle help |
