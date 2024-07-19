@@ -28,6 +28,10 @@ type Mpv struct {
 	cmd *exec.Cmd
 }
 
+func (mpv *Mpv) Init() error  { return nil }
+func (mpv *Mpv) Pause() error { return nil }
+func (mpv *Mpv) Quit() error  { return nil }
+
 func (mpv *Mpv) Play(url string) error {
 	log := slog.With("method", "Mpv.Play")
 	log.Info("playing url=" + url)
