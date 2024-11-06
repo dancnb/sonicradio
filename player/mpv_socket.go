@@ -34,23 +34,33 @@ var ipcCmds = map[ipcCmd]string{
 
 func NewMPVSocket() Player {
 	p := &MpvSocket{}
+	p.setOSVars()
 	return p
 }
 
 type MpvSocket struct {
 	sockFile string
+	baseCmd  string
 	url      string
 	cmd      *exec.Cmd
 }
 
+func (mpv *MpvSocket) setOSVars() {
+	mpv.sockFile = sockFile
+	mpv.baseCmd = baseCmd
+	if runtime.GOOS == "windows" {
+		mpv.sockFile = sockFileWin
+		mpv.baseCmd = baseCmdWindows
+	}
+	mpv.sockFile = fmt.Sprintf(mpv.sockFile, os.Getpid())
+}
+
 func (mpv *MpvSocket) Init() error {
 	log := slog.With("method", "MpvSocket.Init")
-	log.Debug("init")
-
-	mpv.sockFile = mpv.getSockFilePath()
+	log.Info("init")
 	args := slices.Clone(baseSockArgs)
 	args = append(args, fmt.Sprintf(ipcArg, mpv.sockFile))
-	cmd := exec.Command(mpv.getBaseCmd(), args...)
+	cmd := exec.Command(mpv.baseCmd, args...)
 	if errors.Is(cmd.Err, exec.ErrDot) {
 		cmd.Err = nil
 	} else if cmd.Err != nil {
@@ -63,8 +73,7 @@ func (mpv *MpvSocket) Init() error {
 		return err
 	}
 	mpv.cmd = cmd
-	log.Debug("mpv cmd started", "pid", mpv.cmd.Process.Pid)
-
+	log.Info("mpv cmd started", "pid", mpv.cmd.Process.Pid)
 	return nil
 }
 
@@ -73,7 +82,6 @@ func (mpv *MpvSocket) Pause() error { return nil }
 func (mpv *MpvSocket) Play(url string) error {
 	log := slog.With("method", "MpvSocket.Play")
 	log.Info("playing url=" + url)
-
 	conn, err := net.Dial("unix", mpv.sockFile)
 	if err != nil {
 		return err
@@ -83,14 +91,12 @@ func (mpv *MpvSocket) Play(url string) error {
 	if err != nil {
 		return err
 	}
-
 	b := make([]byte, 1024)
 	_, err = conn.Read(b)
 	if err != nil {
 		return err
 	}
-	log.Debug(fmt.Sprintf("resp=%s", b))
-
+	log.Info(fmt.Sprintf("resp=%s", b))
 	return nil
 }
 
@@ -101,7 +107,6 @@ func (mpv *MpvSocket) Metadata() *Metadata {
 func (mpv *MpvSocket) Stop() error {
 	log := slog.With("method", "MpvSocket.Stop")
 	log.Info("stopping")
-
 	conn, err := net.Dial("unix", mpv.sockFile)
 	if err != nil {
 		return err
@@ -110,21 +115,18 @@ func (mpv *MpvSocket) Stop() error {
 	if err != nil {
 		return err
 	}
-
 	b := make([]byte, 1024)
 	_, err = conn.Read(b)
 	if err != nil {
 		return err
 	}
-	log.Debug(fmt.Sprintf("resp=%s", b))
-
+	log.Info(fmt.Sprintf("resp=%s", b))
 	return nil
 }
 
 func (mpv *MpvSocket) Quit() error {
 	log := slog.With("method", "MpvSocket.Quit")
 	log.Info("stopping")
-
 	conn, err := net.Dial("unix", mpv.sockFile)
 	if err != nil {
 		return err
@@ -133,29 +135,24 @@ func (mpv *MpvSocket) Quit() error {
 	if err != nil {
 		return err
 	}
-
 	b := make([]byte, 1024)
 	_, err = conn.Read(b)
 	if err != nil {
 		return err
 	}
-	log.Debug(fmt.Sprintf("resp=%s", b))
+	log.Info(fmt.Sprintf("resp=%s", b))
+
+	cmd := *mpv.cmd
+	mpv.cmd = nil
+	if cmd.Process != nil {
+		log.Debug("killing process", "pid", cmd.Process.Pid)
+		pid := cmd.Process.Pid
+		err := cmd.Process.Kill()
+		if err != nil {
+			return err
+		}
+		log.Debug("killed process group", "pgid", pid)
+	}
 
 	return nil
-}
-
-func (mpv *MpvSocket) getBaseCmd() string {
-	res := baseCmd
-	if runtime.GOOS == "windows" {
-		res = baseCmdWindows
-	}
-	return res
-}
-
-func (mpv *MpvSocket) getSockFilePath() string {
-	res := sockFile
-	if runtime.GOOS == "windows" {
-		res = sockFileWin
-	}
-	return fmt.Sprintf(res, os.Getpid())
 }
