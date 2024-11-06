@@ -4,11 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net"
 	"os"
 	"os/exec"
 	"runtime"
 	"slices"
+
+	"gopkg.in/natefinch/npipe.v2"
 )
 
 var (
@@ -82,7 +83,8 @@ func (mpv *MpvSocket) Pause() error { return nil }
 func (mpv *MpvSocket) Play(url string) error {
 	log := slog.With("method", "MpvSocket.Play")
 	log.Info("playing url=" + url)
-	conn, err := net.Dial("unix", mpv.sockFile)
+	// conn, err := net.Dial("unix", mpv.sockFile)
+	conn, err := npipe.Dial(mpv.sockFile)
 	if err != nil {
 		return err
 	}
@@ -107,7 +109,8 @@ func (mpv *MpvSocket) Metadata() *Metadata {
 func (mpv *MpvSocket) Stop() error {
 	log := slog.With("method", "MpvSocket.Stop")
 	log.Info("stopping")
-	conn, err := net.Dial("unix", mpv.sockFile)
+	// conn, err := net.Dial("unix", mpv.sockFile)
+	conn, err := npipe.Dial(mpv.sockFile)
 	if err != nil {
 		return err
 	}
@@ -127,7 +130,8 @@ func (mpv *MpvSocket) Stop() error {
 func (mpv *MpvSocket) Quit() error {
 	log := slog.With("method", "MpvSocket.Quit")
 	log.Info("stopping")
-	conn, err := net.Dial("unix", mpv.sockFile)
+	// conn, err := net.Dial("unix", mpv.sockFile)
+	conn, err := npipe.Dial(mpv.sockFile)
 	if err != nil {
 		return err
 	}
@@ -149,7 +153,8 @@ func (mpv *MpvSocket) Quit() error {
 		pid := cmd.Process.Pid
 		err := cmd.Process.Kill()
 		if err != nil {
-			return err
+			// return err
+			log.Error(fmt.Sprintf("kill cmd process pid=%v: %v", pid, err))
 		}
 		log.Debug("killed process group", "pgid", pid)
 	}
