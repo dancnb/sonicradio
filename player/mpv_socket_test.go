@@ -1,17 +1,18 @@
 package player
 
 import (
+	"context"
 	"testing"
 )
 
 func TestMpvSocket_Play(t *testing.T) {
-	p := NewMPVSocket()
-	err := p.Init()
+	ctx := context.Background()
+	p, err := NewMPVSocket(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		err = p.Quit()
+		err = p.Close()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -20,6 +21,26 @@ func TestMpvSocket_Play(t *testing.T) {
 	err = p.Play(url)
 	if err != nil {
 		t.Fatal(err)
+	}
+	err = p.Pause(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = p.Pause(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = p.SetVolume(70)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := p.Metadata()
+	if m.Err != nil {
+		t.Fatal(m.Err)
+	}
+	m = p.mediaTitle()
+	if m.Err != nil {
+		t.Fatal(m.Err)
 	}
 	err = p.Stop()
 	if err != nil {

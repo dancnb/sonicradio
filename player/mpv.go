@@ -11,7 +11,6 @@ import (
 )
 
 const (
-	baseCmd        = "mpv"
 	baseCmdWindows = "mpv.exe"
 	errOut         = "Failed to"
 	titleMsg       = "icy-title:"
@@ -28,9 +27,9 @@ type Mpv struct {
 	cmd *exec.Cmd
 }
 
-func (mpv *Mpv) Init() error  { return nil }
-func (mpv *Mpv) Pause() error { return nil }
-func (mpv *Mpv) Quit() error  { return nil }
+func (mpv *Mpv) Pause(value bool) error    { return nil }
+func (mpv *Mpv) Close() error              { return nil }
+func (mpv *Mpv) SetVolume(value int) error { return nil }
 
 func (mpv *Mpv) Play(url string) error {
 	log := slog.With("method", "Mpv.Play")
@@ -86,7 +85,7 @@ func (mpv *Mpv) Metadata() *Metadata {
 			errMsg = errMsg[:nlIx]
 		}
 		errMsg = strings.TrimSpace(errMsg)
-		return &Metadata{URL: mpv.url, Err: errors.New(errMsg)}
+		return &Metadata{Err: errors.New(errMsg)}
 	}
 	title := ""
 	titleIx := strings.LastIndex(output, titleMsg)
@@ -99,7 +98,7 @@ func (mpv *Mpv) Metadata() *Metadata {
 	}
 	title = strings.TrimSpace(title)
 
-	return &Metadata{URL: mpv.url, Title: title}
+	return &Metadata{Title: title}
 }
 
 func (mpv *Mpv) Stop() error {

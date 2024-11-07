@@ -1,16 +1,18 @@
 package player
 
+import "io"
+
 type Player interface {
-	Init() error
+	io.Closer
+
 	Play(url string) error
-	Pause() error
+	Pause(value bool) error
 	Stop() error
+	SetVolume(value int) error
 	Metadata() *Metadata
-	Quit() error
 }
 
 type Metadata struct {
 	Title string
-	URL   string
 	Err   error
 }
