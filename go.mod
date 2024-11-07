@@ -2,7 +2,10 @@ module github.com/dancnb/sonicradio
 
 go 1.22.4
 
-require github.com/charmbracelet/bubbletea v0.25.0
+require (
+	github.com/charmbracelet/bubbletea v0.25.0
+	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce
+)
 
 require (
 	github.com/atotto/clipboard v0.1.4 // indirect
