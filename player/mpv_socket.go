@@ -152,9 +152,10 @@ type icyMetadata struct {
 
 func (mpv *MpvSocket) Metadata() *Metadata {
 	m := mpv.getMetadata()
-	if len(m.Title) == 0 {
-		m = mpv.getMediaTitle()
-	}
+	// TODO? alternate title
+	// if m.Err != nil || len(m.Title) == 0 {
+	// 	m = mpv.getMediaTitle()
+	// }
 	cmd := ipcCmds[playbackTime]
 	res, _ := mpv.ipcRequest(cmd)
 	if res != nil {
@@ -285,11 +286,6 @@ func (mpv *MpvSocket) ipcRequest(command string) (any, error) {
 			return nil, fmt.Errorf("ipc response error: %s", res.Error)
 		}
 		return res.Data, nil
-		// b, err := json.Marshal(res.Data)
-		// if err != nil {
-		// 	return nil, fmt.Errorf("ipc response marhsal data: %w", err)
-		// }
-		// return b, nil
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, fmt.Errorf("scanner error: %w", err)

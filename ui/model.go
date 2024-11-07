@@ -85,7 +85,6 @@ func getPlayerMetadata(progr *tea.Program, m *model) {
 		if m == nil {
 			continue
 		} else if m.Err != nil {
-			progr.Send(playRespMsg{m.Err.Error()})
 			continue
 		}
 		progr.Send(titleMsg(m.Title))
