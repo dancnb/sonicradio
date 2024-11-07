@@ -13,6 +13,7 @@ type Player interface {
 }
 
 type Metadata struct {
-	Title string
-	Err   error
+	Title        string
+	PlaybackTime *float64
+	Err          error
 }

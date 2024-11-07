@@ -37,18 +37,20 @@ const (
 	volume
 	metadata
 	mediaTitle
+	playbackTime
 	quit
 )
 
 var ipcCmds = map[ipcCmd]string{
-	play:       `["loadfile", "%s","replace"]`,
-	stop:       `[ "stop"]`,
-	pause:      `["set_property", "pause", true]`,
-	unpause:    `["set_property", "pause", false]`,
-	volume:     `["set_property", "volume", "%d"]`,
-	metadata:   `["get_property_string", "metadata"]`,
-	mediaTitle: `["get_property", "media-title"]`,
-	quit:       `[ "quit"]`,
+	play:         `["loadfile", "%s","replace"]`,
+	stop:         `[ "stop"]`,
+	pause:        `["set_property", "pause", true]`,
+	unpause:      `["set_property", "pause", false]`,
+	volume:       `["set_property", "volume", "%d"]`,
+	metadata:     `["get_property_string", "metadata"]`,
+	mediaTitle:   `["get_property", "media-title"]`,
+	playbackTime: `["get_property", "playback-time"]`,
+	quit:         `[ "quit"]`,
 }
 
 type MpvSocket struct {
@@ -149,39 +151,49 @@ type icyMetadata struct {
 }
 
 func (mpv *MpvSocket) Metadata() *Metadata {
+	m := mpv.getMetadata()
+	if len(m.Title) == 0 {
+		m = mpv.getMediaTitle()
+	}
+	cmd := ipcCmds[playbackTime]
+	res, _ := mpv.ipcRequest(cmd)
+	if res != nil {
+		if resF, ok := res.(float64); ok {
+			m.PlaybackTime = &resF
+		}
+	}
+	return &m
+}
+
+func (mpv *MpvSocket) getMetadata() Metadata {
 	cmd := ipcCmds[metadata]
 	res, err := mpv.ipcRequest(cmd)
 	if err != nil {
-		return &Metadata{Err: err}
+		return Metadata{Err: err}
 	}
 	resS, ok := res.(string)
 	if !ok {
-		return &Metadata{Err: ErrNoMetadata}
+		return Metadata{Err: ErrNoMetadata}
 	}
 	if len(resS) == 0 {
-		return &Metadata{Err: ErrNoMetadata}
+		return Metadata{Err: ErrNoMetadata}
 	}
 	var m icyMetadata
 	err = json.Unmarshal([]byte(resS), &m)
 	if err != nil {
-		return &Metadata{Err: fmt.Errorf("metadata unmarhsal err: %v", err.Error())}
+		return Metadata{Err: fmt.Errorf("metadata unmarhsal err: %v", err.Error())}
 	}
-	if len(strings.TrimSpace(m.Title)) == 0 {
-		return mpv.mediaTitle()
-	}
-	return &Metadata{
-		Title: m.Title,
-	}
+	return Metadata{Title: strings.TrimSpace(m.Title)}
 }
 
-func (mpv *MpvSocket) mediaTitle() *Metadata {
+func (mpv *MpvSocket) getMediaTitle() Metadata {
 	cmd := ipcCmds[mediaTitle]
 	res, err := mpv.ipcRequest(cmd)
 	if err != nil {
-		return &Metadata{Err: err}
+		return Metadata{Err: err}
 	}
-	return &Metadata{
-		Title: res.(string),
+	return Metadata{
+		Title: strings.TrimSpace(res.(string)),
 	}
 }
 
