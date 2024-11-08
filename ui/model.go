@@ -59,7 +59,7 @@ func initialModel(cfg *config.Value, b *browser.Api, p player.Player) *model {
 			newFavoritesTab(infoModel),
 			newBrowseTab(b, infoModel),
 		},
-		statusCh: make(chan struct{}),
+		statusUpdate: make(chan struct{}),
 	}
 
 	if len(cfg.Favorites) > 0 {
@@ -101,8 +101,8 @@ type model struct {
 	tabs         []uiTab
 	activeTabIdx uiTabIndex
 
-	statusMsg string // display currently performed action or encountered error
-	statusCh  chan struct{}
+	statusMsg    string // display currently performed action or encountered error
+	statusUpdate chan struct{}
 
 	titleMsg string // display station metadata (song name)
 	spinner  *spinner.Model
@@ -152,18 +152,18 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.quit()
 		return nil, tea.Quit
 
+	case pauseRespMsg:
+		if msg.err != "" {
+			m.updateStatus(msg.err)
+		} else {
+			m.titleMsg = ""
+			m.spinner = nil
+		}
+		return m, nil
 	case playRespMsg:
 		if msg.err != "" {
 			m.updateStatus(msg.err)
 			m.spinner = nil
-			d := m.delegate
-			if d.currPlaying != nil {
-				_, err := d.stopStation(*d.currPlaying)
-				if err != nil {
-					m.updateStatus(prevTermErr)
-					return m, nil
-				}
-			}
 		}
 		return m, nil
 	case statusMsg:
@@ -205,29 +205,21 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		d := m.delegate
 		if key.Matches(msg, d.keymap.pause) {
-			m.titleMsg = ""
-			m.spinner = nil
 			if d.currPlaying != nil {
-				_, err := d.stopStation(*d.currPlaying)
-				if err != nil {
-					m.updateStatus(prevTermErr)
-					return m, nil
-				}
+				return m, d.pauseCmd()
 			} else if d.prevPlaying != nil {
-				m.updateStatus(fmt.Sprintf("Connecting to %s...", d.prevPlaying.Name))
-				cmds := []tea.Cmd{m.initSpinner(), d.playCmd(d.prevPlaying)}
+				cmds := []tea.Cmd{m.initSpinner(), d.resumeCmd()}
 				return m, tea.Batch(cmds...)
 			} else {
 				activeTab, ok := activeTab.(stationTab)
 				if !ok {
-					// TODO handle enter for other tabs if necessary
+					// TODO handle pause key for other tabs if necessary
 					return m, nil
 				}
 				selStation, ok := activeTab.Stations().list.SelectedItem().(browser.Station)
-
 				if ok {
 					m.updateStatus(fmt.Sprintf("Connecting to %s...", selStation.Name))
-					cmds := []tea.Cmd{m.initSpinner(), d.playCmd(&selStation)}
+					cmds := []tea.Cmd{m.initSpinner(), d.playCmd(selStation)}
 					return m, tea.Batch(cmds...)
 				}
 			}
@@ -246,14 +238,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			selStation, ok := activeTab.Stations().list.SelectedItem().(browser.Station)
 			if ok {
 				m.titleMsg = ""
-				m.spinner = nil
-				_, err := d.stopStation(selStation)
-				if err != nil {
-					m.updateStatus(prevTermErr)
-					return m, nil
-				}
 				m.updateStatus(fmt.Sprintf("Connecting to %s...", selStation.Name))
-				cmds := []tea.Cmd{m.initSpinner(), d.playCmd(&selStation)}
+				cmds := []tea.Cmd{m.initSpinner(), d.playCmd(selStation)}
 				return m, tea.Batch(cmds...)
 			}
 		}
@@ -275,7 +261,7 @@ func (m *model) statusHandler() {
 		select {
 		case <-t.C:
 			m.statusMsg = ""
-		case <-m.statusCh:
+		case <-m.statusUpdate:
 			t.Stop()
 			t.Reset(statusMsgTimeout)
 		}
@@ -295,7 +281,7 @@ func (m *model) updateStatus(msg string) {
 	slog.Debug("updateStatus", "old", m.statusMsg, "new", msg)
 	m.statusMsg = msg
 	go func() {
-		m.statusCh <- struct{}{}
+		m.statusUpdate <- struct{}{}
 	}()
 }
 

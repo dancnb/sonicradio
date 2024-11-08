@@ -47,4 +47,8 @@ type (
 	playRespMsg struct {
 		err string
 	}
+
+	pauseRespMsg struct {
+		err string
+	}
 )
