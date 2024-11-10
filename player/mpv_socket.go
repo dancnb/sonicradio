@@ -167,7 +167,11 @@ func (mpv *MpvSocket) Metadata() *Metadata {
 	res, _ := mpv.ipcRequest(cmd)
 	if res != nil {
 		if resF, ok := res.(float64); ok {
-			m.PlaybackTime = &resF
+			intV := int64(resF)
+			if intV < 0 {
+				intV = 0
+			}
+			m.PlaybackTimeSec = &intV
 		}
 	}
 	return &m

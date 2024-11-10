@@ -48,6 +48,13 @@ var (
 	viewStyle    = secondaryColorStyle.Copy().PaddingLeft(padDist)
 	noItemsStyle = secondaryColorStyle.Copy().PaddingLeft(3)
 
+	// header
+	playTimeStyle = lipgloss.NewStyle().Border(lipgloss.HiddenBorder(), false, true).
+			BorderForeground(baseSecondColor).
+			Foreground(baseSecondColor).
+			Italic(true).
+			Padding(0, 0).Margin()
+
 	// tabs
 	inactiveTab = lipgloss.NewStyle().
 			Bold(true).

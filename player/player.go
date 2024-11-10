@@ -15,9 +15,9 @@ func NewPlayer(ctx context.Context) (*Player, error) {
 }
 
 type Metadata struct {
-	Title        string
-	PlaybackTime *float64
-	Err          error
+	Title           string
+	PlaybackTimeSec *int64
+	Err             error
 }
 
 func (p *Player) Play(url string) error {
