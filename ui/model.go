@@ -36,7 +36,7 @@ const (
 	statusMsgTimeout   = 1 * time.Second
 )
 
-func NewProgram(cfg *config.Value, b *browser.Api, p player.Player) *tea.Program {
+func NewProgram(cfg *config.Value, b *browser.Api, p *player.Player) *tea.Program {
 	m := initialModel(cfg, b, p)
 	progr := tea.NewProgram(m, tea.WithAltScreen())
 	trapSignal(progr)
@@ -44,7 +44,7 @@ func NewProgram(cfg *config.Value, b *browser.Api, p player.Player) *tea.Program
 	return progr
 }
 
-func initialModel(cfg *config.Value, b *browser.Api, p player.Player) *model {
+func initialModel(cfg *config.Value, b *browser.Api, p *player.Player) *model {
 	lipgloss.DefaultRenderer().SetHasDarkBackground(true)
 
 	delegate := newStationDelegate(cfg, p, b)
@@ -87,7 +87,7 @@ func getPlayerMetadata(progr *tea.Program, m *model) {
 		} else if m.Err != nil {
 			continue
 		}
-		progr.Send(titleMsg(m.Title))
+		progr.Send(songTitleMsg(m.Title))
 	}
 }
 
@@ -95,7 +95,7 @@ type model struct {
 	ready    bool
 	cfg      *config.Value
 	browser  *browser.Api
-	player   player.Player
+	player   *player.Player
 	delegate *stationDelegate
 
 	tabs         []uiTab
@@ -104,8 +104,8 @@ type model struct {
 	statusMsg    string // display currently performed action or encountered error
 	statusUpdate chan struct{}
 
-	titleMsg string // display station metadata (song name)
-	spinner  *spinner.Model
+	songTitleMsg string // display station metadata (song name)
+	spinner      *spinner.Model
 
 	width        int
 	totHeight    int
@@ -152,26 +152,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.quit()
 		return nil, tea.Quit
 
-	case pauseRespMsg:
-		if msg.err != "" {
-			m.updateStatus(msg.err)
-		} else {
-			m.titleMsg = ""
-			m.spinner = nil
-		}
-		return m, nil
-	case playRespMsg:
-		if msg.err != "" {
-			m.updateStatus(msg.err)
-			m.spinner = nil
-		}
-		return m, nil
 	case statusMsg:
 		m.updateStatus(string(msg))
 		return m, nil
 
-	case titleMsg:
-		m.titleMsg = string(msg)
+	case songTitleMsg:
+		m.songTitleMsg = string(msg)
 		return m, nil
 
 	case spinner.TickMsg:
@@ -194,6 +180,21 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case toggleFavoriteMsg:
 		return m.tabs[favoriteTabIx].Update(m, msg)
+
+	case pauseRespMsg:
+		if msg.err != "" {
+			m.updateStatus(msg.err)
+		} else {
+			m.songTitleMsg = ""
+			m.spinner = nil
+		}
+		return m, nil
+	case playRespMsg:
+		if msg.err != "" {
+			m.updateStatus(msg.err)
+			m.spinner = nil
+		}
+		return m, nil
 
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {
@@ -237,7 +238,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			selStation, ok := activeTab.Stations().list.SelectedItem().(browser.Station)
 			if ok {
-				m.titleMsg = ""
+				m.songTitleMsg = ""
 				m.updateStatus(fmt.Sprintf("Connecting to %s...", selStation.Name))
 				cmds := []tea.Cmd{m.initSpinner(), d.playCmd(selStation)}
 				return m, tea.Batch(cmds...)
@@ -298,14 +299,18 @@ func (m *model) quit() {
 	}
 }
 
-func (m *model) initSpinner() tea.Cmd {
+func newSpinner() *spinner.Model {
 	s := spinner.New()
 	s.Spinner = spinner.Spinner{
 		Frames: []string{"⡷", "⣧", "⣏", "⡟", "⡷", "⣧", "⣏", "⡟"},
 		FPS:    time.Second / 10,
 	}
 	s.Style = playStatusStyle
-	m.spinner = &s
+	return &s
+}
+
+func (m *model) initSpinner() tea.Cmd {
+	m.spinner = newSpinner()
 	return m.spinner.Tick
 }
 
@@ -323,6 +328,9 @@ func (m *model) headerView(width int) string {
 	res.WriteString("\n\n")
 
 	if m.delegate.currPlaying != nil {
+		if m.spinner == nil {
+			m.spinner = newSpinner()
+		}
 		res.WriteString(m.spinner.View())
 		res.WriteString(itemStyle.Render(" " + m.delegate.currPlaying.Name))
 	} else if m.delegate.prevPlaying != nil {
@@ -333,8 +341,8 @@ func (m *model) headerView(width int) string {
 
 	}
 	res.WriteString("\n")
-	if m.titleMsg != "" {
-		res.WriteString(playStatusStyle.Render("  " + m.titleMsg))
+	if m.songTitleMsg != "" {
+		res.WriteString(playStatusStyle.Render("  " + m.songTitleMsg))
 	} else if m.delegate.currPlaying != nil {
 		res.WriteString(playStatusStyle.Render("  " + m.delegate.currPlaying.Homepage))
 	} else if m.delegate.prevPlaying != nil {

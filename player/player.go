@@ -1,16 +1,45 @@
 package player
 
-type Player interface {
-	Play(url string) error
-	Pause(value bool) error
-	Stop() error
-	SetVolume(value int) error
-	Metadata() *Metadata
-	Close() error
+import "context"
+
+type Player struct {
+	mpv *MpvSocket
+}
+
+func NewPlayer(ctx context.Context) (*Player, error) {
+	mpv, err := NewMPVSocket(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &Player{mpv}, nil
 }
 
 type Metadata struct {
 	Title        string
 	PlaybackTime *float64
 	Err          error
+}
+
+func (p *Player) Play(url string) error {
+	return p.mpv.Play(url)
+}
+
+func (p *Player) Pause(value bool) error {
+	return p.mpv.Pause(value)
+}
+
+func (p *Player) Stop() error {
+	return p.mpv.Stop()
+}
+
+func (p *Player) SetVolume(value int) error {
+	return p.mpv.SetVolume(value)
+}
+
+func (p *Player) Metadata() *Metadata {
+	return p.mpv.Metadata()
+}
+
+func (p *Player) Close() error {
+	return p.mpv.Close()
 }

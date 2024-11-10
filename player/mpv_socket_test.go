@@ -38,7 +38,7 @@ func TestMpvSocket_Play(t *testing.T) {
 	if m.Err != nil {
 		t.Fatal(m.Err)
 	}
-	)	mt := p.getMediaTitle()
+	mt := p.getMediaTitle()
 	if mt.Err != nil {
 		t.Fatal(m.Err)
 	}

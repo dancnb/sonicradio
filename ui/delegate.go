@@ -18,7 +18,7 @@ import (
 
 const startWaitMillis = 500 * 3
 
-func newStationDelegate(cfg *config.Value, p player.Player, b *browser.Api) *stationDelegate {
+func newStationDelegate(cfg *config.Value, p *player.Player, b *browser.Api) *stationDelegate {
 	keymap := newDelegateKeyMap()
 
 	d := list.NewDefaultDelegate()
@@ -33,13 +33,15 @@ func newStationDelegate(cfg *config.Value, p player.Player, b *browser.Api) *sta
 }
 
 type stationDelegate struct {
-	player      player.Player
-	b           *browser.Api
-	cfg         *config.Value
+	player *player.Player
+	b      *browser.Api
+	cfg    *config.Value
+
 	prevPlaying *browser.Station
 	currPlaying *browser.Station
 	deleted     *browser.Station
-	keymap      *delegateKeyMap
+
+	keymap *delegateKeyMap
 
 	defaultDelegate list.DefaultDelegate
 }
@@ -163,8 +165,6 @@ func (d *stationDelegate) playCmd(s browser.Station) tea.Cmd {
 		log := slog.With("method", "ui.stationDelegate.playStation")
 		log.Debug("playing", "id", s.Stationuuid)
 		go d.increaseCounter(s)
-
-		_ = d.player.Pause(false)
 
 		err := d.player.Play(s.URL)
 		if err != nil {

@@ -10,11 +10,14 @@ type (
 	quitMsg struct{}
 
 	// song title
-	titleMsg string
-	// used for status error message
+	songTitleMsg string
+
+	// used for status info/error message
 	statusMsg string
+
 	// view msg instead of list
-	viewMsg                 string
+	viewMsg string
+
 	favoritesStationRespMsg struct {
 		viewMsg
 		statusMsg

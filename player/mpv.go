@@ -18,7 +18,7 @@ const (
 
 var baseArgs = []string{"--no-video", "--quiet"}
 
-func NewMPV() Player {
+func NewMPV() *Mpv {
 	return &Mpv{}
 }
 

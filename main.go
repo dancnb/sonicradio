@@ -51,14 +51,14 @@ func run() {
 
 	b := browser.NewApi(cfg)
 
-	p, err := player.NewMPVSocket(ctx)
+	p, err := player.NewPlayer(ctx)
 	if err != nil {
 		panic(err)
 	}
 	defer func() {
 		err := p.Close()
 		if err != nil {
-			slog.Error(fmt.Sprintf("mpv close error: %v", err))
+			slog.Error(fmt.Sprintf("player close error: %v", err))
 		}
 	}()
 
