@@ -26,17 +26,19 @@ const (
 	loadingMsg          = "\n Fetching stations... \n"
 	noFavoritesAddedMsg = "\n No favorite stations added.\n"
 	noStationsFound     = "\n No stations found. \n"
-	// header status messages
+
+	// header status
 	noPlayingMsg     = "Nothing playing"
 	missingFavorites = "Some stations not found"
 	prevTermErr      = "Could not terminate previous playback!"
 	voteSuccesful    = "Station was voted successfully"
-	// metadata
-	volumeFmt1 = "%sVolume"
-	volumeFmt2 = "%3d%%%s"
+	statusMsgTimeout = 1 * time.Second
 
+	// metadata
+	volumeFmt1         = "%sVolume"
+	volumeFmt2         = "%3d%%%s"
+	volumeStep         = 5
 	playerPollInterval = 500 * time.Millisecond
-	statusMsgTimeout   = 1 * time.Second
 )
 
 func NewModel(cfg *config.Value, b *browser.Api, p *player.Player) *Model {
@@ -504,9 +506,9 @@ func (m *Model) topStationsCmd() tea.Msg {
 func (m *Model) volumeCmd(up bool) tea.Cmd {
 	return func() tea.Msg {
 		currVol := m.cfg.GetVolume()
-		newVol := currVol + 5
+		newVol := currVol + volumeStep
 		if !up {
-			newVol = currVol - 5
+			newVol = currVol - volumeStep
 		}
 		setVol, err := m.player.SetVolume(newVol)
 		if err != nil {
