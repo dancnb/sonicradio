@@ -30,7 +30,7 @@ func TestMpvSocket_Play(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = p.SetVolume(70)
+	_, err = p.SetVolume(70)
 	if err != nil {
 		t.Fatal(err)
 	}

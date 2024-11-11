@@ -10,6 +10,7 @@ func Test_load(t *testing.T) {
 		Version: defVersion,
 		Debug:   *debug,
 		LogPath: os.TempDir(),
+		Volume:  &defVolume,
 	}
 	err := Save(defCfg)
 	if err != nil {
@@ -27,6 +28,7 @@ func Test_save(t *testing.T) {
 		Version: defVersion,
 		Debug:   *debug,
 		LogPath: os.TempDir(),
+		Volume:  &defVolume,
 	}
 	err := Save(defCfg)
 	if err != nil {

@@ -323,6 +323,14 @@ func newDelegateKeyMap() *delegateKeyMap {
 			key.WithKeys("P"),
 			key.WithHelp("shift+p", "paste at"),
 		),
+		volumeUp: key.NewBinding(
+			key.WithKeys("+", ">"),
+			key.WithHelp("+/>", "volume +"),
+		),
+		volumeDown: key.NewBinding(
+			key.WithKeys("-", "<"),
+			key.WithHelp("-/<", "volume -"),
+		),
 	}
 }
 
@@ -334,4 +342,6 @@ type delegateKeyMap struct {
 	delete         key.Binding
 	pasteAfter     key.Binding
 	pasteBefore    key.Binding
+	volumeDown     key.Binding
+	volumeUp       key.Binding
 }

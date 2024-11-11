@@ -51,18 +51,16 @@ func run() {
 
 	b := browser.NewApi(cfg)
 
-	p, err := player.NewPlayer(ctx)
+	p, err := player.NewPlayer(ctx, cfg)
 	if err != nil {
 		panic(err)
 	}
+	m := ui.NewModel(&cfg, b, p)
 	defer func() {
-		err := p.Close()
-		if err != nil {
-			slog.Error(fmt.Sprintf("player close error: %v", err))
-		}
+		m.Quit()
 	}()
 
-	if _, err := ui.NewProgram(&cfg, b, p).Run(); err != nil {
+	if _, err := m.Progr.Run(); err != nil {
 		slog.Info(fmt.Sprintf("Error running program: %s", err.Error()))
 		os.Exit(1)
 	}

@@ -31,26 +31,29 @@ const (
 	missingFavorites = "Some stations not found"
 	prevTermErr      = "Could not terminate previous playback!"
 	voteSuccesful    = "Station was voted successfully"
+	// metadata
+	volumeFmt = "%[2]sVolume %3[1]d%%%[2]s"
 
 	playerPollInterval = 500 * time.Millisecond
 	statusMsgTimeout   = 1 * time.Second
 )
 
-func NewProgram(cfg *config.Value, b *browser.Api, p *player.Player) *tea.Program {
-	m := initialModel(cfg, b, p)
+func NewModel(cfg *config.Value, b *browser.Api, p *player.Player) *Model {
+	m := newModel(cfg, b, p)
 	progr := tea.NewProgram(m, tea.WithAltScreen())
+	m.Progr = progr
 	trapSignal(progr)
 	go getPlayerMetadata(progr, m)
-	return progr
+	return m
 }
 
-func initialModel(cfg *config.Value, b *browser.Api, p *player.Player) *model {
+func newModel(cfg *config.Value, b *browser.Api, p *player.Player) *Model {
 	lipgloss.DefaultRenderer().SetHasDarkBackground(true)
 
 	delegate := newStationDelegate(cfg, p, b)
 
 	infoModel := newInfoModel(b)
-	m := model{
+	m := Model{
 		cfg:      cfg,
 		browser:  b,
 		player:   p,
@@ -72,7 +75,7 @@ func initialModel(cfg *config.Value, b *browser.Api, p *player.Player) *model {
 	return &m
 }
 
-func getPlayerMetadata(progr *tea.Program, m *model) {
+func getPlayerMetadata(progr *tea.Program, m *Model) {
 	log := slog.With("func", "getPlayerMetadata")
 	tick := time.NewTicker(playerPollInterval)
 	for range tick.C {
@@ -95,9 +98,11 @@ func getPlayerMetadata(progr *tea.Program, m *model) {
 	}
 }
 
-type model struct {
+type Model struct {
+	Progr *tea.Program
+
 	ready    bool
-	cfg      *config.Value
+	cfg      *config.Value // use cfg.volume
 	browser  *browser.Api
 	player   *player.Player
 	delegate *stationDelegate
@@ -119,11 +124,11 @@ type model struct {
 	headerHeight int
 }
 
-func (m *model) Init() tea.Cmd {
+func (m *Model) Init() tea.Cmd {
 	return nil
 }
 
-func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	logTeaMsg(msg, "ui.model.Update")
 	activeTab := m.tabs[m.activeTabIdx]
 
@@ -152,7 +157,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 
 	case quitMsg:
-		m.quit()
 		return nil, tea.Quit
 
 	case statusMsg:
@@ -204,13 +208,20 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {
-			m.quit()
 			return m, tea.Quit
 		} else if activeTab, ok := activeTab.(stationTab); ok && (activeTab.IsSearchEnabled() || activeTab.IsFiltering()) {
 			break
 		}
 
 		d := m.delegate
+
+		if key.Matches(msg, d.keymap.volumeDown) {
+			return m, m.volumeCmd(false)
+		}
+		if key.Matches(msg, d.keymap.volumeUp) {
+			return m, m.volumeCmd(true)
+		}
+
 		if key.Matches(msg, d.keymap.pause) {
 			if d.currPlaying != nil {
 				return m, d.pauseCmd()
@@ -251,7 +262,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Batch(cmds...)
 			}
 		}
-
 	}
 
 	//
@@ -261,7 +271,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return model, cmd
 }
 
-func (m *model) statusHandler() {
+func (m *Model) statusHandler() {
 	t := time.NewTimer(math.MaxInt64)
 	defer t.Stop()
 
@@ -276,16 +286,16 @@ func (m *model) statusHandler() {
 	}
 }
 
-func (m *model) toFavoritesTab() {
+func (m *Model) toFavoritesTab() {
 	m.delegate.keymap.toggleFavorite.SetEnabled(false)
 	m.activeTabIdx = favoriteTabIx
 }
-func (m *model) toBrowseTab() {
+func (m *Model) toBrowseTab() {
 	m.delegate.keymap.toggleFavorite.SetEnabled(true)
 	m.activeTabIdx = browseTabIx
 }
 
-func (m *model) updateStatus(msg string) {
+func (m *Model) updateStatus(msg string) {
 	slog.Debug("updateStatus", "old", m.statusMsg, "new", msg)
 	m.statusMsg = msg
 	go func() {
@@ -293,16 +303,20 @@ func (m *model) updateStatus(msg string) {
 	}()
 }
 
-func (m *model) quit() {
+func (m *Model) Quit() {
 	log := slog.With("method", "ui.model.quit")
 	log.Info("----------------------Quitting----------------------")
 	err := m.player.Stop()
 	if err != nil {
-		log.Error("error stopping station at exit", "error", err.Error())
+		log.Error("player stop", "error", err.Error())
+	}
+	err = m.player.Close()
+	if err != nil {
+		slog.Error(fmt.Sprintf("player close error: %v", err))
 	}
 	err = config.Save(*m.cfg)
 	if err != nil {
-		log.Error("error saving config", "error", err.Error())
+		log.Error("config save", "error", err.Error())
 	}
 }
 
@@ -316,12 +330,12 @@ func newSpinner() *spinner.Model {
 	return &s
 }
 
-func (m *model) initSpinner() tea.Cmd {
+func (m *Model) initSpinner() tea.Cmd {
 	m.spinner = newSpinner()
 	return m.spinner.Tick
 }
 
-func (m *model) headerView(width int) string {
+func (m *Model) headerView(width int) string {
 	var res strings.Builder
 	status := ""
 	if len(m.statusMsg) > 0 {
@@ -362,16 +376,19 @@ func (m *model) headerView(width int) string {
 	return res.String()
 }
 
-func (m *model) metadataView(width int) string {
+func (m *Model) metadataView(width int) string {
 	metadataParts := []string{"", "", ""}
-	playTime := fmt.Sprintf("%03d:%02d:%02d ",
+	gap := strings.Repeat(" ", padDist)
+	playTime := fmt.Sprintf("%s%03d:%02d:%02d%s",
+		gap,
 		int(m.playbackTime.Hours()),
 		int(m.playbackTime.Minutes())%60,
 		int(m.playbackTime.Seconds())%60,
+		gap,
 	)
 	playTimeView := playTimeStyle.Render(playTime)
 	metadataParts[0] = playTimeView
-	volumeView := playTimeStyle.Render(" VOLUME ")
+	volumeView := playTimeStyle.Render(fmt.Sprintf(volumeFmt, m.cfg.GetVolume(), gap))
 	metadataParts[2] = volumeView
 	playTimeW := lipgloss.Width(playTimeView)
 	volumeW := lipgloss.Width(volumeView)
@@ -427,7 +444,7 @@ func (m *model) metadataView(width int) string {
 	return metadataRows
 }
 
-func (m model) View() string {
+func (m Model) View() string {
 	if !m.ready {
 		return loadingMsg
 	}
@@ -452,7 +469,7 @@ func trapSignal(p *tea.Program) {
 }
 
 // tea.Cmd
-func (m *model) favoritesReqCmd() tea.Msg {
+func (m *Model) favoritesReqCmd() tea.Msg {
 	if len(m.cfg.Favorites) == 0 {
 		return favoritesStationRespMsg{
 			viewMsg: noFavoritesAddedMsg,
@@ -469,7 +486,7 @@ func (m *model) favoritesReqCmd() tea.Msg {
 	return res
 }
 
-func (m *model) topStationsCmd() tea.Msg {
+func (m *Model) topStationsCmd() tea.Msg {
 	stations, err := m.browser.TopStations()
 	res := topStationsRespMsg{stations: stations}
 	if err != nil {
@@ -478,6 +495,22 @@ func (m *model) topStationsCmd() tea.Msg {
 		res.viewMsg = noStationsFound
 	}
 	return res
+}
+
+func (m *Model) volumeCmd(up bool) tea.Cmd {
+	return func() tea.Msg {
+		currVol := m.cfg.GetVolume()
+		newVol := currVol + 5
+		if !up {
+			newVol = currVol - 5
+		}
+		setVol, err := m.player.SetVolume(newVol)
+		if err != nil {
+			return volumeMsg{err}
+		}
+		m.cfg.SetVolume(setVol)
+		return volumeMsg{}
+	}
 }
 
 func logTeaMsg(msg tea.Msg, tag string) {

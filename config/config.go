@@ -19,12 +19,26 @@ const (
 	cfgFilename = "config.json"
 )
 
+var defVolume = 100
+
 type Value struct {
 	Version   string   `json:"-"`
 	Debug     bool     `json:"-"`
 	LogPath   string   `json:"-"`
 	Favorites []string `json:"favorites,omitempty"` // Ordered station UUID's for user favorites
+	Volume    *int     `json:"volume,omitempty"`
 	// History   []string `json:"history,omitempty"`   // Ordered station UUID's for user listening history
+}
+
+func (v *Value) GetVolume() int {
+	if v.Volume != nil {
+		return *v.Volume
+	}
+	return defVolume
+}
+
+func (v *Value) SetVolume(value int) {
+	v.Volume = &value
 }
 
 func (v *Value) IsFavorite(uuid string) bool {
@@ -72,6 +86,7 @@ func Load() (Value, error) {
 		Version: versionVal,
 		Debug:   *debug,
 		LogPath: os.TempDir(),
+		Volume:  &defVolume,
 	}
 	dir, err := os.UserConfigDir()
 	if err != nil {
@@ -97,6 +112,9 @@ func Load() (Value, error) {
 		return defCfg, err
 	}
 
+	if cfg.Volume == nil {
+		cfg.Volume = &defVolume
+	}
 	cfg.Debug = *debug
 	cfg.Version = versionVal
 	return cfg, nil

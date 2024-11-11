@@ -1,13 +1,22 @@
 package player
 
-import "context"
+import (
+	"context"
+
+	"github.com/dancnb/sonicradio/config"
+)
 
 type Player struct {
 	mpv *MpvSocket
 }
 
-func NewPlayer(ctx context.Context) (*Player, error) {
+func NewPlayer(ctx context.Context, cfg config.Value) (*Player, error) {
 	mpv, err := NewMPVSocket(ctx)
+	if err != nil {
+		return nil, err
+	}
+	vol := cfg.GetVolume()
+	_, err = mpv.SetVolume(vol)
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +41,7 @@ func (p *Player) Stop() error {
 	return p.mpv.Stop()
 }
 
-func (p *Player) SetVolume(value int) error {
+func (p *Player) SetVolume(value int) (int, error) {
 	return p.mpv.SetVolume(value)
 }
 

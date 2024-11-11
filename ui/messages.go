@@ -17,6 +17,10 @@ type (
 		playbackTime *time.Duration
 	}
 
+	volumeMsg struct {
+		err error
+	}
+
 	// used for status info/error message
 	statusMsg string
 

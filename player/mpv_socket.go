@@ -209,15 +209,7 @@ func (mpv *MpvSocket) getMediaTitle() Metadata {
 	}
 }
 
-func (mpv *MpvSocket) Stop() error {
-	log := slog.With("method", "MpvSocket.Stop")
-	log.Info("stopping")
-	stopCmd := ipcCmds[stop]
-	_, err := mpv.ipcRequest(stopCmd)
-	return err
-}
-
-func (mpv *MpvSocket) SetVolume(value int) error {
+func (mpv *MpvSocket) SetVolume(value int) (int, error) {
 	log := slog.With("method", "MpvSocket.SetVolume")
 	if value < 0 {
 		value = 0
@@ -227,6 +219,14 @@ func (mpv *MpvSocket) SetVolume(value int) error {
 	log.Info("volume", "value", value)
 	cmd := fmt.Sprintf(ipcCmds[volume], value)
 	_, err := mpv.ipcRequest(cmd)
+	return value, err
+}
+
+func (mpv *MpvSocket) Stop() error {
+	log := slog.With("method", "MpvSocket.Stop")
+	log.Info("stopping")
+	stopCmd := ipcCmds[stop]
+	_, err := mpv.ipcRequest(stopCmd)
 	return err
 }
 
@@ -247,21 +247,7 @@ func (mpv *MpvSocket) Close() (err error) {
 
 	quitCmd := ipcCmds[quit]
 	_, err = mpv.ipcRequest(quitCmd)
-
-	cmd := *mpv.cmd
-	mpv.cmd = nil
-	if cmd.Process != nil {
-		log.Debug("killing process", "pid", cmd.Process.Pid)
-		pid := cmd.Process.Pid
-		killErr := cmd.Process.Kill()
-		if killErr != nil {
-			log.Error(fmt.Sprintf("kill cmd process pid=%v: %v", pid, killErr))
-		} else {
-			log.Debug("killed process group", "pgid", pid)
-		}
-	}
-
-	return nil
+	return err
 }
 
 type ipcResp struct {
