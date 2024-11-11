@@ -197,6 +197,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.songTitle = ""
 			m.spinner = nil
+			m.delegate.keymap.pause.SetHelp("space", "resume")
 		}
 		return m, nil
 	case playRespMsg:
@@ -204,6 +205,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.updateStatus(msg.err)
 			m.spinner = nil
 		}
+		m.delegate.keymap.pause.SetHelp("space", "pause")
 		return m, nil
 
 	case tea.KeyMsg:

@@ -297,7 +297,7 @@ func newDelegateKeyMap() *delegateKeyMap {
 		// todo change label based on state
 		pause: key.NewBinding(
 			key.WithKeys(" "),
-			key.WithHelp("space", "pause/resume"),
+			key.WithHelp("space", "resume"),
 		),
 		playSelected: key.NewBinding(
 			key.WithKeys("enter"),
