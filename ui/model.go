@@ -32,7 +32,8 @@ const (
 	prevTermErr      = "Could not terminate previous playback!"
 	voteSuccesful    = "Station was voted successfully"
 	// metadata
-	volumeFmt = "%[2]sVolume %3[1]d%%%[2]s"
+	volumeFmt1 = "%sVolume"
+	volumeFmt2 = "%3d%%%s"
 
 	playerPollInterval = 500 * time.Millisecond
 	statusMsgTimeout   = 1 * time.Second
@@ -390,7 +391,8 @@ func (m *Model) metadataView(width int) string {
 	)
 	playTimeView := playTimeStyle.Render(playTime)
 	metadataParts[0] = playTimeView
-	volumeView := playTimeStyle.Render(fmt.Sprintf(volumeFmt, m.cfg.GetVolume(), gap))
+	volumeView := volumeStyle.Render(fmt.Sprintf(volumeFmt1, gap)) +
+		playTimeStyle.Render(fmt.Sprintf(volumeFmt2, m.cfg.GetVolume(), gap))
 	metadataParts[2] = volumeView
 	playTimeW := lipgloss.Width(playTimeView)
 	volumeW := lipgloss.Width(volumeView)
