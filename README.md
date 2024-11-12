@@ -25,22 +25,26 @@ After the installation, the command to run the application:
 |:----------------|--------------------------------:|
 |↑/k              |                              up |
 │↓/j              |                            down |
+|ctrl+f/pgdn      |                       next page |
+|ctrl+b/pgup      |                       prev page |
 |g/home           |                     go to start |
 |G/end            |                       go to end |
-|enter            |                   play selected |
+|enter            |                            play |
 |space            |                    pause/resume |
-|f                |              toggle as favorite |
-|i                |                    station info |
-|d                |                  delete station |
-|p/shift+p        |           paste deleted station |
-|s                |                     open search |
-|/                |                  filter results |
-|esc              |               go to now playing |
-|#                |            go to station number |
-|←/h/shift+tab    |                  go to prev tab |
-|→/l/tab          |                  go to next tab |
 |-/<              |                        volume - |
 |+/>              |                        volume + |
+|←/h              |                  seek backwards |
+|→/l              |                    seek forward |
+|i                |                    station info |
+|f                |                favorite station |
+|d                |                  delete station |
+|p/shift+p        |           paste deleted station |
+|/                |                  filter results |
+|s                |                open search view |
+|#                |            go to station number |
+|esc              |               go to now playing |
+|shift+tab        |                  go to prev tab |
+|tab              |                  go to next tab |
 |?                |                     toggle help |
 |q                |                            quit |
 
