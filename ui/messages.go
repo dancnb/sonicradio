@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"time"
+
 	"github.com/dancnb/sonicradio/browser"
 )
 
@@ -10,11 +12,21 @@ type (
 	quitMsg struct{}
 
 	// song title
-	titleMsg string
-	// used for status error message
+	metadataMsg struct {
+		songTitle    string
+		playbackTime *time.Duration
+	}
+
+	volumeMsg struct {
+		err error
+	}
+
+	// used for status info/error message
 	statusMsg string
+
 	// view msg instead of list
-	viewMsg                 string
+	viewMsg string
+
 	favoritesStationRespMsg struct {
 		viewMsg
 		statusMsg
@@ -45,6 +57,10 @@ type (
 	}
 
 	playRespMsg struct {
+		err string
+	}
+
+	pauseRespMsg struct {
 		err string
 	}
 )

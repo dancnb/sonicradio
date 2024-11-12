@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -19,7 +18,7 @@ import (
 
 const startWaitMillis = 500 * 3
 
-func newStationDelegate(cfg *config.Value, p player.Player, b *browser.Api) *stationDelegate {
+func newStationDelegate(cfg *config.Value, p *player.Player, b *browser.Api) *stationDelegate {
 	keymap := newDelegateKeyMap()
 
 	d := list.NewDefaultDelegate()
@@ -34,13 +33,15 @@ func newStationDelegate(cfg *config.Value, p player.Player, b *browser.Api) *sta
 }
 
 type stationDelegate struct {
-	player      player.Player
-	b           *browser.Api
-	cfg         *config.Value
+	player *player.Player
+	b      *browser.Api
+	cfg    *config.Value
+
 	prevPlaying *browser.Station
 	currPlaying *browser.Station
 	deleted     *browser.Station
-	keymap      *delegateKeyMap
+
+	keymap *delegateKeyMap
 
 	defaultDelegate list.DefaultDelegate
 }
@@ -125,53 +126,60 @@ func (d *stationDelegate) shouldPaste(m *list.Model) bool {
 	return !dupl
 }
 
-func (d *stationDelegate) playCmd(s *browser.Station) tea.Cmd {
+func (d *stationDelegate) pauseCmd() tea.Cmd {
 	return func() tea.Msg {
-		err := d.playStation(*s)
+		if d.currPlaying == nil {
+			return nil
+		}
+		log := slog.With("method", "ui.stationDelegate.pauseCmd")
+		err := d.player.Pause(true)
 		if err != nil {
+			log.Error(fmt.Sprintf("player pause: %v", err))
+			return pauseRespMsg{fmt.Sprintf("Could not pause station %s (%s)!", d.currPlaying.Name, d.currPlaying.URL)}
+		}
+		d.prevPlaying = d.currPlaying
+		d.currPlaying = nil
+		return pauseRespMsg{}
+	}
+}
+
+func (d *stationDelegate) resumeCmd() tea.Cmd {
+	return func() tea.Msg {
+		if d.prevPlaying == nil {
+			return nil
+		}
+		log := slog.With("method", "ui.stationDelegate.resumeCmd")
+		err := d.player.Pause(false)
+		if err != nil {
+			log.Error(fmt.Sprintf("player resume: %v", err))
+			return playRespMsg{fmt.Sprintf("Could not resume playback for station %s (%s)!", d.currPlaying.Name, d.currPlaying.URL)}
+		}
+		d.currPlaying = d.prevPlaying
+		d.prevPlaying = nil
+		return playRespMsg{}
+	}
+}
+
+func (d *stationDelegate) playCmd(s browser.Station) tea.Cmd {
+	return func() tea.Msg {
+		log := slog.With("method", "ui.stationDelegate.playStation")
+		log.Debug("playing", "id", s.Stationuuid)
+		go d.increaseCounter(s)
+
+		err := d.player.Play(s.URL)
+		if err != nil {
+			errMsg := fmt.Sprintf("error playing station %s: %s", s.Name, err.Error())
+			log.Error(errMsg)
 			return playRespMsg{fmt.Sprintf("Could not start playback for %s (%s)!", s.Name, s.URL)}
 		}
-
+		d.prevPlaying = d.currPlaying
+		d.currPlaying = &s
 		return playRespMsg{}
 	}
 }
 
 func (d *stationDelegate) increaseCounter(station browser.Station) {
 	d.b.StationCounter(station.Stationuuid)
-}
-
-func (d *stationDelegate) playStation(station browser.Station) error {
-	log := slog.With("method", "ui.stationDelegate.playStation")
-
-	go d.increaseCounter(station)
-
-	log.Debug("playing", "id", station.Stationuuid)
-	err := d.player.Play(station.URL)
-	if err != nil {
-		errMsg := fmt.Sprintf("error playing station %s: %s", station.Name, err.Error())
-		log.Error(errMsg)
-		return errors.New(errMsg)
-	}
-	d.prevPlaying = d.currPlaying
-	d.currPlaying = &station
-	return nil
-}
-
-func (d *stationDelegate) stopStation(station browser.Station) (wasPlaying bool, err error) {
-	log := slog.With("method", "ui.stationDelegate.stopStation")
-	if d.currPlaying != nil && d.currPlaying.Stationuuid == station.Stationuuid {
-		log.Debug("stopping", "id", d.currPlaying.Stationuuid)
-		d.prevPlaying = &station
-		d.currPlaying = nil
-		err := d.player.Stop()
-		if err != nil {
-			errMsg := fmt.Sprintf("error stopping station %s: %s", station.Name, err.Error())
-			log.Error(errMsg)
-			return true, errors.New(errMsg)
-		}
-		return true, nil
-	}
-	return false, nil
 }
 
 func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
@@ -286,9 +294,10 @@ func (d *stationDelegate) FullHelp() [][]key.Binding {
 
 func newDelegateKeyMap() *delegateKeyMap {
 	return &delegateKeyMap{
+		// todo change label based on state
 		pause: key.NewBinding(
 			key.WithKeys(" "),
-			key.WithHelp("space", "play/pause"),
+			key.WithHelp("space", "resume"),
 		),
 		playSelected: key.NewBinding(
 			key.WithKeys("enter"),
@@ -314,6 +323,14 @@ func newDelegateKeyMap() *delegateKeyMap {
 			key.WithKeys("P"),
 			key.WithHelp("shift+p", "paste at"),
 		),
+		volumeUp: key.NewBinding(
+			key.WithKeys("+", ">"),
+			key.WithHelp("+/>", "volume +"),
+		),
+		volumeDown: key.NewBinding(
+			key.WithKeys("-", "<"),
+			key.WithHelp("-/<", "volume -"),
+		),
 	}
 }
 
@@ -325,4 +342,6 @@ type delegateKeyMap struct {
 	delete         key.Binding
 	pasteAfter     key.Binding
 	pasteBefore    key.Binding
+	volumeDown     key.Binding
+	volumeUp       key.Binding
 }

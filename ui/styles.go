@@ -26,18 +26,18 @@ var (
 	primaryColorStyle   = lipgloss.NewStyle().Foreground(basePrimaryColor)
 	secondaryColorStyle = lipgloss.NewStyle().Foreground(baseSecondColor)
 
-	prefixStyle           = primaryColorStyle.Copy().PaddingLeft(1)
-	nowPlayingPrefixStyle = primaryColorStyle.Copy().PaddingLeft(0)
+	prefixStyle           = primaryColorStyle.PaddingLeft(1)
+	nowPlayingPrefixStyle = primaryColorStyle.PaddingLeft(0)
 
-	nowPlayingStyle        = primaryColorStyle.Copy()
-	nowPlayingDescStyle    = secondaryColorStyle.Copy()
+	nowPlayingStyle        = primaryColorStyle
+	nowPlayingDescStyle    = secondaryColorStyle
 	selNowPlayingStyle     = lipgloss.NewStyle().Background(basePrimaryColor).Foreground(invertedPrimaryColor)
 	selNowPlayingDescStyle = lipgloss.NewStyle().Background(basePrimaryColor).Foreground(invertedSecondColor)
 
 	playStatusStyle = lipgloss.NewStyle().Bold(true).Foreground(baseSecondColor)
 
-	itemStyle    = primaryColorStyle.Copy()
-	descStyle    = secondaryColorStyle.Copy()
+	itemStyle    = primaryColorStyle
+	descStyle    = secondaryColorStyle
 	selItemStyle = lipgloss.NewStyle().Background(basePrimaryColor).Foreground(invertedPrimaryColor)
 	selDescStyle = lipgloss.NewStyle().Background(basePrimaryColor).Foreground(invertedSecondColor)
 
@@ -45,8 +45,20 @@ var (
 				Border(lipgloss.BlockBorder(), false, false, false, true).
 				BorderForeground(basePrimaryColor)
 
-	viewStyle    = secondaryColorStyle.Copy().PaddingLeft(padDist)
-	noItemsStyle = secondaryColorStyle.Copy().PaddingLeft(3)
+	viewStyle    = secondaryColorStyle.PaddingLeft(padDist)
+	noItemsStyle = secondaryColorStyle.PaddingLeft(3)
+
+	// header
+	playTimeStyle = lipgloss.NewStyle().
+			Border(lipgloss.HiddenBorder(), false, true).
+			Foreground(baseSecondColor).
+			Italic(true).
+			Padding(0, 0).Margin()
+	volumeStyle = lipgloss.NewStyle().
+			Border(lipgloss.HiddenBorder(), false, true).
+			Foreground(basePrimaryColor).
+			Italic(true).
+			Padding(0, 0).Margin()
 
 	// tabs
 	inactiveTab = lipgloss.NewStyle().
@@ -68,25 +80,25 @@ var (
 		Margin(0).Padding(0)
 
 	// help
-	helpkeyStyle  = primaryColorStyle.Copy()
-	helpDescStyle = secondaryColorStyle.Copy()
+	helpkeyStyle  = primaryColorStyle
+	helpDescStyle = secondaryColorStyle
 	helpStyle     = lipgloss.NewStyle().
 			Padding(0, 0).Margin(0).
 			Border(lipgloss.NormalBorder()).
 			BorderForeground(basePrimaryColor)
 
 	// filter
-	filterPromptStyle = primaryColorStyle.Copy().Bold(true).MarginLeft(1)
-	filterTextStyle   = primaryColorStyle.Copy()
+	filterPromptStyle = primaryColorStyle.Bold(true).MarginLeft(1)
+	filterTextStyle   = primaryColorStyle
 
 	//search
-	searchPromptStyle = primaryColorStyle.Copy().Bold(true).MarginLeft(3)
-	orderByStyle      = secondaryColorStyle.Copy()
-	orderBySelStyle   = primaryColorStyle.Copy()
+	searchPromptStyle = primaryColorStyle.Bold(true).MarginLeft(3)
+	orderByStyle      = secondaryColorStyle
+	orderBySelStyle   = primaryColorStyle
 
 	// station info
-	infoFieldNameStyle  = primaryColorStyle.Copy().Bold(false).MarginLeft(3)
-	infoFieldValueStyle = secondaryColorStyle.Copy()
+	infoFieldNameStyle  = primaryColorStyle.Bold(false).MarginLeft(3)
+	infoFieldValueStyle = secondaryColorStyle
 
 	// general
 	backgroundColor = termenv.RGBColor("#282c34")
@@ -109,7 +121,7 @@ func textInputSyle(textInput *textinput.Model, prompt, placeholder string) {
 	textInput.Cursor.Style = filterPromptStyle
 	textInput.Cursor.TextStyle = filterTextStyle
 	textInput.Placeholder = placeholder
-	textInput.PlaceholderStyle = secondaryColorStyle.Copy()
+	textInput.PlaceholderStyle = secondaryColorStyle
 }
 
 func helpStyles() help.Styles {
@@ -117,9 +129,9 @@ func helpStyles() help.Styles {
 		ShortKey:       helpkeyStyle,
 		ShortDesc:      helpDescStyle,
 		ShortSeparator: helpDescStyle,
-		Ellipsis:       helpDescStyle.Copy(),
-		FullKey:        helpkeyStyle.Copy(),
-		FullDesc:       helpDescStyle.Copy(),
-		FullSeparator:  helpDescStyle.Copy(),
+		Ellipsis:       helpDescStyle,
+		FullKey:        helpkeyStyle,
+		FullDesc:       helpDescStyle,
+		FullSeparator:  helpDescStyle,
 	}
 }

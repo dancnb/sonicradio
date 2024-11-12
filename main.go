@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -20,6 +21,8 @@ func main() {
 }
 
 func run() {
+	ctx := context.Background()
+
 	cfg, _ := config.Load()
 
 	var logW io.Writer
@@ -47,9 +50,17 @@ func run() {
 	slog.Debug("loaded", "config", fmt.Sprintf("%#v", cfg))
 
 	b := browser.NewApi(cfg)
-	p := player.NewMPV()
 
-	if _, err := ui.NewProgram(&cfg, b, p).Run(); err != nil {
+	p, err := player.NewPlayer(ctx, cfg)
+	if err != nil {
+		panic(err)
+	}
+	m := ui.NewModel(&cfg, b, p)
+	defer func() {
+		m.Quit()
+	}()
+
+	if _, err := m.Progr.Run(); err != nil {
 		slog.Info(fmt.Sprintf("Error running program: %s", err.Error()))
 		os.Exit(1)
 	}

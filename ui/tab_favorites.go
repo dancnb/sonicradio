@@ -26,19 +26,27 @@ func (t *favoritesTab) createList(delegate *stationDelegate, width int, height i
 		return []key.Binding{t.listKeymap.search}
 	}
 	l.AdditionalFullHelpKeys = func() []key.Binding {
-		return []key.Binding{t.listKeymap.search, t.listKeymap.digitHelp, t.listKeymap.toNowPlaying, t.listKeymap.prevTab, t.listKeymap.nextTab}
+		return []key.Binding{
+			t.listKeymap.search,
+			t.listKeymap.digitHelp,
+			t.listKeymap.toNowPlaying,
+			t.listKeymap.prevTab,
+			t.listKeymap.nextTab,
+			delegate.keymap.volumeDown,
+			delegate.keymap.volumeUp,
+		}
 	}
 
 	return l
 }
 
-func (t *favoritesTab) Init(m *model) tea.Cmd {
+func (t *favoritesTab) Init(m *Model) tea.Cmd {
 	t.viewMsg = loadingMsg
 	t.list = t.createList(m.delegate, m.width, m.totHeight-m.headerHeight)
 	return m.favoritesReqCmd
 }
 
-func (t *favoritesTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
+func (t *favoritesTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	logTeaMsg(msg, "ui.favoritesTab.Update")
 
 	var cmds []tea.Cmd
@@ -128,7 +136,6 @@ func (t *favoritesTab) Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch {
 		case key.Matches(msg, t.list.KeyMap.Quit, t.list.KeyMap.ForceQuit):
-			m.quit()
 			return m, tea.Quit
 
 		case key.Matches(msg, m.delegate.keymap.delete):

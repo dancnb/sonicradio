@@ -31,8 +31,8 @@ const (
 )
 
 type uiTab interface {
-	Init(m *model) tea.Cmd
-	Update(m *model, msg tea.Msg) (tea.Model, tea.Cmd)
+	Init(m *Model) tea.Cmd
+	Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd)
 	View() string
 }
 
@@ -113,7 +113,7 @@ func (t *stationsTabBase) IsFiltering() bool {
 	return t.list.FilterState() == list.Filtering
 }
 
-func (t *stationsTabBase) toNowPlaying(m *model) {
+func (t *stationsTabBase) toNowPlaying(m *Model) {
 	uuid := ""
 	if m.delegate.currPlaying != nil {
 		uuid = m.delegate.currPlaying.Stationuuid
@@ -144,13 +144,13 @@ func (t *stationsTabBase) IsInfoEnabled() bool {
 	return t.infoModel != nil && t.infoModel.enabled
 }
 
-func (*stationsTabBase) newSizeMsg(sizeMsg tea.WindowSizeMsg, m *model) tea.WindowSizeMsg {
+func (*stationsTabBase) newSizeMsg(sizeMsg tea.WindowSizeMsg, m *Model) tea.WindowSizeMsg {
 	availableHeight := sizeMsg.Height - m.headerHeight
 	newSizeMsg := tea.WindowSizeMsg{Width: sizeMsg.Width, Height: availableHeight}
 	return newSizeMsg
 }
 
-func (t *stationsTabBase) initInfoModel(m *model, msg toggleInfoMsg) tea.Cmd {
+func (t *stationsTabBase) initInfoModel(m *Model, msg toggleInfoMsg) tea.Cmd {
 	t.listKeymap.setEnabled(false)
 	t.infoModel.setSize(m.width, m.totHeight-m.headerHeight)
 	return t.infoModel.Init(msg.station)
