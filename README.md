@@ -57,4 +57,3 @@ Sonicradio is licensed under the [MIT License](LICENSE).
 ### Third-party dependencies
 
 [Bubbletea](https://github.com/charmbracelet/bubbletea/blob/master/LICENSE) MIT License
-|-/<              |                        volume - |
