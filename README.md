@@ -52,7 +52,8 @@ After the installation, the command to run the application:
 
 - [x] Search stations section
 - [x] Display rich station information
-- [ ] Configuration section
+- [ ] Playback history tab
+- [ ] Settings tab
 
 ## License
 
