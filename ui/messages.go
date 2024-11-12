@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/dancnb/sonicradio/browser"
+	"github.com/dancnb/sonicradio/player"
 )
 
 // tea.Msg
@@ -64,3 +65,12 @@ type (
 		err string
 	}
 )
+
+func fromMetadata(m player.Metadata) metadataMsg {
+	msg := metadataMsg{songTitle: m.Title}
+	if m.PlaybackTimeSec != nil {
+		t := time.Second * (time.Duration(*m.PlaybackTimeSec))
+		msg.playbackTime = &t
+	}
+	return msg
+}

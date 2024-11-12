@@ -38,6 +38,7 @@ const (
 	volumeFmt1         = "%sVolume"
 	volumeFmt2         = "%3d%%%s"
 	volumeStep         = 5
+	seekStepSec        = 10
 	playerPollInterval = 500 * time.Millisecond
 )
 
@@ -92,11 +93,7 @@ func getPlayerMetadata(progr *tea.Program, m *Model) {
 			log.Error("", "metadata", m.Err)
 			continue
 		}
-		msg := metadataMsg{songTitle: m.Title}
-		if m.PlaybackTimeSec != nil {
-			t := time.Second * (time.Duration(*m.PlaybackTimeSec))
-			msg.playbackTime = &t
-		}
+		msg := fromMetadata(*m)
 		progr.Send(msg)
 	}
 }
@@ -225,6 +222,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if key.Matches(msg, d.keymap.volumeUp) {
 			return m, m.volumeCmd(true)
+		}
+		if key.Matches(msg, d.keymap.seekBack) {
+			return m, m.seekCmd(-seekStepSec)
+		}
+		if key.Matches(msg, d.keymap.seekFw) {
+			return m, m.seekCmd(seekStepSec)
 		}
 
 		if key.Matches(msg, d.keymap.pause) {
@@ -516,6 +519,21 @@ func (m *Model) volumeCmd(up bool) tea.Cmd {
 		}
 		m.cfg.SetVolume(setVol)
 		return volumeMsg{}
+	}
+}
+
+func (m *Model) seekCmd(amtSec int) tea.Cmd {
+	return func() tea.Msg {
+		log := slog.With("method", "model.seekCmd")
+		metadata := m.player.Seek(amtSec)
+		if metadata == nil {
+			return nil
+		} else if metadata.Err != nil {
+			log.Error("seek", "error", metadata.Err)
+			return nil
+		}
+		msg := fromMetadata(*metadata)
+		return msg
 	}
 }
 

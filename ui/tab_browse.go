@@ -35,8 +35,6 @@ func (t *browseTab) createList(delegate *stationDelegate, width int, height int)
 			t.listKeymap.toNowPlaying,
 			t.listKeymap.prevTab,
 			t.listKeymap.nextTab,
-			delegate.keymap.volumeDown,
-			delegate.keymap.volumeUp,
 		}
 	}
 

@@ -49,6 +49,10 @@ func (p *Player) Metadata() *Metadata {
 	return p.mpv.Metadata()
 }
 
+func (p *Player) Seek(amtSec int) *Metadata {
+	return p.mpv.Seek(amtSec)
+}
+
 func (p *Player) Close() error {
 	return p.mpv.Close()
 }

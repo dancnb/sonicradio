@@ -13,12 +13,12 @@ func newListKeymap() listKeymap {
 			key.WithHelp("esc", "go to now playing"),
 		),
 		nextTab: key.NewBinding(
-			key.WithKeys("right", "l", "tab"),
-			key.WithHelp("→/l/tab", "go to next tab"),
+			key.WithKeys("tab"),
+			key.WithHelp("tab", "go to next tab"),
 		),
 		prevTab: key.NewBinding(
-			key.WithKeys("left", "h", "shift+tab"),
-			key.WithHelp("←/h/shift+tab", "go to prev tab"),
+			key.WithKeys("shift+tab"),
+			key.WithHelp("shift+tab", "go to prev tab"),
 		),
 		digits: []key.Binding{
 			key.NewBinding(key.WithKeys("1")),

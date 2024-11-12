@@ -38,6 +38,7 @@ const (
 	metadata
 	mediaTitle
 	playbackTime
+	seek
 	quit
 )
 
@@ -50,6 +51,7 @@ var ipcCmds = map[ipcCmd]string{
 	metadata:     `["get_property_string", "metadata"]`,
 	mediaTitle:   `["get_property", "media-title"]`,
 	playbackTime: `["get_property", "playback-time"]`,
+	seek:         `["seek", %d]`,
 	quit:         `[ "quit"]`,
 }
 
@@ -144,19 +146,6 @@ func (mpv *MpvSocket) Play(url string) error {
 	return err
 }
 
-type icyMetadata struct {
-	Notice1     string `json:"icy-notice1"`
-	Notice2     string `json:"icy-notice2"`
-	Name        string `json:"icy-name"`
-	Genre       string `json:"icy-genre"`
-	BitRate     string `json:"icy-br"`
-	Sr          string `json:"icy-sr"`
-	URL         string `json:"icy-url"`
-	Pub         string `json:"icy-pub"`
-	Description string `json:"icy-description"`
-	Title       string `json:"icy-title"`
-}
-
 func (mpv *MpvSocket) Metadata() *Metadata {
 	m := mpv.getMetadata()
 	// TODO? alternate title
@@ -175,6 +164,28 @@ func (mpv *MpvSocket) Metadata() *Metadata {
 		}
 	}
 	return &m
+}
+
+func (mpv *MpvSocket) Seek(amtSec int) *Metadata {
+	cmd := fmt.Sprintf(ipcCmds[seek], amtSec)
+	_, err := mpv.ipcRequest(cmd)
+	if err != nil {
+		return &Metadata{Err: err}
+	}
+	return mpv.Metadata()
+}
+
+type icyMetadata struct {
+	Notice1     string `json:"icy-notice1"`
+	Notice2     string `json:"icy-notice2"`
+	Name        string `json:"icy-name"`
+	Genre       string `json:"icy-genre"`
+	BitRate     string `json:"icy-br"`
+	Sr          string `json:"icy-sr"`
+	URL         string `json:"icy-url"`
+	Pub         string `json:"icy-pub"`
+	Description string `json:"icy-description"`
+	Title       string `json:"icy-title"`
 }
 
 func (mpv *MpvSocket) getMetadata() Metadata {

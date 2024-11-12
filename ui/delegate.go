@@ -287,7 +287,17 @@ func (d *stationDelegate) ShortHelp() []key.Binding {
 func (d *stationDelegate) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{
-			d.keymap.playSelected, d.keymap.pause, d.keymap.info, d.keymap.toggleFavorite, d.keymap.delete, d.keymap.pasteAfter, d.keymap.pasteBefore,
+			d.keymap.playSelected,
+			d.keymap.pause,
+			d.keymap.volumeDown,
+			d.keymap.volumeUp,
+			d.keymap.seekBack,
+			d.keymap.seekFw,
+			d.keymap.info,
+			d.keymap.toggleFavorite,
+			d.keymap.delete,
+			d.keymap.pasteAfter,
+			d.keymap.pasteBefore,
 		},
 	}
 }
@@ -331,6 +341,14 @@ func newDelegateKeyMap() *delegateKeyMap {
 			key.WithKeys("-", "<"),
 			key.WithHelp("-/<", "volume -"),
 		),
+		seekBack: key.NewBinding(
+			key.WithKeys("left", "h"),
+			key.WithHelp("←/h", "seek backwards"),
+		),
+		seekFw: key.NewBinding(
+			key.WithKeys("right", "l"),
+			key.WithHelp("→/l", "seek forward"),
+		),
 	}
 }
 
@@ -344,4 +362,6 @@ type delegateKeyMap struct {
 	pasteBefore    key.Binding
 	volumeDown     key.Binding
 	volumeUp       key.Binding
+	seekBack       key.Binding
+	seekFw         key.Binding
 }
