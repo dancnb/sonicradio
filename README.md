@@ -28,17 +28,19 @@ After the installation, the command to run the application:
 |g/home           |                     go to start |
 |G/end            |                       go to end |
 |enter            |                   play selected |
-|space            |                      play/pause |
+|space            |                    pause/resume |
 |f                |              toggle as favorite |
 |i                |                    station info |
 |d                |                  delete station |
-|p                |           paste deleted station |
+|p/shift+p        |           paste deleted station |
 |s                |                     open search |
 |/                |                  filter results |
 |esc              |               go to now playing |
 |#                |            go to station number |
 |←/h/shift+tab    |                  go to prev tab |
 |→/l/tab          |                  go to next tab |
+|-/<              |                        volume - |
+|+/>              |                        volume + |
 |?                |                     toggle help |
 |q                |                            quit |
 
@@ -55,3 +57,4 @@ Sonicradio is licensed under the [MIT License](LICENSE).
 ### Third-party dependencies
 
 [Bubbletea](https://github.com/charmbracelet/bubbletea/blob/master/LICENSE) MIT License
+|-/<              |                        volume - |
