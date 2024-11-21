@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -35,8 +36,7 @@ const (
 	statusMsgTimeout = 1 * time.Second
 
 	// metadata
-	volumeFmt1         = "%sVolume"
-	volumeFmt2         = "%3d%%%s"
+	volumeFmt          = "%3d%%%s"
 	volumeStep         = 5
 	seekStepSec        = 10
 	playerPollInterval = 500 * time.Millisecond
@@ -67,6 +67,8 @@ func newModel(cfg *config.Value, b *browser.Api, p *player.Player) *Model {
 			newBrowseTab(b, infoModel),
 		},
 		statusUpdate: make(chan struct{}),
+
+		volumeBar: getVolumeBar(),
 	}
 
 	if len(cfg.Favorites) > 0 {
@@ -77,6 +79,17 @@ func newModel(cfg *config.Value, b *browser.Api, p *player.Player) *Model {
 
 	go m.statusHandler()
 	return &m
+}
+
+func getVolumeBar() progress.Model {
+	b := progress.New([]progress.Option{
+		progress.WithWidth(10),
+		progress.WithFillCharacters(fullChar, emptyChar),
+		progress.WithSolidFill(secondColor),
+		progress.WithoutPercentage(),
+	}...)
+	b.EmptyColor = secondColor
+	return b
 }
 
 func getPlayerMetadata(progr *tea.Program, m *Model) {
@@ -118,6 +131,7 @@ type Model struct {
 	playbackTime time.Duration
 	spinner      *spinner.Model
 	songTitle    string
+	volumeBar    progress.Model
 
 	width        int
 	totHeight    int
@@ -205,7 +219,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.updateStatus(msg.err)
 			m.spinner = nil
 		}
-		m.delegate.keymap.pause.SetHelp("space", "pause")
+		m.delegate.keymap.pause.SetHelp("space", " pause")
 		return m, nil
 
 	case tea.KeyMsg:
@@ -347,11 +361,11 @@ func (m *Model) headerView(width int) string {
 	var res strings.Builder
 	status := ""
 	if len(m.statusMsg) > 0 {
-		status = statusBarStyle.Render(strings.Repeat(" ", padDist) + m.statusMsg)
+		status = statusBarStyle.Render(strings.Repeat(" ", headerPadDist) + m.statusMsg)
 	}
 	res.WriteString(status)
 	appNameVers := statusBarStyle.Render(fmt.Sprintf("sonicradio v%v  ", m.cfg.Version))
-	fill := max(0, width-lipgloss.Width(status)-lipgloss.Width(appNameVers)-2*padDist)
+	fill := max(0, width-lipgloss.Width(status)-lipgloss.Width(appNameVers)-2*headerPadDist)
 	res.WriteString(statusBarStyle.Render(strings.Repeat(" ", fill)))
 	res.WriteString(appNameVers)
 	res.WriteString("\n\n")
@@ -377,7 +391,7 @@ func (m *Model) headerView(width int) string {
 		lipgloss.Top,
 		renderedTabs...,
 	)
-	hFill := width - lipgloss.Width(row) - 2*padDist
+	hFill := width - lipgloss.Width(row) - 2*headerPadDist
 	gap := tabGap.Render(strings.Repeat(" ", max(0, hFill)))
 	res.WriteString(lipgloss.JoinHorizontal(lipgloss.Bottom, row, gap) + "\n\n")
 
@@ -386,7 +400,8 @@ func (m *Model) headerView(width int) string {
 
 func (m *Model) metadataView(width int) string {
 	metadataParts := []string{"", "", ""}
-	gap := strings.Repeat(" ", padDist)
+	gap := strings.Repeat(" ", headerPadDist)
+
 	playTime := fmt.Sprintf("%s%03d:%02d:%02d%s",
 		gap,
 		int(m.playbackTime.Hours()),
@@ -394,13 +409,17 @@ func (m *Model) metadataView(width int) string {
 		int(m.playbackTime.Seconds())%60,
 		gap,
 	)
-	playTimeView := playTimeStyle.Render(playTime)
+	playTimeView := italicStyle.Render(playTime)
 	metadataParts[0] = playTimeView
-	volumeView := volumeStyle.Render(fmt.Sprintf(volumeFmt1, gap)) +
-		playTimeStyle.Render(fmt.Sprintf(volumeFmt2, m.cfg.GetVolume(), gap))
+
+	volumeView := gap +
+		m.volumeBar.ViewAs(float64(m.cfg.GetVolume())/100) +
+		italicStyle.Render(fmt.Sprintf(volumeFmt, m.cfg.GetVolume(), gap))
 	metadataParts[2] = volumeView
+
 	playTimeW := lipgloss.Width(playTimeView)
 	volumeW := lipgloss.Width(volumeView)
+	maxW := max(0, width-playTimeW-volumeW-2*headerPadDist)
 
 	var songView strings.Builder
 	if m.delegate.currPlaying != nil {
@@ -409,41 +428,41 @@ func (m *Model) metadataView(width int) string {
 		}
 		var line strings.Builder
 		line.WriteString(m.spinner.View())
-		line.WriteString(itemStyle.Render(" " + m.delegate.currPlaying.Name))
-		fill := max(0, width-playTimeW-volumeW-2*padDist-lipgloss.Width(line.String()))
+		line.WriteString(itemStyle.MaxWidth(maxW - 1).Render(" " + m.delegate.currPlaying.Name))
+		fill := max(0, maxW-lipgloss.Width(line.String()))
 		line.WriteString(itemStyle.Render(strings.Repeat(" ", fill)))
 		songView.WriteString(line.String())
 	} else if m.delegate.prevPlaying != nil {
 		var line strings.Builder
 		line.WriteString(playStatusStyle.Render(pauseChar))
-		line.WriteString(itemStyle.Render(" " + m.delegate.prevPlaying.Name))
-		fill := max(0, width-playTimeW-volumeW-2*padDist-lipgloss.Width(line.String()))
+		line.WriteString(itemStyle.MaxWidth(maxW - 1).Render(" " + m.delegate.prevPlaying.Name))
+		fill := max(0, maxW-lipgloss.Width(line.String()))
 		line.WriteString(itemStyle.Render(strings.Repeat(" ", fill)))
 		songView.WriteString(line.String())
 	} else {
 		var line strings.Builder
-		line.WriteString(playStatusStyle.Render(lineChar + " " + noPlayingMsg))
-		fill := max(0, width-playTimeW-volumeW-2*padDist-lipgloss.Width(line.String()))
+		line.WriteString(playStatusStyle.MaxWidth(maxW).Render(lineChar + " " + noPlayingMsg))
+		fill := max(0, maxW-lipgloss.Width(line.String()))
 		line.WriteString(itemStyle.Render(strings.Repeat(" ", fill)))
 		songView.WriteString(line.String())
 	}
 	songView.WriteString("\n")
 	if m.songTitle != "" {
 		var line strings.Builder
-		line.WriteString(playStatusStyle.Render("  " + m.songTitle))
-		fill := max(0, width-playTimeW-volumeW-2*padDist-lipgloss.Width(line.String()))
+		line.WriteString(playStatusStyle.MaxWidth(maxW).Render("  " + m.songTitle))
+		fill := max(0, maxW-lipgloss.Width(line.String()))
 		line.WriteString(itemStyle.Render(strings.Repeat(" ", fill)))
 		songView.WriteString(line.String())
 	} else if m.delegate.currPlaying != nil {
 		var line strings.Builder
-		line.WriteString(playStatusStyle.Render("  " + m.delegate.currPlaying.Homepage))
-		fill := max(0, width-playTimeW-volumeW-2*padDist-lipgloss.Width(line.String()))
+		line.WriteString(playStatusStyle.MaxWidth(maxW).Render("  " + m.delegate.currPlaying.Homepage))
+		fill := max(0, maxW-lipgloss.Width(line.String()))
 		line.WriteString(itemStyle.Render(strings.Repeat(" ", fill)))
 		songView.WriteString(line.String())
 	} else if m.delegate.prevPlaying != nil {
 		var line strings.Builder
-		line.WriteString(playStatusStyle.Render("  " + m.delegate.prevPlaying.Homepage))
-		fill := max(0, width-playTimeW-volumeW-2*padDist-lipgloss.Width(line.String()))
+		line.WriteString(playStatusStyle.MaxWidth(maxW).Render("  " + m.delegate.prevPlaying.Homepage))
+		fill := max(0, maxW-lipgloss.Width(line.String()))
 		line.WriteString(itemStyle.Render(strings.Repeat(" ", fill)))
 		songView.WriteString(line.String())
 	}
