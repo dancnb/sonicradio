@@ -211,7 +211,7 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 	if isCurr || isPrev {
 		prefixRender := nowPlayingPrefixStyle.Render(prefix)
 		res.WriteString(prefixRender)
-		maxWidth := max(listWidth-lipgloss.Width(prefixRender)-padDist, 0)
+		maxWidth := max(listWidth-lipgloss.Width(prefixRender)-headerPadDist, 0)
 
 		itStyle := nowPlayingStyle
 		descStyle := nowPlayingDescStyle
@@ -225,7 +225,7 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		}
 		nameRender := itStyle.Render(name)
 		res.WriteString(nameRender)
-		hFill := max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(nameRender)-padDist-1, 0)
+		hFill := max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(nameRender)-headerPadDist-1, 0)
 		res.WriteString(itStyle.Render(strings.Repeat(" ", hFill)))
 		res.WriteString("\n")
 
@@ -236,7 +236,7 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		}
 		descRender := descStyle.Render(desc)
 		res.WriteString(descRender)
-		hFill = max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(descRender)-padDist-1, 0)
+		hFill = max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(descRender)-headerPadDist-1, 0)
 		res.WriteString(descStyle.Render(strings.Repeat(" ", hFill)))
 
 		str = res.String()
@@ -244,7 +244,7 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 	} else {
 		prefixRender := prefixStyle.Render(prefix)
 		res.WriteString(prefixRender)
-		maxWidth := max(listWidth-lipgloss.Width(prefixRender)-padDist, 0)
+		maxWidth := max(listWidth-lipgloss.Width(prefixRender)-headerPadDist, 0)
 
 		itStyle := itemStyle
 		descStyle := descStyle
@@ -258,7 +258,7 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		}
 		nameRender := itStyle.Render(name)
 		res.WriteString(nameRender)
-		hFill := max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(nameRender)-padDist, 0)
+		hFill := max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(nameRender)-headerPadDist, 0)
 		res.WriteString(itStyle.Render(strings.Repeat(" ", hFill)))
 		res.WriteString("\n")
 
@@ -269,7 +269,7 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		}
 		descRender := descStyle.Render(desc)
 		res.WriteString(descRender)
-		hFill = max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(descRender)-padDist, 0)
+		hFill = max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(descRender)-headerPadDist, 0)
 		res.WriteString(descStyle.Render(strings.Repeat(" ", hFill)))
 
 		str = res.String()
@@ -334,12 +334,12 @@ func newDelegateKeyMap() *delegateKeyMap {
 			key.WithHelp("shift+p", "paste at"),
 		),
 		volumeUp: key.NewBinding(
-			key.WithKeys("+", ">"),
-			key.WithHelp("+/>", "volume +"),
+			key.WithKeys("+", "="),
+			key.WithHelp("+", "volume +"),
 		),
 		volumeDown: key.NewBinding(
-			key.WithKeys("-", "<"),
-			key.WithHelp("-/<", "volume -"),
+			key.WithKeys("-", "_"),
+			key.WithHelp("-", "volume -"),
 		),
 		seekBack: key.NewBinding(
 			key.WithKeys("left", "h"),

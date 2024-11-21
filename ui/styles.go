@@ -9,7 +9,7 @@ import (
 
 const (
 	tabGapDistance = 2
-	padDist        = 2
+	headerPadDist  = 2
 )
 
 var (
@@ -17,11 +17,17 @@ var (
 	playChar  = "\u2877"
 	pauseChar = "\u28FF"
 	lineChar  = "\u2847"
+	emptyChar = '\u2812'
+	fullChar  = '\u283F'
 
-	basePrimaryColor     = lipgloss.Color("#ffb641")
-	baseSecondColor      = lipgloss.Color("#bd862d")
-	invertedPrimaryColor = lipgloss.Color("#12100d")
-	invertedSecondColor  = lipgloss.Color("#4a4133")
+	primaryColor         = "#ffb641"
+	basePrimaryColor     = lipgloss.Color(primaryColor)
+	secondColor          = "#bd862d"
+	baseSecondColor      = lipgloss.Color(secondColor)
+	invPrimaryColor      = "#12100d"
+	invertedPrimaryColor = lipgloss.Color(invPrimaryColor)
+	invSecondColor       = "#4a4133"
+	invertedSecondColor  = lipgloss.Color(invSecondColor)
 
 	primaryColorStyle   = lipgloss.NewStyle().Foreground(basePrimaryColor)
 	secondaryColorStyle = lipgloss.NewStyle().Foreground(baseSecondColor)
@@ -45,18 +51,13 @@ var (
 				Border(lipgloss.BlockBorder(), false, false, false, true).
 				BorderForeground(basePrimaryColor)
 
-	viewStyle    = secondaryColorStyle.PaddingLeft(padDist)
+	viewStyle    = secondaryColorStyle.PaddingLeft(headerPadDist)
 	noItemsStyle = secondaryColorStyle.PaddingLeft(3)
 
 	// header
-	playTimeStyle = lipgloss.NewStyle().
+	italicStyle = lipgloss.NewStyle().
 			Border(lipgloss.HiddenBorder(), false, true).
 			Foreground(baseSecondColor).
-			Italic(true).
-			Padding(0, 0).Margin()
-	volumeStyle = lipgloss.NewStyle().
-			Border(lipgloss.HiddenBorder(), false, true).
-			Foreground(basePrimaryColor).
 			Italic(true).
 			Padding(0, 0).Margin()
 
@@ -102,7 +103,7 @@ var (
 
 	// general
 	backgroundColor = termenv.RGBColor("#282c34")
-	docStyle        = lipgloss.NewStyle().Padding(1, padDist, 0, padDist)
+	docStyle        = lipgloss.NewStyle().Padding(1, headerPadDist, 0, headerPadDist)
 	statusBarStyle  = lipgloss.NewStyle().Background(baseSecondColor).Foreground(invertedPrimaryColor)
 )
 
