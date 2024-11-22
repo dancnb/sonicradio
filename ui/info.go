@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -9,6 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dancnb/sonicradio/browser"
+	"github.com/dancnb/sonicradio/config"
 )
 
 type infoModel struct {
@@ -72,8 +74,10 @@ func (i *infoModel) Update(msg tea.Msg) (*infoModel, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, i.keymap.vote):
-			err := i.b.StationVote(i.station.Stationuuid)
 			return i, func() tea.Msg {
+				ctx, cancel := context.WithTimeout(context.Background(), config.ReqTimeout)
+				defer cancel()
+				err := i.b.StationVote(ctx, i.station.Stationuuid)
 				if err != nil {
 					return statusMsg(err.Error())
 				}

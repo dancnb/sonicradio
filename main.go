@@ -21,7 +21,8 @@ func main() {
 }
 
 func run() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	cfg, err := config.Load()
 	if err != nil {
@@ -52,7 +53,7 @@ func run() {
 	slog.Info("----------------------Starting----------------------")
 	slog.Debug("loaded", "config", fmt.Sprintf("%#v", cfg))
 
-	b, err := browser.NewApi(cfg)
+	b, err := browser.NewApi(ctx, cfg)
 	if err != nil {
 		panic(err)
 	}
@@ -61,7 +62,7 @@ func run() {
 	if err != nil {
 		panic(err)
 	}
-	m := ui.NewModel(&cfg, b, p)
+	m := ui.NewModel(ctx, &cfg, b, p)
 	defer func() {
 		m.Quit()
 	}()

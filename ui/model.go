@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"math"
@@ -42,16 +43,16 @@ const (
 	playerPollInterval = 500 * time.Millisecond
 )
 
-func NewModel(cfg *config.Value, b *browser.Api, p *player.Player) *Model {
-	m := newModel(cfg, b, p)
-	progr := tea.NewProgram(m, tea.WithAltScreen())
+func NewModel(ctx context.Context, cfg *config.Value, b *browser.Api, p *player.Player) *Model {
+	m := newModel(ctx, cfg, b, p)
+	progr := tea.NewProgram(m, tea.WithAltScreen(), tea.WithContext(ctx))
 	m.Progr = progr
 	trapSignal(progr)
-	go getPlayerMetadata(progr, m)
+	go updatePlayerMetadata(ctx, progr, m)
 	return m
 }
 
-func newModel(cfg *config.Value, b *browser.Api, p *player.Player) *Model {
+func newModel(ctx context.Context, cfg *config.Value, b *browser.Api, p *player.Player) *Model {
 	lipgloss.DefaultRenderer().SetHasDarkBackground(true)
 
 	delegate := newStationDelegate(cfg, p, b)
@@ -64,7 +65,7 @@ func newModel(cfg *config.Value, b *browser.Api, p *player.Player) *Model {
 		delegate: delegate,
 		tabs: []uiTab{
 			newFavoritesTab(infoModel),
-			newBrowseTab(b, infoModel),
+			newBrowseTab(ctx, b, infoModel),
 		},
 		statusUpdate: make(chan struct{}),
 
@@ -77,7 +78,7 @@ func newModel(cfg *config.Value, b *browser.Api, p *player.Player) *Model {
 		m.toBrowseTab()
 	}
 
-	go m.statusHandler()
+	go m.statusHandler(ctx)
 	return &m
 }
 
@@ -91,22 +92,27 @@ func getVolumeBar() progress.Model {
 	return b
 }
 
-func getPlayerMetadata(progr *tea.Program, m *Model) {
+func updatePlayerMetadata(ctx context.Context, progr *tea.Program, m *Model) {
 	log := slog.With("func", "getPlayerMetadata")
 	tick := time.NewTicker(playerPollInterval)
-	for range tick.C {
-		if m.delegate.currPlaying == nil {
-			continue
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-tick.C:
+			if m.delegate.currPlaying == nil {
+				continue
+			}
+			metadata := m.player.Metadata()
+			if metadata == nil {
+				continue
+			} else if metadata.Err != nil {
+				log.Error("", "metadata", metadata.Err)
+				continue
+			}
+			msg := getMetadataMsg(*m.delegate.currPlaying, *metadata)
+			progr.Send(msg)
 		}
-		m := m.player.Metadata()
-		if m == nil {
-			continue
-		} else if m.Err != nil {
-			log.Error("", "metadata", m.Err)
-			continue
-		}
-		msg := fromMetadata(*m)
-		progr.Send(msg)
 	}
 }
 
@@ -177,6 +183,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case metadataMsg:
+		go m.addHistory(msg)
 		m.songTitle = msg.songTitle
 		if msg.playbackTime != nil {
 			m.playbackTime = *msg.playbackTime
@@ -292,12 +299,22 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return model, cmd
 }
 
-func (m *Model) statusHandler() {
+func (m *Model) addHistory(msg metadataMsg) {
+	m.cfg.AddHistory(
+		strings.TrimSpace(msg.stationUuid),
+		strings.TrimSpace(msg.stationName),
+		strings.TrimSpace(msg.songTitle),
+	)
+}
+
+func (m *Model) statusHandler(ctx context.Context) {
 	t := time.NewTimer(math.MaxInt64)
 	defer t.Stop()
 
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case <-t.C:
 			m.statusMsg = ""
 		case <-m.statusUpdate:
@@ -503,7 +520,9 @@ func (m *Model) favoritesReqCmd() tea.Msg {
 		}
 	}
 
-	stations, err := m.browser.GetStations(m.cfg.Favorites)
+	ctx, cancel := context.WithTimeout(context.Background(), config.ReqTimeout)
+	defer cancel()
+	stations, err := m.browser.GetStations(ctx, m.cfg.Favorites)
 	res := favoritesStationRespMsg{stations: stations}
 	if err != nil {
 		res.statusMsg = statusMsg(err.Error())
@@ -514,7 +533,9 @@ func (m *Model) favoritesReqCmd() tea.Msg {
 }
 
 func (m *Model) topStationsCmd() tea.Msg {
-	stations, err := m.browser.TopStations()
+	ctx, cancel := context.WithTimeout(context.Background(), config.ReqTimeout)
+	defer cancel()
+	stations, err := m.browser.TopStations(ctx)
 	res := topStationsRespMsg{stations: stations}
 	if err != nil {
 		res.statusMsg = statusMsg(err.Error())
@@ -543,6 +564,14 @@ func (m *Model) volumeCmd(up bool) tea.Cmd {
 func (m *Model) seekCmd(amtSec int) tea.Cmd {
 	return func() tea.Msg {
 		log := slog.With("method", "model.seekCmd")
+		var s *browser.Station
+		if m.delegate.currPlaying != nil {
+			s = m.delegate.currPlaying
+		} else if m.delegate.prevPlaying != nil {
+			s = m.delegate.prevPlaying
+		} else {
+			return nil
+		}
 		metadata := m.player.Seek(amtSec)
 		if metadata == nil {
 			return nil
@@ -550,7 +579,7 @@ func (m *Model) seekCmd(amtSec int) tea.Cmd {
 			log.Error("seek", "error", metadata.Err)
 			return nil
 		}
-		msg := fromMetadata(*metadata)
+		msg := getMetadataMsg(*s, *metadata)
 		return msg
 	}
 }

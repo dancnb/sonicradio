@@ -6,14 +6,18 @@ import (
 	"flag"
 	"io"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
+	"time"
 )
 
 var debug = flag.Bool("debug", false, "use -debug arg to log to a file")
 
 const (
+	ReqTimeout = 10 * time.Second
+
 	defVersion  = "0.3.5"
 	cfgSubDir   = "sonicRadio"
 	cfgFilename = "config.json"
@@ -22,12 +26,12 @@ const (
 var defVolume = 100
 
 type Value struct {
-	Version   string   `json:"-"`
-	Debug     bool     `json:"-"`
-	LogPath   string   `json:"-"`
-	Favorites []string `json:"favorites,omitempty"` // Ordered station UUID's for user favorites
-	Volume    *int     `json:"volume,omitempty"`
-	// History   []string `json:"history,omitempty"`   // Ordered station UUID's for user listening history
+	Version   string         `json:"-"`
+	Debug     bool           `json:"-"`
+	LogPath   string         `json:"-"`
+	Favorites []string       `json:"favorites,omitempty"` // Ordered station UUID's for user favorites
+	Volume    *int           `json:"volume,omitempty"`
+	History   []historyEntry `json:"history,omitempty"`
 }
 
 func (v *Value) GetVolume() int {
@@ -73,6 +77,19 @@ func (v *Value) InsertFavorite(uuid string, idx int) bool {
 	}
 	v.Favorites = slices.Insert(v.Favorites, idx, uuid)
 	return true
+}
+
+func (v *Value) AddHistory(uuid string, station string, song string) {
+	if song == "" {
+		return
+	}
+	log := slog.With("method", "config.Value.AddHistory")
+	log.Debug("", "uuid", uuid, "stationName", station, "song", song)
+	// v.History = append(v.History, historyEntry{
+	// 	Station:   station,
+	// 	Song:      song,
+	// 	Timestamp: time.Now(),
+	// })
 }
 
 func Load() (Value, error) {
@@ -143,7 +160,9 @@ func Save(cfg Value) error {
 	if err != nil {
 		return err
 	}
-	err = json.NewEncoder(f).Encode(cfg)
+	enc := json.NewEncoder(f)
+	enc.SetIndent("  ", "  ")
+	err = enc.Encode(cfg)
 	if err != nil {
 		return err
 	}

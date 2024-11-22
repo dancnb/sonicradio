@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"context"
+
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -13,12 +15,12 @@ type browseTab struct {
 	searchModel    *searchModel
 }
 
-func newBrowseTab(browser *browser.Api, infoModel *infoModel) *browseTab {
+func newBrowseTab(ctx context.Context, browser *browser.Api, infoModel *infoModel) *browseTab {
 	k := newListKeymap()
 
 	m := &browseTab{
 		stationsTabBase: newStationsTab(k, infoModel),
-		searchModel:     newSearchModel(browser),
+		searchModel:     newSearchModel(ctx, browser),
 	}
 	return m
 }
