@@ -17,8 +17,6 @@ var (
 	playChar  = "\u2877"
 	pauseChar = "\u28FF"
 	lineChar  = "\u2847"
-	emptyChar = '\u2812'
-	fullChar  = '\u283F'
 
 	primaryColor         = "#ffb641"
 	basePrimaryColor     = lipgloss.Color(primaryColor)

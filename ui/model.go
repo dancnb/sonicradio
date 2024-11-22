@@ -84,7 +84,6 @@ func newModel(cfg *config.Value, b *browser.Api, p *player.Player) *Model {
 func getVolumeBar() progress.Model {
 	b := progress.New([]progress.Option{
 		progress.WithWidth(10),
-		progress.WithFillCharacters(fullChar, emptyChar),
 		progress.WithSolidFill(secondColor),
 		progress.WithoutPercentage(),
 	}...)
