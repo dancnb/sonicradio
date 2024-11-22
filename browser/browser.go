@@ -26,9 +26,9 @@ const (
 	voteTimeout       = 10 * time.Minute
 )
 
-var serverErrMsg = errors.New("Server response not available")
+var ServerErrMsg = errors.New("Server response not available")
 
-func NewApi(cfg config.Value) *Api {
+func NewApi(cfg config.Value) (*Api, error) {
 	api := Api{
 		cfg:           cfg,
 		stationsCache: make(map[string][]Station),
@@ -36,16 +36,21 @@ func NewApi(cfg config.Value) *Api {
 	}
 	res, err := api.getServersDNSLookup(HOST)
 	if err != nil {
+		msg := fmt.Errorf("could not perform DNS lookup for %q: %w", HOST, err)
+		slog.Error(msg.Error())
 		res, err = api.getServerMirrors()
 		if err != nil {
 			msg := fmt.Errorf("could not retrieve %s servers: %w", HOST, err)
 			slog.Error(msg.Error())
 		}
 	}
-	slog.Debug("browser servers " + strings.Join(res, "; "))
+	slog.Debug("browser servers: " + strings.Join(res, "; "))
 	api.servers = append(api.servers, res...)
 
-	return &api
+	if len(api.servers) == 0 {
+		return nil, ServerErrMsg
+	}
+	return &api, nil
 }
 
 type Api struct {
@@ -85,7 +90,7 @@ func (a *Api) GetLanguages() ([]Language, error) {
 		return languages, nil
 	}
 	log.Warn("exceeded max retries")
-	return nil, serverErrMsg
+	return nil, ServerErrMsg
 }
 
 func (a *Api) GetCountries() ([]Country, error) {
@@ -113,7 +118,7 @@ func (a *Api) GetCountries() ([]Country, error) {
 		return countries, nil
 	}
 	log.Warn("exceeded max retries")
-	return nil, serverErrMsg
+	return nil, ServerErrMsg
 }
 
 func (a *Api) Search(s SearchParams) ([]Station, error) {
@@ -166,7 +171,7 @@ func (a *Api) stationSearch(s SearchParams) ([]Station, error) {
 		return stations, nil
 	}
 	log.Warn("exceeded max retries")
-	return nil, serverErrMsg
+	return nil, ServerErrMsg
 }
 
 func (a *Api) GetStations(uuids []string) ([]Station, error) {
@@ -203,7 +208,7 @@ func (a *Api) GetStations(uuids []string) ([]Station, error) {
 	}
 
 	log.Warn("exceeded max retries")
-	return nil, serverErrMsg
+	return nil, ServerErrMsg
 }
 
 func (a *Api) StationCounter(uuid string) error {

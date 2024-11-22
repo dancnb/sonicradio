@@ -23,7 +23,10 @@ func main() {
 func run() {
 	ctx := context.Background()
 
-	cfg, _ := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		panic(err)
+	}
 
 	var logW io.Writer
 	if cfg.Debug {
@@ -49,7 +52,10 @@ func run() {
 	slog.Info("----------------------Starting----------------------")
 	slog.Debug("loaded", "config", fmt.Sprintf("%#v", cfg))
 
-	b := browser.NewApi(cfg)
+	b, err := browser.NewApi(cfg)
+	if err != nil {
+		panic(err)
+	}
 
 	p, err := player.NewPlayer(ctx, cfg)
 	if err != nil {

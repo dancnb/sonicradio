@@ -2,7 +2,6 @@ package browser
 
 import (
 	"fmt"
-	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -10,26 +9,18 @@ import (
 	"github.com/dancnb/sonicradio/config"
 )
 
-func Test_getServers(t *testing.T) {
-	a := NewApi(config.Value{Version: "", Debug: true})
-	res, err := a.getServersDNSLookup(HOST)
+func Test_NewApi(t *testing.T) {
+	_, err := NewApi(config.Value{Version: "", Debug: true})
 	if err != nil {
 		t.Error(err)
 	}
-	t.Log(res)
-}
-
-func Test_doRrequest(t *testing.T) {
-	a := NewApi(config.Value{Version: "", Debug: true})
-	res, err := a.doServerRequest(http.MethodGet, "/json/servers", nil)
-	if err != nil {
-		t.Error(err)
-	}
-	t.Log(res)
 }
 
 func Test_topStations(t *testing.T) {
-	a := NewApi(config.Value{Version: "", Debug: true})
+	a, err := NewApi(config.Value{Version: "", Debug: true})
+	if err != nil {
+		t.Fatal(err)
+	}
 	res, err := a.TopStations()
 	if err != nil {
 		t.Error(err)
@@ -41,7 +32,10 @@ func Test_topStations(t *testing.T) {
 }
 
 func Test_getStation(t *testing.T) {
-	a := NewApi(config.Value{Version: "", Debug: true})
+	a, err := NewApi(config.Value{Version: "", Debug: true})
+	if err != nil {
+		t.Fatal(err)
+	}
 	uuid := []string{
 		"748d830c-d934-41e8-bd14-870add931e1d",
 		"a06ed3d2-ba59-4969-825d-4e9b3f336b93",
@@ -59,7 +53,10 @@ func Test_getStation(t *testing.T) {
 }
 
 func Test_searchStations(t *testing.T) {
-	a := NewApi(config.Value{Version: "", Debug: true})
+	a, err := NewApi(config.Value{Version: "", Debug: true})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	params := DefaultSearchParams()
 	params.Name = strings.TrimSpace("deea")
@@ -79,7 +76,10 @@ func Test_searchStations(t *testing.T) {
 }
 
 func Test_getCountries(t *testing.T) {
-	a := NewApi(config.Value{Version: "", Debug: true})
+	a, err := NewApi(config.Value{Version: "", Debug: true})
+	if err != nil {
+		t.Fatal(err)
+	}
 	res, err := a.GetCountries()
 	if err != nil {
 		t.Error(err)
@@ -88,16 +88,22 @@ func Test_getCountries(t *testing.T) {
 }
 
 func TestApi_StationCounter(t *testing.T) {
-	a := NewApi(config.Value{Version: "", Debug: true})
-	err := a.StationCounter("748d830c-d934-41e8-bd14-870add931e1d")
+	a, err := NewApi(config.Value{Version: "", Debug: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = a.StationCounter("748d830c-d934-41e8-bd14-870add931e1d")
 	if err != nil {
 		t.Error(err)
 	}
 }
 
 func TestApi_StationVote(t *testing.T) {
-	a := NewApi(config.Value{Version: "", Debug: true})
-	err := a.StationVote("748d830c-d934-41e8-bd14-870add931e1d")
+	a, err := NewApi(config.Value{Version: "", Debug: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = a.StationVote("748d830c-d934-41e8-bd14-870add931e1d")
 	if err != nil {
 		t.Error(err)
 	}
