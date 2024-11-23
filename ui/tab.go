@@ -19,6 +19,8 @@ func (t uiTabIndex) String() string {
 		return "Favorites"
 	case browseTabIx:
 		return " Browse "
+	case historyTabIx:
+		return " History "
 	}
 	return ""
 }
@@ -26,7 +28,7 @@ func (t uiTabIndex) String() string {
 const (
 	favoriteTabIx uiTabIndex = iota
 	browseTabIx
-	// historyTabIx
+	historyTabIx
 	// configTab
 )
 
@@ -36,12 +38,17 @@ type uiTab interface {
 	View() string
 }
 
+type filteringTab interface {
+	IsFiltering() bool
+}
+
 type stationTab interface {
 	uiTab
+	filteringTab
 	Stations() *stationsTabBase
-	IsFiltering() bool
 	IsSearchEnabled() bool
 	IsInfoEnabled() bool
+	createList(delegate *stationDelegate, width int, height int) list.Model
 }
 
 const jumpTimeout = 250 * time.Millisecond

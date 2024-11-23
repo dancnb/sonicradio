@@ -26,7 +26,7 @@ func run() {
 
 	cfg, err := config.Load()
 	if err != nil {
-		panic(err)
+		fmt.Println(err.Error())
 	}
 
 	var logW io.Writer

@@ -8,7 +8,7 @@ import (
 func TestValue_AddHistory(t *testing.T) {
 	now := time.Now()
 	type fields struct {
-		History []historyEntry
+		History []HistoryEntry
 	}
 	type args struct {
 		uuid      string
@@ -20,19 +20,19 @@ func TestValue_AddHistory(t *testing.T) {
 		name   string
 		fields fields
 		args   args
-		want   []historyEntry
+		want   []HistoryEntry
 	}{
 		{
 			name: "new station, new song, should be added",
 			fields: fields{
-				History: []historyEntry{
+				History: []HistoryEntry{
 					{Uuid: "1", Station: "station1", Song: "song11", Timestamp: now.Add(-120 * time.Second)},
 					{Uuid: "1", Station: "station1", Song: "song12", Timestamp: now.Add(-121 * time.Second)},
 					{Uuid: "2", Station: "station2", Song: "song21", Timestamp: now.Add(-122 * time.Second)},
 				},
 			},
 			args: args{uuid: "3", station: "station3", song: "song31", timestamp: now},
-			want: []historyEntry{
+			want: []HistoryEntry{
 				{Uuid: "1", Station: "station1", Song: "song11", Timestamp: now.Add(-120 * time.Second)},
 				{Uuid: "1", Station: "station1", Song: "song12", Timestamp: now.Add(-121 * time.Second)},
 				{Uuid: "2", Station: "station2", Song: "song21", Timestamp: now.Add(-122 * time.Second)},
@@ -42,14 +42,14 @@ func TestValue_AddHistory(t *testing.T) {
 		{
 			name: "same station, same song, recently played, should be skipped",
 			fields: fields{
-				History: []historyEntry{
+				History: []HistoryEntry{
 					{Uuid: "1", Station: "station1", Song: "song11", Timestamp: now.Add(-120 * time.Second)},
 					{Uuid: "1", Station: "station1", Song: "song12", Timestamp: now.Add(-40 * time.Second)},
 					{Uuid: "2", Station: "station2", Song: "song21", Timestamp: now.Add(-30 * time.Second)},
 				},
 			},
 			args: args{uuid: "1", station: "station1", song: "song12", timestamp: now},
-			want: []historyEntry{
+			want: []HistoryEntry{
 				{Uuid: "1", Station: "station1", Song: "song11", Timestamp: now.Add(-120 * time.Second)},
 				{Uuid: "1", Station: "station1", Song: "song12", Timestamp: now.Add(-40 * time.Second)},
 				{Uuid: "2", Station: "station2", Song: "song21", Timestamp: now.Add(-30 * time.Second)},
@@ -58,14 +58,14 @@ func TestValue_AddHistory(t *testing.T) {
 		{
 			name: "same station, new non-empty song, should add",
 			fields: fields{
-				History: []historyEntry{
+				History: []HistoryEntry{
 					{Uuid: "1", Station: "station1", Song: "song11", Timestamp: now.Add(-120 * time.Second)},
 					{Uuid: "1", Station: "station1", Song: "song12", Timestamp: now.Add(-121 * time.Second)},
 					{Uuid: "2", Station: "station2", Song: "song21", Timestamp: now.Add(-122 * time.Second)},
 				},
 			},
 			args: args{uuid: "1", station: "station1", song: "song13", timestamp: now},
-			want: []historyEntry{
+			want: []HistoryEntry{
 				{Uuid: "1", Station: "station1", Song: "song11", Timestamp: now.Add(-120 * time.Second)},
 				{Uuid: "1", Station: "station1", Song: "song12", Timestamp: now.Add(-121 * time.Second)},
 				{Uuid: "2", Station: "station2", Song: "song21", Timestamp: now.Add(-122 * time.Second)},
@@ -75,14 +75,14 @@ func TestValue_AddHistory(t *testing.T) {
 		{
 			name: "same station, same song, not recently played, not last played, should add",
 			fields: fields{
-				History: []historyEntry{
+				History: []HistoryEntry{
 					{Uuid: "1", Station: "station1", Song: "song11", Timestamp: now.Add(-16 * time.Minute)},
 					{Uuid: "1", Station: "station1", Song: "song12", Timestamp: now.Add(-121 * time.Second)},
 					{Uuid: "2", Station: "station2", Song: "song21", Timestamp: now.Add(-122 * time.Second)},
 				},
 			},
 			args: args{uuid: "1", station: "station1", song: "song11", timestamp: now},
-			want: []historyEntry{
+			want: []HistoryEntry{
 				{Uuid: "1", Station: "station1", Song: "song11", Timestamp: now.Add(-16 * time.Minute)},
 				{Uuid: "1", Station: "station1", Song: "song12", Timestamp: now.Add(-121 * time.Second)},
 				{Uuid: "2", Station: "station2", Song: "song21", Timestamp: now.Add(-122 * time.Second)},
@@ -92,25 +92,25 @@ func TestValue_AddHistory(t *testing.T) {
 		{
 			name: "same station, same song, not recently played, but last played, should skip",
 			fields: fields{
-				History: []historyEntry{
+				History: []HistoryEntry{
 					{Uuid: "1", Station: "station1", Song: "song11", Timestamp: now.Add(-16 * time.Minute)},
 				},
 			},
 			args: args{uuid: "1", station: "station1", song: "song11", timestamp: now},
-			want: []historyEntry{
+			want: []HistoryEntry{
 				{Uuid: "1", Station: "station1", Song: "song11", Timestamp: now.Add(-16 * time.Minute)},
 			},
 		},
 		{
 			name: "same station, new song after empty song, should replace",
 			fields: fields{
-				History: []historyEntry{
+				History: []HistoryEntry{
 					{Uuid: "2", Station: "station2", Song: "song2", Timestamp: now.Add(-26 * time.Second)},
 					{Uuid: "1", Station: "station1", Song: "", Timestamp: now.Add(-16 * time.Second)},
 				},
 			},
 			args: args{uuid: "1", station: "station1", song: "song11", timestamp: now},
-			want: []historyEntry{
+			want: []HistoryEntry{
 				{Uuid: "2", Station: "station2", Song: "song2", Timestamp: now.Add(-26 * time.Second)},
 				{Uuid: "1", Station: "station1", Song: "song11", Timestamp: now},
 			},
@@ -118,13 +118,13 @@ func TestValue_AddHistory(t *testing.T) {
 		{
 			name: "same station, new empty song after non-empty song, should skip",
 			fields: fields{
-				History: []historyEntry{
+				History: []HistoryEntry{
 					{Uuid: "1", Station: "station1", Song: "", Timestamp: now.Add(-16 * time.Second)},
 					{Uuid: "2", Station: "station2", Song: "song2", Timestamp: now.Add(-6 * time.Second)},
 				},
 			},
 			args: args{uuid: "2", station: "station2", song: "", timestamp: now},
-			want: []historyEntry{
+			want: []HistoryEntry{
 				{Uuid: "1", Station: "station1", Song: "", Timestamp: now.Add(-16 * time.Second)},
 				{Uuid: "2", Station: "station2", Song: "song2", Timestamp: now.Add(-6 * time.Second)},
 			},

@@ -18,42 +18,44 @@ var (
 	pauseChar = "\u28FF"
 	lineChar  = "\u2847"
 
-	primaryColor         = "#ffb641"
+	primaryColor    = "#ffb641"
+	secondColor     = "#bd862d"
+	invPrimaryColor = "#12100d"
+	invSecondColor  = "#4a4133"
+
 	basePrimaryColor     = lipgloss.Color(primaryColor)
-	secondColor          = "#bd862d"
 	baseSecondColor      = lipgloss.Color(secondColor)
-	invPrimaryColor      = "#12100d"
 	invertedPrimaryColor = lipgloss.Color(invPrimaryColor)
-	invSecondColor       = "#4a4133"
 	invertedSecondColor  = lipgloss.Color(invSecondColor)
 
 	primaryColorStyle   = lipgloss.NewStyle().Foreground(basePrimaryColor)
 	secondaryColorStyle = lipgloss.NewStyle().Foreground(baseSecondColor)
 
-	prefixStyle           = primaryColorStyle.PaddingLeft(1)
-	nowPlayingPrefixStyle = primaryColorStyle.PaddingLeft(0)
+	// general
+	backgroundColor = termenv.RGBColor("#282c34")
+	docStyle        = lipgloss.NewStyle().Padding(1, headerPadDist, 0, headerPadDist)
+	statusBarStyle  = lipgloss.NewStyle().Background(baseSecondColor).Foreground(invertedPrimaryColor)
+	viewStyle       = secondaryColorStyle.PaddingLeft(headerPadDist)
+	noItemsStyle    = secondaryColorStyle.PaddingLeft(3)
 
+	// station delegate
+	prefixStyle            = primaryColorStyle.PaddingLeft(1)
+	nowPlayingPrefixStyle  = primaryColorStyle.PaddingLeft(0)
 	nowPlayingStyle        = primaryColorStyle
 	nowPlayingDescStyle    = secondaryColorStyle
 	selNowPlayingStyle     = lipgloss.NewStyle().Background(basePrimaryColor).Foreground(invertedPrimaryColor)
 	selNowPlayingDescStyle = lipgloss.NewStyle().Background(basePrimaryColor).Foreground(invertedSecondColor)
-
-	playStatusStyle = lipgloss.NewStyle().Bold(true).Foreground(baseSecondColor)
-
-	itemStyle    = primaryColorStyle
-	descStyle    = secondaryColorStyle
-	selItemStyle = lipgloss.NewStyle().Background(basePrimaryColor).Foreground(invertedPrimaryColor)
-	selDescStyle = lipgloss.NewStyle().Background(basePrimaryColor).Foreground(invertedSecondColor)
-
-	selectedBorderStyle = lipgloss.NewStyle().
+	itemStyle              = primaryColorStyle
+	descStyle              = secondaryColorStyle
+	selItemStyle           = lipgloss.NewStyle().Background(basePrimaryColor).Foreground(invertedPrimaryColor)
+	selDescStyle           = lipgloss.NewStyle().Background(basePrimaryColor).Foreground(invertedSecondColor)
+	selectedBorderStyle    = lipgloss.NewStyle().
 				Border(lipgloss.BlockBorder(), false, false, false, true).
 				BorderForeground(basePrimaryColor)
 
-	viewStyle    = secondaryColorStyle.PaddingLeft(headerPadDist)
-	noItemsStyle = secondaryColorStyle.PaddingLeft(3)
-
 	// header
-	italicStyle = lipgloss.NewStyle().
+	songTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(baseSecondColor)
+	italicStyle    = lipgloss.NewStyle().
 			Border(lipgloss.HiddenBorder(), false, true).
 			Foreground(baseSecondColor).
 			Italic(true).
@@ -99,10 +101,11 @@ var (
 	infoFieldNameStyle  = primaryColorStyle.Bold(false).MarginLeft(3)
 	infoFieldValueStyle = secondaryColorStyle
 
-	// general
-	backgroundColor = termenv.RGBColor("#282c34")
-	docStyle        = lipgloss.NewStyle().Padding(1, headerPadDist, 0, headerPadDist)
-	statusBarStyle  = lipgloss.NewStyle().Background(baseSecondColor).Foreground(invertedPrimaryColor)
+	//history
+	historyItemStyle    = secondaryColorStyle
+	historyDescStyle    = primaryColorStyle.Bold(true)
+	historySelItemStyle = selDescStyle
+	historySelDescStyle = selItemStyle.Bold(true)
 )
 
 func padFieldName(v string) string {

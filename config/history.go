@@ -1,20 +1,34 @@
 package config
 
 import (
+	"fmt"
 	"log/slog"
 	"time"
 )
 
 const (
 	recentlyPlayed = 2 * time.Minute
+	tsFormat       = "15:04 02.01.2006"
+	separator      = "|"
 )
 
-type historyEntry struct {
+type HistoryEntry struct {
 	Uuid      string    `json:"uuid"`
 	Station   string    `json:"station"`
 	Song      string    `json:"song"`
 	Timestamp time.Time `json:"timestamp"`
 }
+
+func (e HistoryEntry) FilterValue() string {
+	return e.Station + e.Song
+}
+
+func (e HistoryEntry) Title() string {
+	ts := e.Timestamp.Format(tsFormat)
+	return fmt.Sprintf("%s %s %s", ts, separator, e.Station)
+}
+
+func (e HistoryEntry) Description() string { return e.Song }
 
 func (v *Value) AddHistory(timestamp time.Time, uuid string, station string, song string) {
 	v.historyMtx.Lock()
@@ -24,10 +38,14 @@ func (v *Value) AddHistory(timestamp time.Time, uuid string, station string, son
 	log.Debug("", "uuid", uuid, "stationName", station, "song", song)
 	if ok := v.updateHistory(timestamp, uuid, station, song); ok {
 		startIx := max(0, len(v.History)-v.HistorySaveMax)
+		entries := v.History[startIx:len(v.History)]
+
+		v.HistoryChan <- entries
+
 		err := Save(Value{
 			Favorites:      v.Favorites,
 			Volume:         v.Volume,
-			History:        v.History[startIx:len(v.History)],
+			History:        entries,
 			HistorySaveMax: v.HistorySaveMax,
 		})
 		if err != nil {
@@ -37,7 +55,7 @@ func (v *Value) AddHistory(timestamp time.Time, uuid string, station string, son
 }
 
 func (v *Value) updateHistory(timestamp time.Time, uuid string, station string, song string) bool {
-	newEntry := historyEntry{
+	newEntry := HistoryEntry{
 		Uuid:      uuid,
 		Station:   station,
 		Song:      song,
@@ -73,7 +91,7 @@ func (v *Value) updateHistory(timestamp time.Time, uuid string, station string, 
 	return false
 }
 
-func (v *Value) equalEntries(a, b historyEntry) bool {
+func (v *Value) equalEntries(a, b HistoryEntry) bool {
 	x := a.Uuid == b.Uuid && a.Song == b.Song
 	return x
 }

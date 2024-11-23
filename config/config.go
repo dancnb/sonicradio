@@ -19,23 +19,24 @@ var debug = flag.Bool("debug", false, "use -debug arg to log to a file")
 const (
 	ReqTimeout = 10 * time.Second
 
-	defVersion  = "0.3.5"
-	cfgSubDir   = "sonicRadio"
-	cfgFilename = "config.json"
+	defVersion        = "0.3.5"
+	cfgSubDir         = "sonicRadio"
+	cfgFilename       = "config.json"
+	defHistorySaveMax = 100
 )
 
 var defVolume = 100
 
 type Value struct {
-	Version   string   `json:"-"`
-	Debug     bool     `json:"-"`
-	LogPath   string   `json:"-"`
-	Favorites []string `json:"favorites,omitempty"` // Ordered station UUID's for user favorites
-	Volume    *int     `json:"volume,omitempty"`
-
-	historyMtx     sync.Mutex
-	History        []historyEntry `json:"history,omitempty"`
-	HistorySaveMax int            `json:"historySaveMax"`
+	Version        string              `json:"-"`
+	Debug          bool                `json:"-"`
+	LogPath        string              `json:"-"`
+	Favorites      []string            `json:"favorites,omitempty"` // Ordered station UUID's for user favorites
+	Volume         *int                `json:"volume,omitempty"`
+	historyMtx     *sync.Mutex         `json:"-"`
+	History        []HistoryEntry      `json:"history,omitempty"`
+	HistorySaveMax int                 `json:"historySaveMax"`
+	HistoryChan    chan []HistoryEntry `json:"-"`
 }
 
 func (v *Value) GetVolume() int {
@@ -99,45 +100,44 @@ func Load() (Value, error) {
 		versionVal = defVersion
 	}
 
-	defCfg := Value{
+	cfg := Value{
 		Version:        versionVal,
 		Debug:          *debug,
 		LogPath:        os.TempDir(),
 		Volume:         &defVolume,
-		HistorySaveMax: 100,
+		historyMtx:     &sync.Mutex{},
+		HistorySaveMax: defHistorySaveMax,
+		HistoryChan:    make(chan []HistoryEntry),
 	}
+
 	dir, err := os.UserConfigDir()
 	if err != nil {
-		return defCfg, err
+		return cfg, err
 	}
 	fp := filepath.Join(dir, cfgSubDir, cfgFilename)
-
 	f, err := os.Open(fp)
 	if err != nil {
-		return defCfg, err
+		return cfg, err
 	}
 	b, err := io.ReadAll(f)
 	if err != nil {
-		return defCfg, err
+		return cfg, err
 	}
-	var cfg Value
 	err = json.Unmarshal(b, &cfg)
 	if err != nil {
-		return defCfg, err
+		return cfg, err
 	}
 	err = f.Close()
 	if err != nil {
-		return defCfg, err
+		return cfg, err
 	}
 
 	if cfg.Volume == nil {
 		cfg.Volume = &defVolume
 	}
 	if cfg.HistorySaveMax == 0 {
-		cfg.HistorySaveMax = defCfg.HistorySaveMax
+		cfg.HistorySaveMax = defHistorySaveMax
 	}
-	cfg.Debug = *debug
-	cfg.Version = versionVal
 	return cfg, nil
 }
 

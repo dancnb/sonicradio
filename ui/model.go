@@ -66,6 +66,7 @@ func newModel(ctx context.Context, cfg *config.Value, b *browser.Api, p *player.
 		tabs: []uiTab{
 			newFavoritesTab(infoModel),
 			newBrowseTab(ctx, b, infoModel),
+			newHistoryTab(ctx, cfg),
 		},
 		statusUpdate: make(chan struct{}),
 
@@ -225,12 +226,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.updateStatus(msg.err)
 			m.spinner = nil
 		}
-		m.delegate.keymap.pause.SetHelp("space", " pause")
+		m.delegate.keymap.pause.SetHelp("space", "pause")
 		return m, nil
 
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {
 			return m, tea.Quit
+		} else if activeTab, ok := activeTab.(filteringTab); ok && activeTab.IsFiltering() {
+			break
 		} else if activeTab, ok := activeTab.(stationTab); ok && (activeTab.IsSearchEnabled() || activeTab.IsFiltering()) {
 			break
 		}
@@ -259,8 +262,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				activeTab, ok := activeTab.(stationTab)
 				if !ok {
+					break
 					// TODO handle pause key for other tabs if necessary
-					return m, nil
 				}
 				selStation, ok := activeTab.Stations().list.SelectedItem().(browser.Station)
 				if ok {
@@ -278,8 +281,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if key.Matches(msg, d.keymap.playSelected) {
 			activeTab, ok := activeTab.(stationTab)
 			if !ok {
+				break
 				// TODO handle enter for other tabs if necessary
-				return m, nil
 			}
 			selStation, ok := activeTab.Stations().list.SelectedItem().(browser.Station)
 			if ok {
@@ -333,6 +336,10 @@ func (m *Model) toBrowseTab() {
 	m.delegate.keymap.toggleFavorite.SetEnabled(true)
 	m.activeTabIdx = browseTabIx
 }
+func (m *Model) toHistoryTab() {
+	m.delegate.keymap.toggleFavorite.SetEnabled(false)
+	m.activeTabIdx = historyTabIx
+}
 
 func (m *Model) updateStatus(msg string) {
 	slog.Debug("updateStatus", "old", m.statusMsg, "new", msg)
@@ -365,7 +372,7 @@ func newSpinner() *spinner.Model {
 		Frames: []string{"⡷", "⣧", "⣏", "⡟", "⡷", "⣧", "⣏", "⡟"},
 		FPS:    time.Second / 10,
 	}
-	s.Style = playStatusStyle
+	s.Style = songTitleStyle
 	return &s
 }
 
@@ -451,14 +458,14 @@ func (m *Model) metadataView(width int) string {
 		songView.WriteString(line.String())
 	} else if m.delegate.prevPlaying != nil {
 		var line strings.Builder
-		line.WriteString(playStatusStyle.Render(pauseChar))
+		line.WriteString(songTitleStyle.Render(pauseChar))
 		line.WriteString(itemStyle.MaxWidth(maxW - 1).Render(" " + m.delegate.prevPlaying.Name))
 		fill := max(0, maxW-lipgloss.Width(line.String()))
 		line.WriteString(itemStyle.Render(strings.Repeat(" ", fill)))
 		songView.WriteString(line.String())
 	} else {
 		var line strings.Builder
-		line.WriteString(playStatusStyle.MaxWidth(maxW).Render(lineChar + " " + noPlayingMsg))
+		line.WriteString(songTitleStyle.MaxWidth(maxW).Render(lineChar + " " + noPlayingMsg))
 		fill := max(0, maxW-lipgloss.Width(line.String()))
 		line.WriteString(itemStyle.Render(strings.Repeat(" ", fill)))
 		songView.WriteString(line.String())
@@ -466,19 +473,19 @@ func (m *Model) metadataView(width int) string {
 	songView.WriteString("\n")
 	if m.songTitle != "" {
 		var line strings.Builder
-		line.WriteString(playStatusStyle.MaxWidth(maxW).Render("  " + m.songTitle))
+		line.WriteString(songTitleStyle.MaxWidth(maxW).Render("  " + m.songTitle))
 		fill := max(0, maxW-lipgloss.Width(line.String()))
 		line.WriteString(itemStyle.Render(strings.Repeat(" ", fill)))
 		songView.WriteString(line.String())
 	} else if m.delegate.currPlaying != nil {
 		var line strings.Builder
-		line.WriteString(playStatusStyle.MaxWidth(maxW).Render("  " + m.delegate.currPlaying.Homepage))
+		line.WriteString(songTitleStyle.MaxWidth(maxW).Render("  " + m.delegate.currPlaying.Homepage))
 		fill := max(0, maxW-lipgloss.Width(line.String()))
 		line.WriteString(itemStyle.Render(strings.Repeat(" ", fill)))
 		songView.WriteString(line.String())
 	} else if m.delegate.prevPlaying != nil {
 		var line strings.Builder
-		line.WriteString(playStatusStyle.MaxWidth(maxW).Render("  " + m.delegate.prevPlaying.Homepage))
+		line.WriteString(songTitleStyle.MaxWidth(maxW).Render("  " + m.delegate.prevPlaying.Homepage))
 		fill := max(0, maxW-lipgloss.Width(line.String()))
 		line.WriteString(itemStyle.Render(strings.Repeat(" ", fill)))
 		songView.WriteString(line.String())

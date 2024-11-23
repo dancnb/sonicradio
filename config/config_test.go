@@ -7,10 +7,11 @@ import (
 
 func Test_load(t *testing.T) {
 	defCfg := Value{
-		Version: defVersion,
-		Debug:   *debug,
-		LogPath: os.TempDir(),
-		Volume:  &defVolume,
+		Version:        defVersion,
+		Debug:          *debug,
+		LogPath:        os.TempDir(),
+		Volume:         &defVolume,
+		HistorySaveMax: defHistorySaveMax,
 	}
 	err := Save(defCfg)
 	if err != nil {
