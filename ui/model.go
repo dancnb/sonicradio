@@ -301,6 +301,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *Model) addHistory(msg metadataMsg) {
 	m.cfg.AddHistory(
+		time.Now(),
 		strings.TrimSpace(msg.stationUuid),
 		strings.TrimSpace(msg.stationName),
 		strings.TrimSpace(msg.songTitle),

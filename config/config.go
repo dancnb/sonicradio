@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"io/fs"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
+	"sync"
 	"time"
 )
 
@@ -26,12 +27,15 @@ const (
 var defVolume = 100
 
 type Value struct {
-	Version   string         `json:"-"`
-	Debug     bool           `json:"-"`
-	LogPath   string         `json:"-"`
-	Favorites []string       `json:"favorites,omitempty"` // Ordered station UUID's for user favorites
-	Volume    *int           `json:"volume,omitempty"`
-	History   []historyEntry `json:"history,omitempty"`
+	Version   string   `json:"-"`
+	Debug     bool     `json:"-"`
+	LogPath   string   `json:"-"`
+	Favorites []string `json:"favorites,omitempty"` // Ordered station UUID's for user favorites
+	Volume    *int     `json:"volume,omitempty"`
+
+	historyMtx     sync.Mutex
+	History        []historyEntry `json:"history,omitempty"`
+	HistorySaveMax int            `json:"historySaveMax"`
 }
 
 func (v *Value) GetVolume() int {
@@ -79,17 +83,13 @@ func (v *Value) InsertFavorite(uuid string, idx int) bool {
 	return true
 }
 
-func (v *Value) AddHistory(uuid string, station string, song string) {
-	if song == "" {
-		return
+func (v *Value) String() string {
+	vol := -1
+	if v.Volume != nil {
+		vol = *v.Volume
 	}
-	log := slog.With("method", "config.Value.AddHistory")
-	log.Debug("", "uuid", uuid, "stationName", station, "song", song)
-	// v.History = append(v.History, historyEntry{
-	// 	Station:   station,
-	// 	Song:      song,
-	// 	Timestamp: time.Now(),
-	// })
+	return fmt.Sprintf("{version:%q, debug: %v, logPath=%q, favorites=%d, volume=%d, history=%d, historySaveMax=%d}",
+		v.Version, v.Debug, v.LogPath, len(v.Favorites), vol, len(v.History), v.HistorySaveMax)
 }
 
 func Load() (Value, error) {
@@ -100,10 +100,11 @@ func Load() (Value, error) {
 	}
 
 	defCfg := Value{
-		Version: versionVal,
-		Debug:   *debug,
-		LogPath: os.TempDir(),
-		Volume:  &defVolume,
+		Version:        versionVal,
+		Debug:          *debug,
+		LogPath:        os.TempDir(),
+		Volume:         &defVolume,
+		HistorySaveMax: 100,
 	}
 	dir, err := os.UserConfigDir()
 	if err != nil {
@@ -131,6 +132,9 @@ func Load() (Value, error) {
 
 	if cfg.Volume == nil {
 		cfg.Volume = &defVolume
+	}
+	if cfg.HistorySaveMax == 0 {
+		cfg.HistorySaveMax = defCfg.HistorySaveMax
 	}
 	cfg.Debug = *debug
 	cfg.Version = versionVal

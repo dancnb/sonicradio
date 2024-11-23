@@ -307,7 +307,6 @@ func (d *stationDelegate) FullHelp() [][]key.Binding {
 
 func newDelegateKeyMap() *delegateKeyMap {
 	return &delegateKeyMap{
-		// todo change label based on state
 		pause: key.NewBinding(
 			key.WithKeys(" "),
 			key.WithHelp("space", "resume"),

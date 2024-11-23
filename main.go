@@ -51,7 +51,7 @@ func run() {
 	log.SetFlags(log.Flags() &^ (log.Ldate))
 	slog.SetDefault(logger)
 	slog.Info("----------------------Starting----------------------")
-	slog.Debug("loaded", "config", fmt.Sprintf("%#v", cfg))
+	slog.Debug("loaded", "config", cfg.String())
 
 	b, err := browser.NewApi(ctx, cfg)
 	if err != nil {
