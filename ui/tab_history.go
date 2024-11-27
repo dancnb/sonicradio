@@ -38,6 +38,10 @@ func newHistoryTab(ctx context.Context, cfg *config.Value) *historyTab {
 				key.WithKeys("shift+tab"),
 				key.WithHelp("shift+tab", "go to prev tab"),
 			),
+			search: key.NewBinding(
+				key.WithKeys("s"),
+				key.WithHelp("s", "search"),
+			),
 		},
 	}
 
@@ -104,16 +108,17 @@ func (t *historyTab) createList(width int, height int) {
 	l.Help.Styles = helpStyles()
 	l.Styles.HelpStyle = helpStyle
 	l.AdditionalShortHelpKeys = func() []key.Binding {
-		return []key.Binding{}
+		return []key.Binding{t.keymap.search}
 	}
 	l.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
+			t.keymap.search,
 			t.keymap.prevTab,
 			t.keymap.nextTab,
 		}
 	}
 
-	textInputSyle(&l.FilterInput, "Filter:       ", "name")
+	textInputSyle(&l.FilterInput, "Filter:       ", "station name or song")
 
 	t.list = l
 }
@@ -136,6 +141,10 @@ func (t *historyTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, t.list.KeyMap.Quit, t.list.KeyMap.ForceQuit):
 			return m, tea.Quit
+
+		case key.Matches(msg, t.keymap.search):
+			m.toBrowseTab()
+			return m.tabs[browseTabIx].Update(m, msg)
 
 		case key.Matches(msg, t.keymap.nextTab):
 			m.toFavoritesTab()
@@ -239,4 +248,5 @@ func (d *historyEntryDelegate) Render(w io.Writer, m list.Model, index int, item
 type historyKeymap struct {
 	nextTab key.Binding
 	prevTab key.Binding
+	search  key.Binding
 }

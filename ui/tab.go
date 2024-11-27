@@ -185,6 +185,6 @@ func createList(delegate *stationDelegate, width int, height int) list.Model {
 	l.Help.Styles = helpStyles()
 	l.Styles.HelpStyle = helpStyle
 
-	textInputSyle(&l.FilterInput, "Filter:       ", "name")
+	textInputSyle(&l.FilterInput, "Filter:       ", "station name")
 	return l
 }
