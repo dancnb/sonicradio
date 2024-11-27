@@ -38,6 +38,14 @@ func newHistoryTab(ctx context.Context, cfg *config.Value) *historyTab {
 				key.WithKeys("shift+tab"),
 				key.WithHelp("shift+tab", "go to prev tab"),
 			),
+			favoritesTab: key.NewBinding(
+				key.WithKeys("F"),
+				key.WithHelp("F", "go to favorites tab"),
+			),
+			browseTab: key.NewBinding(
+				key.WithKeys("B"),
+				key.WithHelp("B", "go to browse tab"),
+			),
 			search: key.NewBinding(
 				key.WithKeys("s"),
 				key.WithHelp("s", "search"),
@@ -115,6 +123,8 @@ func (t *historyTab) createList(width int, height int) {
 			t.keymap.search,
 			t.keymap.prevTab,
 			t.keymap.nextTab,
+			t.keymap.favoritesTab,
+			t.keymap.browseTab,
 		}
 	}
 
@@ -146,10 +156,10 @@ func (t *historyTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.toBrowseTab()
 			return m.tabs[browseTabIx].Update(m, msg)
 
-		case key.Matches(msg, t.keymap.nextTab):
+		case key.Matches(msg, t.keymap.nextTab, t.keymap.favoritesTab):
 			m.toFavoritesTab()
 
-		case key.Matches(msg, t.keymap.prevTab):
+		case key.Matches(msg, t.keymap.prevTab, t.keymap.browseTab):
 			m.toBrowseTab()
 		}
 	}
@@ -246,7 +256,9 @@ func (d *historyEntryDelegate) Render(w io.Writer, m list.Model, index int, item
 }
 
 type historyKeymap struct {
-	nextTab key.Binding
-	prevTab key.Binding
-	search  key.Binding
+	nextTab      key.Binding
+	prevTab      key.Binding
+	favoritesTab key.Binding
+	browseTab    key.Binding
+	search       key.Binding
 }

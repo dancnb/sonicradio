@@ -16,11 +16,11 @@ type uiTabIndex uint8
 func (t uiTabIndex) String() string {
 	switch t {
 	case favoriteTabIx:
-		return "Favorites"
+		return " Favorites "
 	case browseTabIx:
-		return " Browse "
+		return "  Browse  "
 	case historyTabIx:
-		return " History "
+		return "  History  "
 	}
 	return ""
 }

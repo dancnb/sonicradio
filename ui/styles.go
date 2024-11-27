@@ -4,7 +4,6 @@ import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/muesli/termenv"
 )
 
 const (
@@ -32,11 +31,11 @@ var (
 	secondaryColorStyle = lipgloss.NewStyle().Foreground(baseSecondColor)
 
 	// general
-	backgroundColor = termenv.RGBColor("#282c34")
-	docStyle        = lipgloss.NewStyle().Padding(1, headerPadDist, 0, headerPadDist)
-	statusBarStyle  = lipgloss.NewStyle().Background(baseSecondColor).Foreground(invertedPrimaryColor)
-	viewStyle       = secondaryColorStyle.PaddingLeft(headerPadDist)
-	noItemsStyle    = secondaryColorStyle.PaddingLeft(3)
+	// backgroundColor = termenv.RGBColor("#282c34")
+	docStyle       = lipgloss.NewStyle().Padding(1, headerPadDist, 0, headerPadDist)
+	statusBarStyle = lipgloss.NewStyle().Background(baseSecondColor).Foreground(invertedPrimaryColor)
+	viewStyle      = secondaryColorStyle.PaddingLeft(headerPadDist)
+	noItemsStyle   = secondaryColorStyle.PaddingLeft(3)
 
 	// station delegate
 	prefixStyle            = primaryColorStyle.PaddingLeft(1)
@@ -62,17 +61,26 @@ var (
 			Padding(0, 0).Margin()
 
 	// tabs
-	inactiveTab = lipgloss.NewStyle().
-			Bold(true).
+	inactiveTabBorder = lipgloss.NewStyle().
+				Border(lipgloss.HiddenBorder(), true).
+				Padding(0, 0).Margin(0)
+	inactiveTabInner = lipgloss.NewStyle().
+				Bold(false).
+				Foreground(baseSecondColor)
+	inactiveTabInnerHighlight = lipgloss.NewStyle().
+					Bold(true).
+					Foreground(basePrimaryColor)
+	activeTabBorder = lipgloss.NewStyle().
 			Border(lipgloss.HiddenBorder(), true).
-			Foreground(basePrimaryColor).
 			Padding(0, 0).Margin(0)
-	activeTab = lipgloss.NewStyle().
-			Bold(true).
-			Border(lipgloss.NormalBorder(), true).
-			BorderForeground(basePrimaryColor).
-			Foreground(basePrimaryColor).
-			Padding(0, 0).Margin(0)
+	activeTabInner = lipgloss.NewStyle().
+			Bold(false).
+			Background(baseSecondColor).
+			Foreground(invertedPrimaryColor)
+	activeTabInnerHighlight = lipgloss.NewStyle().
+				Bold(true).
+				Background(baseSecondColor).
+				Foreground(invertedPrimaryColor)
 	tabGap = lipgloss.NewStyle().
 		Border(lipgloss.Border{Left: " ", Right: " "}, true, false).
 		Foreground(basePrimaryColor).

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"unicode"
 
 	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/key"
@@ -403,9 +404,13 @@ func (m *Model) headerView(width int) string {
 	renderedTabs = append(renderedTabs, tabGap.Render(strings.Repeat(" ", tabGapDistance)))
 	for i := range m.tabs {
 		if i == int(m.activeTabIdx) {
-			renderedTabs = append(renderedTabs, activeTab.Render(m.activeTabIdx.String()))
+			tabName := m.activeTabIdx.String()
+			renderedTab := m.renderTabName(tabName, &activeTabInner, &activeTabInnerHighlight)
+			renderedTabs = append(renderedTabs, activeTabBorder.Render(renderedTab.String()))
 		} else {
-			renderedTabs = append(renderedTabs, inactiveTab.Render(uiTabIndex(i).String()))
+			tabName := uiTabIndex(i).String()
+			renderedTab := m.renderTabName(tabName, &inactiveTabInner, &inactiveTabInnerHighlight)
+			renderedTabs = append(renderedTabs, inactiveTabBorder.Render(renderedTab.String()))
 		}
 		if i < len(m.tabs)-1 {
 			renderedTabs = append(renderedTabs, tabGap.Render(strings.Repeat(" ", tabGapDistance)))
@@ -420,6 +425,23 @@ func (m *Model) headerView(width int) string {
 	res.WriteString(lipgloss.JoinHorizontal(lipgloss.Bottom, row, gap) + "\n\n")
 
 	return res.String()
+}
+
+func (*Model) renderTabName(tabName string, tabInner *lipgloss.Style, tabInnerHighlight *lipgloss.Style) strings.Builder {
+	highlight := false
+	var renderTab strings.Builder
+	for _, r := range tabName {
+		rStr := fmt.Sprintf("%c", r)
+		if unicode.IsSpace(r) {
+			renderTab.WriteString(tabInner.Render(rStr))
+		} else if !highlight {
+			renderTab.WriteString(tabInnerHighlight.Render(rStr))
+			highlight = true
+		} else {
+			renderTab.WriteString(tabInner.Render(rStr))
+		}
+	}
+	return renderTab
 }
 
 func (m *Model) metadataView(width int) string {
