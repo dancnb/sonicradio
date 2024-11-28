@@ -217,7 +217,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != "" {
 			m.updateStatus(msg.err)
 		} else {
-			m.songTitle = ""
 			m.spinner = nil
 			m.delegate.keymap.pause.SetHelp("space", "resume")
 		}
