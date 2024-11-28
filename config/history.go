@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"log/slog"
+	"slices"
 	"time"
 )
 
@@ -30,31 +31,55 @@ func (e HistoryEntry) Title() string {
 
 func (e HistoryEntry) Description() string { return e.Song }
 
-func (v *Value) AddHistory(timestamp time.Time, uuid string, station string, song string) {
+func (v *Value) DeleteHistoryEntry(delEntry HistoryEntry) {
+	v.historyMtx.Lock()
+	defer v.historyMtx.Unlock()
+
+	v.History = slices.DeleteFunc(v.History, func(e HistoryEntry) bool {
+		return e.Timestamp.Equal(delEntry.Timestamp)
+	})
+	v.saveHistory()
+}
+
+func (v *Value) ClearHistory() {
+	v.historyMtx.Lock()
+	defer v.historyMtx.Unlock()
+
+	v.History = v.History[:0]
+	v.saveHistory()
+}
+
+func (v *Value) saveHistory() []HistoryEntry {
+	log := slog.With("method", "config.Value.saveHistory")
+	startIx := max(0, len(v.History)-v.HistorySaveMax)
+	entries := v.History[startIx:len(v.History)]
+	err := Save(Value{
+		Favorites:      v.Favorites,
+		Volume:         v.Volume,
+		History:        entries,
+		HistorySaveMax: v.HistorySaveMax,
+	})
+	if err != nil {
+		log.Error("save config", "err", err)
+	}
+	log.Debug("saved entries", "len", len(entries), "startIdx", startIx)
+	return entries
+}
+
+func (v *Value) AddHistoryEntry(timestamp time.Time, uuid string, station string, song string) {
 	v.historyMtx.Lock()
 	defer v.historyMtx.Unlock()
 
 	log := slog.With("method", "config.Value.AddHistory")
 	log.Debug("", "uuid", uuid, "stationName", station, "song", song)
-	if ok := v.updateHistory(timestamp, uuid, station, song); ok {
-		startIx := max(0, len(v.History)-v.HistorySaveMax)
-		entries := v.History[startIx:len(v.History)]
 
+	if ok := v.upsertHistory(timestamp, uuid, station, song); ok {
+		entries := v.saveHistory()
 		v.HistoryChan <- entries
-
-		err := Save(Value{
-			Favorites:      v.Favorites,
-			Volume:         v.Volume,
-			History:        entries,
-			HistorySaveMax: v.HistorySaveMax,
-		})
-		if err != nil {
-			log.Error("save config", "err", err)
-		}
 	}
 }
 
-func (v *Value) updateHistory(timestamp time.Time, uuid string, station string, song string) bool {
+func (v *Value) upsertHistory(timestamp time.Time, uuid string, station string, song string) bool {
 	newEntry := HistoryEntry{
 		Uuid:      uuid,
 		Station:   station,

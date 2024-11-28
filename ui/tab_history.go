@@ -30,6 +30,14 @@ func newHistoryTab(ctx context.Context, cfg *config.Value) *historyTab {
 	t := &historyTab{
 		cfg: cfg,
 		keymap: historyKeymap{
+			deleteOne: key.NewBinding(
+				key.WithKeys("d"),
+				key.WithHelp("d", "delete entry"),
+			),
+			deleteAll: key.NewBinding(
+				key.WithKeys("D"),
+				key.WithHelp("D", "clear entries   "),
+			),
 			nextTab: key.NewBinding(
 				key.WithKeys("tab"),
 				key.WithHelp("tab", "go to next tab"),
@@ -76,9 +84,6 @@ func (t *historyTab) Init(m *Model) tea.Cmd {
 }
 
 func (t *historyTab) setEntries(entries []config.HistoryEntry) tea.Cmd {
-	if len(entries) == 0 {
-		return nil
-	}
 	items := make([]list.Item, len(entries))
 	for i := len(entries) - 1; i >= 0; i-- {
 		items[len(entries)-i-1] = entries[i]
@@ -86,14 +91,37 @@ func (t *historyTab) setEntries(entries []config.HistoryEntry) tea.Cmd {
 	cmd := t.list.SetItems(items)
 	if len(entries) > 0 {
 		t.viewMsg = ""
+	} else {
+		t.viewMsg = emptyHistoryMsg
 	}
 	t.list.Select(0)
 	slog.Debug("setEntries", "len", len(t.list.Items()), "index", t.list.Index())
 	return cmd
 }
 
+func (t *historyTab) deleteOneCmd() tea.Cmd {
+	return func() tea.Msg {
+		idx := t.list.Index()
+		e, _ := t.list.SelectedItem().(config.HistoryEntry)
+
+		t.cfg.DeleteHistoryEntry(e)
+
+		t.list.RemoveItem(idx)
+		if idx >= len(t.list.Items()) {
+			t.list.Select(len(t.list.Items()) - 1)
+		}
+		return nil
+	}
+}
+func (t *historyTab) deleteAllCmd() tea.Cmd {
+	return func() tea.Msg {
+		t.cfg.ClearHistory()
+		return t.setEntries([]config.HistoryEntry{})
+	}
+}
+
 func (t *historyTab) createList(width int, height int) {
-	delegate := historyEntryDelegate{list.NewDefaultDelegate()}
+	delegate := historyEntryDelegate{list.NewDefaultDelegate(), &t.keymap}
 	l := list.New([]list.Item{}, &delegate, 0, 0)
 	l.InfiniteScrolling = true
 	l.SetShowTitle(false)
@@ -152,6 +180,11 @@ func (t *historyTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, t.list.KeyMap.Quit, t.list.KeyMap.ForceQuit):
 			return m, tea.Quit
 
+		case key.Matches(msg, t.keymap.deleteOne):
+			return m, t.deleteOneCmd()
+		case key.Matches(msg, t.keymap.deleteAll):
+			return m, t.deleteAllCmd()
+
 		case key.Matches(msg, t.keymap.search):
 			m.toBrowseTab()
 			return m.tabs[browseTabIx].Update(m, msg)
@@ -191,6 +224,15 @@ func (t *historyTab) View() string {
 
 type historyEntryDelegate struct {
 	defaultDelegate list.DefaultDelegate
+	keymap          *historyKeymap
+}
+
+func (d *historyEntryDelegate) ShortHelp() []key.Binding {
+	return []key.Binding{}
+}
+
+func (d *historyEntryDelegate) FullHelp() [][]key.Binding {
+	return [][]key.Binding{{d.keymap.deleteOne, d.keymap.deleteAll}}
 }
 
 func (d *historyEntryDelegate) Height() int { return d.defaultDelegate.Height() }
@@ -256,6 +298,8 @@ func (d *historyEntryDelegate) Render(w io.Writer, m list.Model, index int, item
 }
 
 type historyKeymap struct {
+	deleteOne    key.Binding
+	deleteAll    key.Binding
 	nextTab      key.Binding
 	prevTab      key.Binding
 	favoritesTab key.Binding

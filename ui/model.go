@@ -185,7 +185,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case metadataMsg:
-		go m.addHistory(msg)
+		go m.cfg.AddHistoryEntry(
+			time.Now(),
+			strings.TrimSpace(msg.stationUuid),
+			strings.TrimSpace(msg.stationName),
+			strings.TrimSpace(msg.songTitle),
+		)
 		m.songTitle = msg.songTitle
 		if msg.playbackTime != nil {
 			m.playbackTime = *msg.playbackTime
@@ -300,15 +305,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	//
 	model, cmd := activeTab.Update(m, msg)
 	return model, cmd
-}
-
-func (m *Model) addHistory(msg metadataMsg) {
-	m.cfg.AddHistory(
-		time.Now(),
-		strings.TrimSpace(msg.stationUuid),
-		strings.TrimSpace(msg.stationName),
-		strings.TrimSpace(msg.songTitle),
-	)
 }
 
 func (m *Model) statusHandler(ctx context.Context) {

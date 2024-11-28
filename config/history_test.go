@@ -135,7 +135,7 @@ func TestValue_AddHistory(t *testing.T) {
 			v := &Value{
 				History: tt.fields.History,
 			}
-			v.updateHistory(tt.args.timestamp, tt.args.uuid, tt.args.station, tt.args.song)
+			v.upsertHistory(tt.args.timestamp, tt.args.uuid, tt.args.station, tt.args.song)
 			if len(v.History) != len(tt.want) {
 				t.Errorf("test=%q got history length=%v, want=%v", tt.name, len(v.History), len(tt.want))
 			}
