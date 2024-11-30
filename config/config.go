@@ -4,30 +4,39 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
+	"sync"
+	"time"
 )
 
 var debug = flag.Bool("debug", false, "use -debug arg to log to a file")
 
 const (
-	defVersion  = "0.3.5"
-	cfgSubDir   = "sonicRadio"
-	cfgFilename = "config.json"
+	ReqTimeout = 10 * time.Second
+
+	defVersion        = "0.3.5"
+	cfgSubDir         = "sonicRadio"
+	cfgFilename       = "config.json"
+	defHistorySaveMax = 100
 )
 
 var defVolume = 100
 
 type Value struct {
-	Version   string   `json:"-"`
-	Debug     bool     `json:"-"`
-	LogPath   string   `json:"-"`
-	Favorites []string `json:"favorites,omitempty"` // Ordered station UUID's for user favorites
-	Volume    *int     `json:"volume,omitempty"`
-	// History   []string `json:"history,omitempty"`   // Ordered station UUID's for user listening history
+	Version        string              `json:"-"`
+	Debug          bool                `json:"-"`
+	LogPath        string              `json:"-"`
+	Favorites      []string            `json:"favorites,omitempty"` // Ordered station UUID's for user favorites
+	Volume         *int                `json:"volume,omitempty"`
+	historyMtx     *sync.Mutex         `json:"-"`
+	History        []HistoryEntry      `json:"history,omitempty"`
+	HistorySaveMax int                 `json:"historySaveMax"`
+	HistoryChan    chan []HistoryEntry `json:"-"`
 }
 
 func (v *Value) GetVolume() int {
@@ -75,6 +84,15 @@ func (v *Value) InsertFavorite(uuid string, idx int) bool {
 	return true
 }
 
+func (v *Value) String() string {
+	vol := -1
+	if v.Volume != nil {
+		vol = *v.Volume
+	}
+	return fmt.Sprintf("{version:%q, debug: %v, logPath=%q, favorites=%d, volume=%d, history=%d, historySaveMax=%d}",
+		v.Version, v.Debug, v.LogPath, len(v.Favorites), vol, len(v.History), v.HistorySaveMax)
+}
+
 func Load() (Value, error) {
 	flag.Parse()
 	versionVal := os.Getenv("SONIC_VERSION")
@@ -82,41 +100,44 @@ func Load() (Value, error) {
 		versionVal = defVersion
 	}
 
-	defCfg := Value{
-		Version: versionVal,
-		Debug:   *debug,
-		LogPath: os.TempDir(),
-		Volume:  &defVolume,
+	cfg := Value{
+		Version:        versionVal,
+		Debug:          *debug,
+		LogPath:        os.TempDir(),
+		Volume:         &defVolume,
+		historyMtx:     &sync.Mutex{},
+		HistorySaveMax: defHistorySaveMax,
+		HistoryChan:    make(chan []HistoryEntry),
 	}
+
 	dir, err := os.UserConfigDir()
 	if err != nil {
-		return defCfg, err
+		return cfg, err
 	}
 	fp := filepath.Join(dir, cfgSubDir, cfgFilename)
-
 	f, err := os.Open(fp)
 	if err != nil {
-		return defCfg, err
+		return cfg, err
 	}
 	b, err := io.ReadAll(f)
 	if err != nil {
-		return defCfg, err
+		return cfg, err
 	}
-	var cfg Value
 	err = json.Unmarshal(b, &cfg)
 	if err != nil {
-		return defCfg, err
+		return cfg, err
 	}
 	err = f.Close()
 	if err != nil {
-		return defCfg, err
+		return cfg, err
 	}
 
 	if cfg.Volume == nil {
 		cfg.Volume = &defVolume
 	}
-	cfg.Debug = *debug
-	cfg.Version = versionVal
+	if cfg.HistorySaveMax == 0 {
+		cfg.HistorySaveMax = defHistorySaveMax
+	}
 	return cfg, nil
 }
 
@@ -143,7 +164,9 @@ func Save(cfg Value) error {
 	if err != nil {
 		return err
 	}
-	err = json.NewEncoder(f).Encode(cfg)
+	enc := json.NewEncoder(f)
+	enc.SetIndent("  ", "  ")
+	err = enc.Encode(cfg)
 	if err != nil {
 		return err
 	}

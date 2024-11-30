@@ -21,9 +21,13 @@ func main() {
 }
 
 func run() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	cfg, _ := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Println(err.Error())
+	}
 
 	var logW io.Writer
 	if cfg.Debug {
@@ -47,15 +51,18 @@ func run() {
 	log.SetFlags(log.Flags() &^ (log.Ldate))
 	slog.SetDefault(logger)
 	slog.Info("----------------------Starting----------------------")
-	slog.Debug("loaded", "config", fmt.Sprintf("%#v", cfg))
+	slog.Debug("loaded", "config", cfg.String())
 
-	b := browser.NewApi(cfg)
+	b, err := browser.NewApi(ctx, cfg)
+	if err != nil {
+		panic(err)
+	}
 
 	p, err := player.NewPlayer(ctx, cfg)
 	if err != nil {
 		panic(err)
 	}
-	m := ui.NewModel(&cfg, b, p)
+	m := ui.NewModel(ctx, &cfg, b, p)
 	defer func() {
 		m.Quit()
 	}()

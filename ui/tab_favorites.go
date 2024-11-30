@@ -32,6 +32,8 @@ func (t *favoritesTab) createList(delegate *stationDelegate, width int, height i
 			t.listKeymap.toNowPlaying,
 			t.listKeymap.prevTab,
 			t.listKeymap.nextTab,
+			t.listKeymap.browseTab,
+			t.listKeymap.historyTab,
 		}
 	}
 
@@ -88,6 +90,13 @@ func (t *favoritesTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateStatus(string(sm))
 		cmd := t.list.SetItems(items)
 		cmds = append(cmds, cmd)
+
+	case playHistoryEntryMsg:
+		s, idx := t.getListStationByUuid(msg.uuid)
+		if s != nil {
+			t.list.Select(*idx)
+			return m, m.playStationCmd(*s)
+		}
 
 	case toggleFavoriteMsg:
 		if msg.added {
@@ -174,11 +183,11 @@ func (t *favoritesTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.toBrowseTab()
 			return m.tabs[browseTabIx].Update(m, msg)
 
-		case key.Matches(msg, t.listKeymap.nextTab):
+		case key.Matches(msg, t.listKeymap.nextTab, t.listKeymap.browseTab):
 			m.toBrowseTab()
 
-		case key.Matches(msg, t.listKeymap.prevTab):
-			m.toBrowseTab()
+		case key.Matches(msg, t.listKeymap.prevTab, t.listKeymap.historyTab):
+			m.toHistoryTab()
 
 		case key.Matches(msg, t.listKeymap.digits...):
 			t.doJump(msg)

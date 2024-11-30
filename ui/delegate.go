@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log/slog"
@@ -164,7 +165,9 @@ func (d *stationDelegate) playCmd(s browser.Station) tea.Cmd {
 	return func() tea.Msg {
 		log := slog.With("method", "ui.stationDelegate.playStation")
 		log.Debug("playing", "id", s.Stationuuid)
-		go d.increaseCounter(s)
+		ctx, cancel := context.WithTimeout(context.Background(), config.ReqTimeout)
+		defer cancel()
+		go d.increaseCounter(ctx, s)
 
 		err := d.player.Play(s.URL)
 		if err != nil {
@@ -178,8 +181,8 @@ func (d *stationDelegate) playCmd(s browser.Station) tea.Cmd {
 	}
 }
 
-func (d *stationDelegate) increaseCounter(station browser.Station) {
-	d.b.StationCounter(station.Stationuuid)
+func (d *stationDelegate) increaseCounter(ctx context.Context, station browser.Station) {
+	d.b.StationCounter(ctx, station.Stationuuid)
 }
 
 func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
@@ -304,7 +307,6 @@ func (d *stationDelegate) FullHelp() [][]key.Binding {
 
 func newDelegateKeyMap() *delegateKeyMap {
 	return &delegateKeyMap{
-		// todo change label based on state
 		pause: key.NewBinding(
 			key.WithKeys(" "),
 			key.WithHelp("space", "resume"),

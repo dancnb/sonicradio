@@ -16,9 +16,11 @@ type uiTabIndex uint8
 func (t uiTabIndex) String() string {
 	switch t {
 	case favoriteTabIx:
-		return "Favorites"
+		return " Favorites "
 	case browseTabIx:
-		return " Browse "
+		return "  Browse  "
+	case historyTabIx:
+		return "  History  "
 	}
 	return ""
 }
@@ -26,7 +28,7 @@ func (t uiTabIndex) String() string {
 const (
 	favoriteTabIx uiTabIndex = iota
 	browseTabIx
-	// historyTabIx
+	historyTabIx
 	// configTab
 )
 
@@ -36,12 +38,17 @@ type uiTab interface {
 	View() string
 }
 
+type filteringTab interface {
+	IsFiltering() bool
+}
+
 type stationTab interface {
 	uiTab
+	filteringTab
 	Stations() *stationsTabBase
-	IsFiltering() bool
 	IsSearchEnabled() bool
 	IsInfoEnabled() bool
+	createList(delegate *stationDelegate, width int, height int) list.Model
 }
 
 const jumpTimeout = 250 * time.Millisecond
@@ -156,6 +163,20 @@ func (t *stationsTabBase) initInfoModel(m *Model, msg toggleInfoMsg) tea.Cmd {
 	return t.infoModel.Init(msg.station)
 }
 
+func (t *stationsTabBase) getListStationByUuid(uuid string) (*browser.Station, *int) {
+	var s *browser.Station
+	var idx *int
+	for i := range t.list.Items() {
+		itS, ok := t.list.Items()[i].(browser.Station)
+		if ok && itS.Stationuuid == uuid {
+			idx = &i
+			s = &itS
+			break
+		}
+	}
+	return s, idx
+}
+
 func createList(delegate *stationDelegate, width int, height int) list.Model {
 	l := list.New([]list.Item{}, delegate, 0, 0)
 	l.InfiniteScrolling = true
@@ -178,6 +199,6 @@ func createList(delegate *stationDelegate, width int, height int) list.Model {
 	l.Help.Styles = helpStyles()
 	l.Styles.HelpStyle = helpStyle
 
-	textInputSyle(&l.FilterInput, "Filter:       ", "name")
+	textInputSyle(&l.FilterInput, "Filter:       ", "station name")
 	return l
 }

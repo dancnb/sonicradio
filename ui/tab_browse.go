@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"context"
+
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -13,12 +15,12 @@ type browseTab struct {
 	searchModel    *searchModel
 }
 
-func newBrowseTab(browser *browser.Api, infoModel *infoModel) *browseTab {
+func newBrowseTab(ctx context.Context, browser *browser.Api, infoModel *infoModel) *browseTab {
 	k := newListKeymap()
 
 	m := &browseTab{
 		stationsTabBase: newStationsTab(k, infoModel),
-		searchModel:     newSearchModel(browser),
+		searchModel:     newSearchModel(ctx, browser),
 	}
 	return m
 }
@@ -35,6 +37,8 @@ func (t *browseTab) createList(delegate *stationDelegate, width int, height int)
 			t.listKeymap.toNowPlaying,
 			t.listKeymap.prevTab,
 			t.listKeymap.nextTab,
+			t.listKeymap.favoritesTab,
+			t.listKeymap.historyTab,
 		}
 	}
 
@@ -82,6 +86,24 @@ func (t *browseTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd := t.setStations(msg.stations)
 		cmds = append(cmds, cmd)
 
+	case playHistoryEntryMsg:
+		s, idx := t.getListStationByUuid(msg.uuid)
+		if s != nil {
+			t.list.Select(*idx)
+			return m, m.playStationCmd(*s)
+		} else {
+			return m, m.playUuidCmd(msg.uuid)
+		}
+	case playUuidRespMsg:
+		m.updateStatus(string(msg.statusMsg))
+		t.viewMsg = string(msg.viewMsg)
+		if len(msg.stations) > 0 {
+			return m, tea.Sequence(
+				t.setStations(msg.stations),
+				m.playStationCmd(msg.stations[0]),
+			)
+		}
+
 	case searchRespMsg:
 		t.listKeymap.setEnabled(true)
 		if msg.cancelled {
@@ -127,10 +149,10 @@ func (t *browseTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, t.searchModel.Init())
 			return m, tea.Batch(cmds...)
 
-		case key.Matches(msg, t.listKeymap.nextTab):
-			m.toFavoritesTab()
+		case key.Matches(msg, t.listKeymap.nextTab, t.listKeymap.historyTab):
+			m.toHistoryTab()
 
-		case key.Matches(msg, t.listKeymap.prevTab):
+		case key.Matches(msg, t.listKeymap.prevTab, t.listKeymap.favoritesTab):
 			m.toFavoritesTab()
 
 		case key.Matches(msg, t.listKeymap.digits...):

@@ -14,6 +14,8 @@ type (
 
 	// song title
 	metadataMsg struct {
+		stationUuid  string
+		stationName  string
 		songTitle    string
 		playbackTime *time.Duration
 	}
@@ -64,10 +66,24 @@ type (
 	pauseRespMsg struct {
 		err string
 	}
+
+	playHistoryEntryMsg struct {
+		uuid string
+	}
+
+	playUuidRespMsg struct {
+		viewMsg
+		statusMsg
+		stations []browser.Station
+	}
 )
 
-func fromMetadata(m player.Metadata) metadataMsg {
-	msg := metadataMsg{songTitle: m.Title}
+func getMetadataMsg(s browser.Station, m player.Metadata) metadataMsg {
+	msg := metadataMsg{
+		stationUuid: s.Stationuuid,
+		stationName: s.Name,
+		songTitle:   m.Title,
+	}
 	if m.PlaybackTimeSec != nil {
 		t := time.Second * (time.Duration(*m.PlaybackTimeSec))
 		msg.playbackTime = &t

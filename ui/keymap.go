@@ -20,6 +20,18 @@ func newListKeymap() listKeymap {
 			key.WithKeys("shift+tab"),
 			key.WithHelp("shift+tab", "go to prev tab"),
 		),
+		favoritesTab: key.NewBinding(
+			key.WithKeys("F"),
+			key.WithHelp("F", "go to favorites tab"),
+		),
+		browseTab: key.NewBinding(
+			key.WithKeys("B"),
+			key.WithHelp("B", "go to browse tab"),
+		),
+		historyTab: key.NewBinding(
+			key.WithKeys("H"),
+			key.WithHelp("H", "go to history tab"),
+		),
 		digits: []key.Binding{
 			key.NewBinding(key.WithKeys("1")),
 			key.NewBinding(key.WithKeys("2")),
@@ -45,6 +57,9 @@ type listKeymap struct {
 	toNowPlaying key.Binding
 	nextTab      key.Binding
 	prevTab      key.Binding
+	favoritesTab key.Binding
+	browseTab    key.Binding
+	historyTab   key.Binding
 	digits       []key.Binding
 	digitHelp    key.Binding
 }
@@ -54,6 +69,9 @@ func (k *listKeymap) setEnabled(v bool) {
 	k.toNowPlaying.SetEnabled(v)
 	k.nextTab.SetEnabled(v)
 	k.prevTab.SetEnabled(v)
+	k.favoritesTab.SetEnabled(v)
+	k.browseTab.SetEnabled(v)
+	k.historyTab.SetEnabled(v)
 	for i := range k.digits {
 		k.digits[i].SetEnabled(v)
 	}

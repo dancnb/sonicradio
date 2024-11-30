@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dancnb/sonicradio/browser"
+	"github.com/dancnb/sonicradio/config"
 )
 
 type searchModel struct {
@@ -88,7 +90,7 @@ var orderView = map[orderIx]string{
 	orderRand:       "Random",
 }
 
-func newSearchModel(browser *browser.Api) *searchModel {
+func newSearchModel(ctx context.Context, browser *browser.Api) *searchModel {
 	k := newSearchKeymap()
 	inputs := []textinput.Model{
 		makeInput("Name          ", "leave empty for all", k),
@@ -113,7 +115,7 @@ func newSearchModel(browser *browser.Api) *searchModel {
 		help:    h,
 		inputs:  inputs,
 	}
-	go sm.getSuggestions()
+	go sm.getSuggestions(ctx)
 	return sm
 }
 
@@ -129,8 +131,8 @@ func makeInput(prompt, placeholder string, keymap searchKeymap) textinput.Model 
 	return input
 }
 
-func (s *searchModel) getSuggestions() {
-	countries, err := s.browser.GetCountries()
+func (s *searchModel) getSuggestions(ctx context.Context) {
+	countries, err := s.browser.GetCountries(ctx)
 	if err == nil && len(countries) > 0 {
 		for i := range countries {
 			s.countries = append(s.countries, countries[i].Name)
@@ -139,7 +141,7 @@ func (s *searchModel) getSuggestions() {
 		s.inputs[country].SetSuggestions(s.countries)
 	}
 
-	langs, err := s.browser.GetLanguages()
+	langs, err := s.browser.GetLanguages(ctx)
 	if err == nil && len(langs) > 0 {
 		for i := range langs {
 			s.languages = append(s.languages, langs[i].Name)
@@ -253,7 +255,9 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				params.Order = s.oIdx.toSearchOrder()
 				params.Reverse = s.reverse
 
-				stations, err := s.browser.Search(params)
+				ctx, cancel := context.WithTimeout(context.Background(), config.ReqTimeout)
+				defer cancel()
+				stations, err := s.browser.Search(ctx, params)
 				res := searchRespMsg{stations: stations}
 				if err != nil {
 					res.statusMsg = statusMsg(err.Error())
