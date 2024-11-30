@@ -66,6 +66,16 @@ type (
 	pauseRespMsg struct {
 		err string
 	}
+
+	playHistoryEntryMsg struct {
+		uuid string
+	}
+
+	playUuidRespMsg struct {
+		viewMsg
+		statusMsg
+		stations []browser.Station
+	}
 )
 
 func getMetadataMsg(s browser.Station, m player.Metadata) metadataMsg {

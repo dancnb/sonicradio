@@ -163,6 +163,20 @@ func (t *stationsTabBase) initInfoModel(m *Model, msg toggleInfoMsg) tea.Cmd {
 	return t.infoModel.Init(msg.station)
 }
 
+func (t *stationsTabBase) getListStationByUuid(uuid string) (*browser.Station, *int) {
+	var s *browser.Station
+	var idx *int
+	for i := range t.list.Items() {
+		itS, ok := t.list.Items()[i].(browser.Station)
+		if ok && itS.Stationuuid == uuid {
+			idx = &i
+			s = &itS
+			break
+		}
+	}
+	return s, idx
+}
+
 func createList(delegate *stationDelegate, width int, height int) list.Model {
 	l := list.New([]list.Item{}, delegate, 0, 0)
 	l.InfiniteScrolling = true

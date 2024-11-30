@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -30,6 +31,10 @@ func newHistoryTab(ctx context.Context, cfg *config.Value) *historyTab {
 	t := &historyTab{
 		cfg: cfg,
 		keymap: historyKeymap{
+			play: key.NewBinding(
+				key.WithKeys("enter"),
+				key.WithHelp("enter", "play"),
+			),
 			deleteOne: key.NewBinding(
 				key.WithKeys("d"),
 				key.WithHelp("d", "delete entry"),
@@ -180,6 +185,15 @@ func (t *historyTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, t.list.KeyMap.Quit, t.list.KeyMap.ForceQuit):
 			return m, tea.Quit
 
+		case key.Matches(msg, t.keymap.play):
+			e, _ := t.list.SelectedItem().(config.HistoryEntry)
+			if slices.Contains(m.cfg.Favorites, e.Uuid) {
+				m.toFavoritesTab()
+				return m.tabs[favoriteTabIx].Update(m, playHistoryEntryMsg{e.Uuid})
+			}
+			m.toBrowseTab()
+			return m.tabs[browseTabIx].Update(m, playHistoryEntryMsg{e.Uuid})
+
 		case key.Matches(msg, t.keymap.deleteOne):
 			return m, t.deleteOneCmd()
 		case key.Matches(msg, t.keymap.deleteAll):
@@ -228,11 +242,11 @@ type historyEntryDelegate struct {
 }
 
 func (d *historyEntryDelegate) ShortHelp() []key.Binding {
-	return []key.Binding{}
+	return []key.Binding{d.keymap.play}
 }
 
 func (d *historyEntryDelegate) FullHelp() [][]key.Binding {
-	return [][]key.Binding{{d.keymap.deleteOne, d.keymap.deleteAll}}
+	return [][]key.Binding{{d.keymap.play, d.keymap.deleteOne, d.keymap.deleteAll}}
 }
 
 func (d *historyEntryDelegate) Height() int { return d.defaultDelegate.Height() }
@@ -298,6 +312,7 @@ func (d *historyEntryDelegate) Render(w io.Writer, m list.Model, index int, item
 }
 
 type historyKeymap struct {
+	play         key.Binding
 	deleteOne    key.Binding
 	deleteAll    key.Binding
 	nextTab      key.Binding

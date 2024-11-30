@@ -91,6 +91,13 @@ func (t *favoritesTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd := t.list.SetItems(items)
 		cmds = append(cmds, cmd)
 
+	case playHistoryEntryMsg:
+		s, idx := t.getListStationByUuid(msg.uuid)
+		if s != nil {
+			t.list.Select(*idx)
+			return m, m.playStationCmd(*s)
+		}
+
 	case toggleFavoriteMsg:
 		if msg.added {
 			cmd := t.list.InsertItem(len(t.list.Items()), msg.station)

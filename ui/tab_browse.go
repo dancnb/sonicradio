@@ -86,6 +86,24 @@ func (t *browseTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd := t.setStations(msg.stations)
 		cmds = append(cmds, cmd)
 
+	case playHistoryEntryMsg:
+		s, idx := t.getListStationByUuid(msg.uuid)
+		if s != nil {
+			t.list.Select(*idx)
+			return m, m.playStationCmd(*s)
+		} else {
+			return m, m.playUuidCmd(msg.uuid)
+		}
+	case playUuidRespMsg:
+		m.updateStatus(string(msg.statusMsg))
+		t.viewMsg = string(msg.viewMsg)
+		if len(msg.stations) > 0 {
+			return m, tea.Sequence(
+				t.setStations(msg.stations),
+				m.playStationCmd(msg.stations[0]),
+			)
+		}
+
 	case searchRespMsg:
 		t.listKeymap.setEnabled(true)
 		if msg.cancelled {
