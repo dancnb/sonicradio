@@ -28,6 +28,16 @@ func run() {
 	if err != nil {
 		fmt.Println(err.Error())
 	}
+	if cfg.IsRunning {
+		panic("application is already running")
+	}
+	go func() {
+		cfg.IsRunning = true
+		err = cfg.Save()
+		if err != nil {
+			fmt.Printf("error saving config: %v\n", err)
+		}
+	}()
 
 	var logW io.Writer
 	if cfg.Debug {
@@ -62,7 +72,7 @@ func run() {
 	if err != nil {
 		panic(err)
 	}
-	m := ui.NewModel(ctx, &cfg, b, p)
+	m := ui.NewModel(ctx, cfg, b, p)
 	defer func() {
 		m.Quit()
 	}()

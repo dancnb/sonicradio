@@ -10,7 +10,7 @@ type Player struct {
 	mpv *MpvSocket
 }
 
-func NewPlayer(ctx context.Context, cfg config.Value) (*Player, error) {
+func NewPlayer(ctx context.Context, cfg *config.Value) (*Player, error) {
 	mpv, err := NewMPVSocket(ctx)
 	if err != nil {
 		return nil, err

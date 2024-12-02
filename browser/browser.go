@@ -28,7 +28,7 @@ const (
 
 var ServerErrMsg = errors.New("Server response not available")
 
-func NewApi(ctx context.Context, cfg config.Value) (*Api, error) {
+func NewApi(ctx context.Context, cfg *config.Value) (*Api, error) {
 	api := Api{
 		cfg:           cfg,
 		stationsCache: make(map[string][]Station),
@@ -54,7 +54,7 @@ func NewApi(ctx context.Context, cfg config.Value) (*Api, error) {
 }
 
 type Api struct {
-	cfg       config.Value
+	cfg       *config.Value
 	servers   []string
 	countries []Country
 	langs     []Language

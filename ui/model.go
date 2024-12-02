@@ -352,7 +352,8 @@ func (m *Model) Quit() {
 	if err != nil {
 		slog.Error(fmt.Sprintf("player close error: %v", err))
 	}
-	err = config.Save(*m.cfg)
+	m.cfg.IsRunning = false
+	err = m.cfg.Save()
 	if err != nil {
 		log.Error("config save", "error", err.Error())
 	}
