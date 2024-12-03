@@ -38,6 +38,7 @@ type Value struct {
 	HistorySaveMax int                 `json:"historySaveMax"`
 	HistoryChan    chan []HistoryEntry `json:"-"`
 	IsRunning      bool                `json:"isRunning"`
+	saveMtx        *sync.Mutex
 }
 
 func (v *Value) GetVolume() int {
@@ -114,6 +115,7 @@ func Load() (cfg *Value, err error) {
 		historyMtx:     &sync.Mutex{},
 		HistorySaveMax: defHistorySaveMax,
 		HistoryChan:    make(chan []HistoryEntry),
+		saveMtx:        &sync.Mutex{},
 	}
 
 	dir, err := os.UserConfigDir()
@@ -148,6 +150,9 @@ func Load() (cfg *Value, err error) {
 }
 
 func (v *Value) Save() error {
+	v.saveMtx.Lock()
+	defer v.saveMtx.Unlock()
+
 	dir, err := os.UserConfigDir()
 	if err != nil {
 		return err
