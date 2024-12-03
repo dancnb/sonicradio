@@ -28,12 +28,21 @@ func run() {
 	if err != nil {
 		fmt.Println(err.Error())
 	}
+	if cfg.IsRunning {
+		panic("application is already running")
+	}
+	go func() {
+		cfg.IsRunning = true
+		err = cfg.Save()
+		if err != nil {
+			fmt.Printf("error saving config: %v\n", err)
+		}
+	}()
 
 	var logW io.Writer
 	if cfg.Debug {
 		logFile := fmt.Sprintf("sonicradio-%d.log", time.Now().UnixMilli())
 		lp := filepath.Join(cfg.LogPath, logFile)
-		lp = "__debug.log" // dev only
 		f, err := os.Create(lp)
 		if err != nil {
 			panic("could not create log file " + lp)
@@ -62,7 +71,7 @@ func run() {
 	if err != nil {
 		panic(err)
 	}
-	m := ui.NewModel(ctx, &cfg, b, p)
+	m := ui.NewModel(ctx, cfg, b, p)
 	defer func() {
 		m.Quit()
 	}()

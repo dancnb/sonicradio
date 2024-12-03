@@ -53,15 +53,7 @@ func (v *Value) saveHistory() []HistoryEntry {
 	log := slog.With("method", "config.Value.saveHistory")
 	startIx := max(0, len(v.History)-v.HistorySaveMax)
 	entries := v.History[startIx:len(v.History)]
-	err := Save(Value{
-		Favorites:      v.Favorites,
-		Volume:         v.Volume,
-		History:        entries,
-		HistorySaveMax: v.HistorySaveMax,
-	})
-	if err != nil {
-		log.Error("save config", "err", err)
-	}
+	v.History = entries
 	log.Debug("saved entries", "len", len(entries), "startIdx", startIx)
 	return entries
 }

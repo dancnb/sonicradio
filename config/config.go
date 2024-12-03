@@ -37,6 +37,8 @@ type Value struct {
 	History        []HistoryEntry      `json:"history,omitempty"`
 	HistorySaveMax int                 `json:"historySaveMax"`
 	HistoryChan    chan []HistoryEntry `json:"-"`
+	IsRunning      bool                `json:"isRunning"`
+	saveMtx        *sync.Mutex
 }
 
 func (v *Value) GetVolume() int {
@@ -93,14 +95,19 @@ func (v *Value) String() string {
 		v.Version, v.Debug, v.LogPath, len(v.Favorites), vol, len(v.History), v.HistorySaveMax)
 }
 
-func Load() (Value, error) {
+// Load must return a non-nil config Value and an error specifying why it could not read the config file:
+//
+// - either a default value if no previously saved config is found in the file system
+//
+// - either the found config Value
+func Load() (cfg *Value, err error) {
 	flag.Parse()
 	versionVal := os.Getenv("SONIC_VERSION")
 	if versionVal == "" {
 		versionVal = defVersion
 	}
 
-	cfg := Value{
+	cfg = &Value{
 		Version:        versionVal,
 		Debug:          *debug,
 		LogPath:        os.TempDir(),
@@ -108,28 +115,29 @@ func Load() (Value, error) {
 		historyMtx:     &sync.Mutex{},
 		HistorySaveMax: defHistorySaveMax,
 		HistoryChan:    make(chan []HistoryEntry),
+		saveMtx:        &sync.Mutex{},
 	}
 
 	dir, err := os.UserConfigDir()
 	if err != nil {
-		return cfg, err
+		return
 	}
 	fp := filepath.Join(dir, cfgSubDir, cfgFilename)
 	f, err := os.Open(fp)
 	if err != nil {
-		return cfg, err
+		return
 	}
 	b, err := io.ReadAll(f)
 	if err != nil {
-		return cfg, err
+		return
 	}
 	err = json.Unmarshal(b, &cfg)
 	if err != nil {
-		return cfg, err
+		return
 	}
 	err = f.Close()
 	if err != nil {
-		return cfg, err
+		return
 	}
 
 	if cfg.Volume == nil {
@@ -138,10 +146,13 @@ func Load() (Value, error) {
 	if cfg.HistorySaveMax == 0 {
 		cfg.HistorySaveMax = defHistorySaveMax
 	}
-	return cfg, nil
+	return
 }
 
-func Save(cfg Value) error {
+func (v *Value) Save() error {
+	v.saveMtx.Lock()
+	defer v.saveMtx.Unlock()
+
 	dir, err := os.UserConfigDir()
 	if err != nil {
 		return err
@@ -166,7 +177,7 @@ func Save(cfg Value) error {
 	}
 	enc := json.NewEncoder(f)
 	enc.SetIndent("  ", "  ")
-	err = enc.Encode(cfg)
+	err = enc.Encode(v)
 	if err != nil {
 		return err
 	}
