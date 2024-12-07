@@ -399,7 +399,7 @@ func newSearchKeymap() searchKeymap {
 		),
 		order: key.NewBinding(
 			key.WithKeys("ctrl+o"),
-			key.WithHelp("ctrl+o", "order by"),
+			key.WithHelp("ctrl+o", "order by "),
 		),
 		reverse: key.NewBinding(
 			key.WithKeys("ctrl+r"),
