@@ -216,8 +216,8 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		res.WriteString(prefixRender)
 		maxWidth := max(listWidth-lipgloss.Width(prefixRender)-headerPadDist, 0)
 
-		itStyle := nowPlayingStyle
-		descStyle := nowPlayingDescStyle
+		itStyle := primaryColorStyle
+		descStyle := secondaryColorStyle
 		if isSel {
 			itStyle = selNowPlayingStyle
 			descStyle = selNowPlayingDescStyle
@@ -249,8 +249,8 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		res.WriteString(prefixRender)
 		maxWidth := max(listWidth-lipgloss.Width(prefixRender)-headerPadDist, 0)
 
-		itStyle := itemStyle
-		descStyle := descStyle
+		itStyle := primaryColorStyle
+		descStyle := secondaryColorStyle
 		if isSel {
 			itStyle = selItemStyle
 			descStyle = selDescStyle

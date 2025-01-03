@@ -282,7 +282,7 @@ func (d *historyEntryDelegate) Render(w io.Writer, m list.Model, index int, item
 	res.WriteString(prefixRender)
 	maxWidth := max(listWidth-lipgloss.Width(prefixRender)-headerPadDist, 0)
 
-	itStyle := historyItemStyle
+	itStyle := secondaryColorStyle
 	descStyle := historyDescStyle
 	if isSel {
 		itStyle = historySelItemStyle

@@ -311,9 +311,9 @@ func (s *searchModel) getOrderString(o orderIx) string {
 
 func (s *searchModel) getOrderStyle(o orderIx) lipgloss.Style {
 	if s.oIdx == o {
-		return orderBySelStyle
+		return primaryColorStyle
 	}
-	return orderByStyle
+	return secondaryColorStyle
 }
 
 func (s *searchModel) View() string {
@@ -350,7 +350,7 @@ func (s *searchModel) View() string {
 	if s.reverse {
 		rev = "on"
 	}
-	b.WriteString(filterTextStyle.Render(rev))
+	b.WriteString(primaryColorStyle.Render(rev))
 
 	availHeight := s.height
 	help := helpStyle.Render(s.help.View(&s.keymap))

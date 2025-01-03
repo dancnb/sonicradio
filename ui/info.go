@@ -150,10 +150,10 @@ func (i *infoModel) renderInfoField(b *strings.Builder, fieldName, fieldValue st
 	b.WriteString(fnRender)
 	fnw := lipgloss.Width(fnRender)
 	fv := strings.TrimSpace(fieldValue)
-	for fnw+lipgloss.Width(infoFieldValueStyle.Render(fv)) > i.width && len(fv) > 0 {
+	for fnw+lipgloss.Width(secondaryColorStyle.Render(fv)) > i.width && len(fv) > 0 {
 		fv = fv[:len(fv)-1]
 	}
-	b.WriteString(infoFieldValueStyle.Render(fv))
+	b.WriteString(secondaryColorStyle.Render(fv))
 	b.WriteString("\n")
 }
 

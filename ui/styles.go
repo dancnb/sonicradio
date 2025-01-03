@@ -40,12 +40,8 @@ var (
 	// station delegate
 	prefixStyle            = primaryColorStyle.PaddingLeft(1)
 	nowPlayingPrefixStyle  = primaryColorStyle.PaddingLeft(0)
-	nowPlayingStyle        = primaryColorStyle
-	nowPlayingDescStyle    = secondaryColorStyle
 	selNowPlayingStyle     = lipgloss.NewStyle().Background(basePrimaryColor).Foreground(invertedPrimaryColor)
 	selNowPlayingDescStyle = lipgloss.NewStyle().Background(basePrimaryColor).Foreground(invertedSecondColor)
-	itemStyle              = primaryColorStyle
-	descStyle              = secondaryColorStyle
 	selItemStyle           = lipgloss.NewStyle().Background(basePrimaryColor).Foreground(invertedPrimaryColor)
 	selDescStyle           = lipgloss.NewStyle().Background(basePrimaryColor).Foreground(invertedSecondColor)
 	selectedBorderStyle    = lipgloss.NewStyle().
@@ -89,28 +85,21 @@ var (
 		Margin(0).Padding(0)
 
 	// help
-	helpkeyStyle  = primaryColorStyle
-	helpDescStyle = secondaryColorStyle
-	helpStyle     = lipgloss.NewStyle().
+	helpStyle = lipgloss.NewStyle().
 			Padding(0, 0).Margin(0).
 			Border(lipgloss.NormalBorder()).
 			BorderForeground(basePrimaryColor)
 
 	// filter
 	filterPromptStyle = primaryColorStyle.Bold(true).MarginLeft(1)
-	filterTextStyle   = primaryColorStyle
 
-	//search
+	// search
 	searchPromptStyle = primaryColorStyle.Bold(true).MarginLeft(3)
-	orderByStyle      = secondaryColorStyle
-	orderBySelStyle   = primaryColorStyle
 
 	// station info
-	infoFieldNameStyle  = primaryColorStyle.Bold(false).MarginLeft(3)
-	infoFieldValueStyle = secondaryColorStyle
+	infoFieldNameStyle = primaryColorStyle.Bold(false).MarginLeft(3)
 
-	//history
-	historyItemStyle    = secondaryColorStyle
+	// history
 	historyDescStyle    = primaryColorStyle.Bold(true)
 	historySelItemStyle = selDescStyle
 	historySelDescStyle = selItemStyle.Bold(true)
@@ -126,22 +115,22 @@ func padFieldName(v string) string {
 func textInputSyle(textInput *textinput.Model, prompt, placeholder string) {
 	textInput.Prompt = prompt
 	textInput.PromptStyle = filterPromptStyle
-	textInput.TextStyle = filterTextStyle
-	textInput.CompletionStyle = filterTextStyle
+	textInput.TextStyle = primaryColorStyle
+	textInput.CompletionStyle = primaryColorStyle
 	textInput.Cursor.Style = filterPromptStyle
-	textInput.Cursor.TextStyle = filterTextStyle
+	textInput.Cursor.TextStyle = primaryColorStyle
 	textInput.Placeholder = placeholder
 	textInput.PlaceholderStyle = secondaryColorStyle
 }
 
 func helpStyles() help.Styles {
 	return help.Styles{
-		ShortKey:       helpkeyStyle,
-		ShortDesc:      helpDescStyle,
-		ShortSeparator: helpDescStyle,
-		Ellipsis:       helpDescStyle,
-		FullKey:        helpkeyStyle,
-		FullDesc:       helpDescStyle,
-		FullSeparator:  helpDescStyle,
+		ShortKey:       primaryColorStyle,
+		ShortDesc:      secondaryColorStyle,
+		ShortSeparator: secondaryColorStyle,
+		Ellipsis:       secondaryColorStyle,
+		FullKey:        primaryColorStyle,
+		FullDesc:       secondaryColorStyle,
+		FullSeparator:  secondaryColorStyle,
 	}
 }
