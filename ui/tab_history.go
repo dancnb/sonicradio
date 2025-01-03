@@ -51,6 +51,10 @@ func newHistoryTab(ctx context.Context, cfg *config.Value) *historyTab {
 				key.WithKeys("shift+tab"),
 				key.WithHelp("shift+tab", "go to prev tab"),
 			),
+			settingsTab: key.NewBinding(
+				key.WithKeys("S"),
+				key.WithHelp("S", "go to settings tab"),
+			),
 			favoritesTab: key.NewBinding(
 				key.WithKeys("F"),
 				key.WithHelp("F", "go to favorites tab"),
@@ -159,6 +163,7 @@ func (t *historyTab) createList(width int, height int) {
 			t.keymap.nextTab,
 			t.keymap.favoritesTab,
 			t.keymap.browseTab,
+			t.keymap.settingsTab,
 		}
 	}
 
@@ -204,8 +209,11 @@ func (t *historyTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.toBrowseTab()
 			return m.tabs[browseTabIx].Update(m, msg)
 
-		case key.Matches(msg, t.keymap.nextTab, t.keymap.favoritesTab):
-			m.toConfigTab()
+		case key.Matches(msg, t.keymap.nextTab, t.keymap.settingsTab):
+			m.toSettingsTab()
+
+		case key.Matches(msg, t.keymap.favoritesTab):
+			m.toFavoritesTab()
 
 		case key.Matches(msg, t.keymap.prevTab, t.keymap.browseTab):
 			m.toBrowseTab()
@@ -319,6 +327,7 @@ type historyKeymap struct {
 	nextTab      key.Binding
 	prevTab      key.Binding
 	favoritesTab key.Binding
+	settingsTab  key.Binding
 	browseTab    key.Binding
 	search       key.Binding
 }
