@@ -187,7 +187,7 @@ func (t *favoritesTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.toBrowseTab()
 
 		case key.Matches(msg, t.listKeymap.prevTab, t.listKeymap.historyTab):
-			m.toHistoryTab()
+			m.toConfigTab()
 
 		case key.Matches(msg, t.listKeymap.digits...):
 			t.doJump(msg)

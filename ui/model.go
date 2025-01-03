@@ -68,6 +68,7 @@ func newModel(ctx context.Context, cfg *config.Value, b *browser.Api, p *player.
 			newFavoritesTab(infoModel),
 			newBrowseTab(ctx, b, infoModel),
 			newHistoryTab(ctx, cfg),
+			newConfigTab(ctx, cfg),
 		},
 		statusUpdate: make(chan struct{}),
 
@@ -324,11 +325,18 @@ func (m *Model) toFavoritesTab() {
 	m.delegate.keymap.toggleFavorite.SetEnabled(false)
 	m.activeTabIdx = favoriteTabIx
 }
+
 func (m *Model) toBrowseTab() {
 	m.delegate.keymap.toggleFavorite.SetEnabled(true)
 	m.activeTabIdx = browseTabIx
 }
+
 func (m *Model) toHistoryTab() {
+	m.delegate.keymap.toggleFavorite.SetEnabled(false)
+	m.activeTabIdx = historyTabIx
+}
+
+func (m *Model) toConfigTab() {
 	m.delegate.keymap.toggleFavorite.SetEnabled(false)
 	m.activeTabIdx = historyTabIx
 }

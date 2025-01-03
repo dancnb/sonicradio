@@ -118,6 +118,7 @@ func (t *historyTab) deleteOneCmd() tea.Cmd {
 		return nil
 	}
 }
+
 func (t *historyTab) deleteAllCmd() tea.Cmd {
 	return func() tea.Msg {
 		t.cfg.ClearHistory()
@@ -204,7 +205,7 @@ func (t *historyTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.tabs[browseTabIx].Update(m, msg)
 
 		case key.Matches(msg, t.keymap.nextTab, t.keymap.favoritesTab):
-			m.toFavoritesTab()
+			m.toConfigTab()
 
 		case key.Matches(msg, t.keymap.prevTab, t.keymap.browseTab):
 			m.toBrowseTab()
