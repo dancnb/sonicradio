@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -93,11 +92,11 @@ var orderView = map[orderIx]string{
 func newSearchModel(ctx context.Context, browser *browser.Api) *searchModel {
 	k := newSearchKeymap()
 	inputs := []textinput.Model{
-		makeInput("Name          ", "leave empty for all", k),
-		makeInput("Tags          ", "comma separated list", k),
-		makeInput("Country       ", "---", k),
-		makeInput("Language      ", "---", k),
-		makeInput("Limit         ", "---", k),
+		newInputModel("Name          ", "leave empty for all", &k.prevSugg, &k.nextSugg, &k.acceptSugg),
+		newInputModel("Tags          ", "comma separated list", &k.prevSugg, &k.nextSugg, &k.acceptSugg),
+		newInputModel("Country       ", "---", &k.prevSugg, &k.nextSugg, &k.acceptSugg),
+		newInputModel("Language      ", "---", &k.prevSugg, &k.nextSugg, &k.acceptSugg),
+		newInputModel("Limit         ", "---", &k.prevSugg, &k.nextSugg, &k.acceptSugg),
 	}
 	inputs[limit].Validate = func(s string) error {
 		_, err := strconv.Atoi(s)
@@ -117,18 +116,6 @@ func newSearchModel(ctx context.Context, browser *browser.Api) *searchModel {
 	}
 	go sm.getSuggestions(ctx)
 	return sm
-}
-
-func makeInput(prompt, placeholder string, keymap searchKeymap) textinput.Model {
-	input := textinput.New()
-	input.Cursor.SetMode(cursor.CursorBlink)
-	prompt = padFieldName(prompt)
-	textInputSyle(&input, prompt, placeholder)
-	input.PromptStyle = searchPromptStyle
-	input.KeyMap.NextSuggestion = keymap.nextSugg
-	input.KeyMap.PrevSuggestion = keymap.prevSugg
-	input.KeyMap.AcceptSuggestion = keymap.acceptSugg
-	return input
 }
 
 func (s *searchModel) getSuggestions(ctx context.Context) {

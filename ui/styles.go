@@ -1,7 +1,11 @@
 package ui
 
 import (
+	"strings"
+
+	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -105,11 +109,49 @@ var (
 	historySelDescStyle = selItemStyle.Bold(true)
 )
 
-func padFieldName(v string) string {
-	for i := len(v); i < 22; i++ {
-		v += " "
+func helpStyles() help.Styles {
+	return help.Styles{
+		ShortKey:       primaryColorStyle,
+		ShortDesc:      secondaryColorStyle,
+		ShortSeparator: secondaryColorStyle,
+		Ellipsis:       secondaryColorStyle,
+		FullKey:        primaryColorStyle,
+		FullDesc:       secondaryColorStyle,
+		FullSeparator:  secondaryColorStyle,
 	}
-	return v
+}
+
+const maxFieldLen = 26
+
+func padFieldName(v string) string {
+	var b strings.Builder
+	b.WriteString(v)
+	for i := len(v); i < maxFieldLen; i++ {
+		b.WriteString(" ")
+	}
+	return b.String()
+}
+
+func newInputModel(prompt, placeholder string,
+	prevSugg *key.Binding,
+	nextSugg *key.Binding,
+	acceptSugg *key.Binding,
+) textinput.Model {
+	input := textinput.New()
+	input.Cursor.SetMode(cursor.CursorBlink)
+	prompt = padFieldName(prompt)
+	textInputSyle(&input, prompt, placeholder)
+	input.PromptStyle = searchPromptStyle
+	if prevSugg != nil {
+		input.KeyMap.NextSuggestion = *nextSugg
+	}
+	if nextSugg != nil {
+		input.KeyMap.NextSuggestion = *nextSugg
+	}
+	if acceptSugg != nil {
+		input.KeyMap.NextSuggestion = *nextSugg
+	}
+	return input
 }
 
 func textInputSyle(textInput *textinput.Model, prompt, placeholder string) {
@@ -121,16 +163,4 @@ func textInputSyle(textInput *textinput.Model, prompt, placeholder string) {
 	textInput.Cursor.TextStyle = primaryColorStyle
 	textInput.Placeholder = placeholder
 	textInput.PlaceholderStyle = secondaryColorStyle
-}
-
-func helpStyles() help.Styles {
-	return help.Styles{
-		ShortKey:       primaryColorStyle,
-		ShortDesc:      secondaryColorStyle,
-		ShortSeparator: secondaryColorStyle,
-		Ellipsis:       secondaryColorStyle,
-		FullKey:        primaryColorStyle,
-		FullDesc:       secondaryColorStyle,
-		FullSeparator:  secondaryColorStyle,
-	}
 }
