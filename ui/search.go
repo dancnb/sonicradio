@@ -92,17 +92,12 @@ var orderView = map[orderIx]string{
 func newSearchModel(ctx context.Context, browser *browser.Api) *searchModel {
 	k := newSearchKeymap()
 	inputs := []textinput.Model{
-		newInputModel("Name          ", "leave empty for all", &k.prevSugg, &k.nextSugg, &k.acceptSugg),
-		newInputModel("Tags          ", "comma separated list", &k.prevSugg, &k.nextSugg, &k.acceptSugg),
-		newInputModel("Country       ", "---", &k.prevSugg, &k.nextSugg, &k.acceptSugg),
-		newInputModel("Language      ", "---", &k.prevSugg, &k.nextSugg, &k.acceptSugg),
-		newInputModel("Limit         ", "---", &k.prevSugg, &k.nextSugg, &k.acceptSugg),
+		newInputModel("Name          ", "leave empty for all", &k.prevSugg, &k.nextSugg, &k.acceptSugg, nil),
+		newInputModel("Tags          ", "comma separated list", &k.prevSugg, &k.nextSugg, &k.acceptSugg, nil),
+		newInputModel("Country       ", "---", &k.prevSugg, &k.nextSugg, &k.acceptSugg, nil),
+		newInputModel("Language      ", "---", &k.prevSugg, &k.nextSugg, &k.acceptSugg, nil),
+		newInputModel("Limit         ", "---", &k.prevSugg, &k.nextSugg, &k.acceptSugg, nrInputValidator),
 	}
-	inputs[limit].Validate = func(s string) error {
-		_, err := strconv.Atoi(s)
-		return err
-	}
-
 	h := help.New()
 	h.ShowAll = false
 	h.ShortSeparator = "   "

@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/cursor"
@@ -136,6 +137,7 @@ func newInputModel(prompt, placeholder string,
 	prevSugg *key.Binding,
 	nextSugg *key.Binding,
 	acceptSugg *key.Binding,
+	validator textinput.ValidateFunc,
 ) textinput.Model {
 	input := textinput.New()
 	input.Cursor.SetMode(cursor.CursorBlink)
@@ -151,6 +153,9 @@ func newInputModel(prompt, placeholder string,
 	if acceptSugg != nil {
 		input.KeyMap.NextSuggestion = *nextSugg
 	}
+	if validator != nil {
+		input.Validate = validator
+	}
 	return input
 }
 
@@ -163,4 +168,9 @@ func textInputSyle(textInput *textinput.Model, prompt, placeholder string) {
 	textInput.Cursor.TextStyle = primaryColorStyle
 	textInput.Placeholder = placeholder
 	textInput.PlaceholderStyle = secondaryColorStyle
+}
+
+func nrInputValidator(s string) error {
+	_, err := strconv.Atoi(s)
+	return err
 }

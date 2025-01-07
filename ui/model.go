@@ -336,9 +336,11 @@ func (m *Model) toHistoryTab() {
 	m.activeTabIdx = historyTabIx
 }
 
-func (m *Model) toSettingsTab() {
+func (m *Model) toSettingsTab() tea.Cmd {
 	m.delegate.keymap.toggleFavorite.SetEnabled(false)
 	m.activeTabIdx = settingsTabIx
+	st := m.tabs[settingsTabIx].(*settingsTab)
+	return st.focus()
 }
 
 func (m *Model) updateStatus(msg string) {

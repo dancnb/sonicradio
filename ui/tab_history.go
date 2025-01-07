@@ -210,7 +210,7 @@ func (t *historyTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.tabs[browseTabIx].Update(m, msg)
 
 		case key.Matches(msg, t.keymap.nextTab, t.keymap.settingsTab):
-			m.toSettingsTab()
+			return m, m.toSettingsTab()
 
 		case key.Matches(msg, t.keymap.favoritesTab):
 			m.toFavoritesTab()
