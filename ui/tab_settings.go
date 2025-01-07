@@ -3,6 +3,8 @@ package ui
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
@@ -57,15 +59,33 @@ func (s *settingsTab) Init(m *Model) tea.Cmd {
 	s.help.ShowAll = false
 	s.keymap.showFullHelp.SetEnabled(true)
 	s.keymap.closeFullHelp.SetEnabled(false)
-	s.inputsFocused = true
 
-	s.idx = 0
-	s.inputs[historySaveMaxIdx].SetValue(fmt.Sprintf("%d", s.cfg.HistorySaveMax))
 	return nil
 }
 
-func (s *settingsTab) focus() tea.Cmd {
+// onEnter: reads values from config file on tab enter
+func (s *settingsTab) onEnter() tea.Cmd {
+	s.inputsFocused = true
+	s.idx = 0
+	s.inputs[historySaveMaxIdx].SetValue(fmt.Sprintf("%d", s.cfg.HistorySaveMax))
 	return s.inputs[0].Focus()
+}
+
+// onExit: writes values to config file on tab exit
+func (s *settingsTab) onExit() {
+	log := slog.With("method", "settingsTab.onExit")
+	historySaveMaxval := s.inputs[historySaveMaxIdx].Value()
+	intVal, err := strconv.Atoi(historySaveMaxval)
+	if err != nil {
+		log.Debug(fmt.Sprintf("invalid HistorySaveMax input value: %v", err))
+	} else {
+		s.cfg.HistorySaveMax = intVal
+	}
+	// .... other fields
+	err = s.cfg.Save()
+	if err != nil {
+		log.Debug(fmt.Sprintf("config save err: %v", err))
+	}
 }
 
 func (s *settingsTab) setSize(width, height int) {
@@ -96,10 +116,13 @@ func (s *settingsTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(cmds...)
 
 		case key.Matches(msg, s.keymap.nextTab, s.keymap.favoritesTab):
+			go s.onExit()
 			m.toFavoritesTab()
 		case key.Matches(msg, s.keymap.browseTab):
+			go s.onExit()
 			m.toBrowseTab()
 		case key.Matches(msg, s.keymap.prevTab, s.keymap.historyTab):
+			go s.onExit()
 			m.toHistoryTab()
 
 		case key.Matches(msg, s.keymap.nextInput):

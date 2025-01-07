@@ -99,10 +99,10 @@ var (
 	filterPromptStyle = primaryColorStyle.Bold(true).MarginLeft(1)
 
 	// search
-	searchPromptStyle = primaryColorStyle.Bold(true).MarginLeft(3)
+	searchPromptStyle = primaryColorStyle.Bold(true).MarginLeft(headerPadDist + tabGapDistance)
 
 	// station info
-	infoFieldNameStyle = primaryColorStyle.Bold(false).MarginLeft(3)
+	infoFieldNameStyle = primaryColorStyle.Bold(false).MarginLeft(headerPadDist + tabGapDistance)
 
 	// history
 	historyDescStyle    = primaryColorStyle.Bold(true)

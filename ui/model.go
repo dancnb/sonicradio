@@ -338,7 +338,7 @@ func (m *Model) toHistoryTab() {
 func (m *Model) toSettingsTab() tea.Cmd {
 	m.activeTabIdx = settingsTabIx
 	st := m.tabs[settingsTabIx].(*settingsTab)
-	return st.focus()
+	return st.onEnter()
 }
 
 func (m *Model) updateStatus(msg string) {
@@ -360,11 +360,14 @@ func (m *Model) Quit() {
 	if err != nil {
 		slog.Error(fmt.Sprintf("player close error: %v", err))
 	}
+	st := m.tabs[settingsTabIx].(*settingsTab)
+	st.onExit()
 	m.cfg.IsRunning = false
 	err = m.cfg.Save()
 	if err != nil {
 		log.Error("config save", "error", err.Error())
 	}
+	log.Debug("config saved")
 }
 
 func newSpinner() *spinner.Model {
