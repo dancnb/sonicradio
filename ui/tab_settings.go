@@ -46,45 +46,8 @@ func newSettingsTab(ctx context.Context, cfg *config.Value) *settingsTab {
 	return &settingsTab{
 		cfg:    cfg,
 		inputs: inputs,
-		keymap: settingsKeymap{
-			nextInput: key.NewBinding(
-				key.WithKeys("down", "tab", "ctrl+j"),
-				key.WithHelp("↓/ctrl+j", "next input"),
-			),
-			prevInput: key.NewBinding(
-				key.WithKeys("up", "shift+tab", "ctrl+k"),
-				key.WithHelp("↑/ctrl+k", "prev input"),
-			),
-			nextTab: key.NewBinding(
-				key.WithKeys("tab"),
-				key.WithHelp("tab", "go to next tab"),
-			),
-			prevTab: key.NewBinding(
-				key.WithKeys("shift+tab"),
-				key.WithHelp("shift+tab", "go to prev tab"),
-			),
-			historyTab: key.NewBinding(
-				key.WithKeys("H"),
-				key.WithHelp("H", "go to history tab"),
-			),
-			favoritesTab: key.NewBinding(
-				key.WithKeys("F"),
-				key.WithHelp("F", "go to favorites tab"),
-			),
-			browseTab: key.NewBinding(
-				key.WithKeys("B"),
-				key.WithHelp("B", "go to browse tab"),
-			),
-			showFullHelp: key.NewBinding(
-				key.WithKeys("?"),
-				key.WithHelp("?", "more"),
-			),
-			closeFullHelp: key.NewBinding(
-				key.WithKeys("?"),
-				key.WithHelp("?", "close help"),
-			),
-		},
-		help: h,
+		keymap: newSettingsKeymap(),
+		help:   h,
 	}
 }
 
@@ -204,6 +167,47 @@ type settingsKeymap struct {
 	historyTab    key.Binding
 	showFullHelp  key.Binding
 	closeFullHelp key.Binding
+}
+
+func newSettingsKeymap() settingsKeymap {
+	return settingsKeymap{
+		nextInput: key.NewBinding(
+			key.WithKeys("down", "ctrl+j"),
+			key.WithHelp("↓/ctrl+j", "next input"),
+		),
+		prevInput: key.NewBinding(
+			key.WithKeys("up", "ctrl+k"),
+			key.WithHelp("↑/ctrl+k", "prev input"),
+		),
+		nextTab: key.NewBinding(
+			key.WithKeys("tab"),
+			key.WithHelp("tab", "go to next tab"),
+		),
+		prevTab: key.NewBinding(
+			key.WithKeys("shift+tab"),
+			key.WithHelp("shift+tab", "go to prev tab"),
+		),
+		historyTab: key.NewBinding(
+			key.WithKeys("H"),
+			key.WithHelp("H", "go to history tab"),
+		),
+		favoritesTab: key.NewBinding(
+			key.WithKeys("F"),
+			key.WithHelp("F", "go to favorites tab"),
+		),
+		browseTab: key.NewBinding(
+			key.WithKeys("B"),
+			key.WithHelp("B", "go to browse tab"),
+		),
+		showFullHelp: key.NewBinding(
+			key.WithKeys("?"),
+			key.WithHelp("?", "more"),
+		),
+		closeFullHelp: key.NewBinding(
+			key.WithKeys("?"),
+			key.WithHelp("?", "close help"),
+		),
+	}
 }
 
 func (k *settingsKeymap) ShortHelp() []key.Binding {
