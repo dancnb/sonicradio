@@ -42,7 +42,7 @@ func newSettingsTab(ctx context.Context, cfg *config.Value) *settingsTab {
 	h.Styles = helpStyles()
 
 	inputs := []textinput.Model{
-		newInputModel("History entries", "", nil, nil, nil, nrInputValidator),
+		newInputModel("History max entries", "", nil, nil, nil, nrInputValidator),
 	}
 
 	return &settingsTab{

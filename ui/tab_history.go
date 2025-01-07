@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	emptyHistoryMsg = "\n No playback history available. \n"
+	emptyHistoryMsg = "  No playback history available. \n"
 )
 
 type historyTab struct {

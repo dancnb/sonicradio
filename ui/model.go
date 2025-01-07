@@ -26,9 +26,9 @@ import (
 
 const (
 	// view messages
-	loadingMsg          = "\n Fetching stations... \n"
-	noFavoritesAddedMsg = "\n No favorite stations added.\n"
-	noStationsFound     = "\n No stations found. \n"
+	loadingMsg          = "  Fetching stations... \n"
+	noFavoritesAddedMsg = "  No favorite stations added.\n"
+	noStationsFound     = "  No stations found. \n"
 
 	// header status
 	noPlayingMsg     = "Nothing playing"
