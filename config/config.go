@@ -146,6 +146,9 @@ func Load() (cfg *Value, err error) {
 	if cfg.HistorySaveMax == 0 {
 		cfg.HistorySaveMax = defHistorySaveMax
 	}
+	if len(cfg.History) > cfg.HistorySaveMax {
+		cfg.History = cfg.History[len(cfg.History)-cfg.HistorySaveMax:]
+	}
 	return
 }
 
