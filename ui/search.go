@@ -18,6 +18,8 @@ import (
 type searchModel struct {
 	enabled bool
 
+	style *style
+
 	browser   *browser.Api
 	countries []string
 	languages []string
@@ -89,25 +91,26 @@ var orderView = map[orderIx]string{
 	orderRand:       "Random",
 }
 
-func newSearchModel(ctx context.Context, browser *browser.Api) *searchModel {
+func newSearchModel(ctx context.Context, browser *browser.Api, s *style) *searchModel {
 	k := newSearchKeymap()
 	inputs := []textinput.Model{
-		newInputModel("Name          ", "leave empty for all", &k.prevSugg, &k.nextSugg, &k.acceptSugg, nil),
-		newInputModel("Tags          ", "comma separated list", &k.prevSugg, &k.nextSugg, &k.acceptSugg, nil),
-		newInputModel("Country       ", "---", &k.prevSugg, &k.nextSugg, &k.acceptSugg, nil),
-		newInputModel("Language      ", "---", &k.prevSugg, &k.nextSugg, &k.acceptSugg, nil),
-		newInputModel("Limit         ", "---", &k.prevSugg, &k.nextSugg, &k.acceptSugg, nrInputValidator),
+		s.newInputModel("Name          ", "leave empty for all", &k.prevSugg, &k.nextSugg, &k.acceptSugg, nil),
+		s.newInputModel("Tags          ", "comma separated list", &k.prevSugg, &k.nextSugg, &k.acceptSugg, nil),
+		s.newInputModel("Country       ", "---", &k.prevSugg, &k.nextSugg, &k.acceptSugg, nil),
+		s.newInputModel("Language      ", "---", &k.prevSugg, &k.nextSugg, &k.acceptSugg, nil),
+		s.newInputModel("Limit         ", "---", &k.prevSugg, &k.nextSugg, &k.acceptSugg, nrInputValidator),
 	}
 	h := help.New()
 	h.ShowAll = false
 	h.ShortSeparator = "   "
-	h.Styles = helpStyles()
+	h.Styles = s.helpStyles()
 
 	sm := &searchModel{
 		browser: browser,
 		keymap:  k,
 		help:    h,
 		inputs:  inputs,
+		style:   s,
 	}
 	go sm.getSuggestions(ctx)
 	return sm
@@ -141,7 +144,7 @@ func (s *searchModel) Init() tea.Cmd {
 }
 
 func (s *searchModel) setSize(width, height int) {
-	h, v := docStyle.GetFrameSize()
+	h, v := s.style.docStyle.GetFrameSize()
 	s.width = width - h
 	s.height = height - v
 	s.help.Width = s.width
@@ -293,9 +296,9 @@ func (s *searchModel) getOrderString(o orderIx) string {
 
 func (s *searchModel) getOrderStyle(o orderIx) lipgloss.Style {
 	if s.oIdx == o {
-		return primaryColorStyle
+		return s.style.primaryColorStyle
 	}
-	return secondaryColorStyle
+	return s.style.secondaryColorStyle
 }
 
 func (s *searchModel) View() string {
@@ -311,31 +314,31 @@ func (s *searchModel) View() string {
 	if s.orderActive {
 		orderPrompt = "Enter #       "
 	}
-	b.WriteString(searchPromptStyle.Render(padFieldName(orderPrompt)))
+	b.WriteString(s.style.searchPromptStyle.Render(padFieldName(orderPrompt)))
 	ordS := s.getOrderString(orderVotes)
 	b.WriteString(s.getOrderStyle(orderVotes).Render(ordS))
 	b.WriteRune('\n')
 	for i := orderClickcount; i <= orderCodec; i++ {
-		b.WriteString(searchPromptStyle.Render(padFieldName("")))
+		b.WriteString(s.style.searchPromptStyle.Render(padFieldName("")))
 		ordS := s.getOrderString(i)
 		b.WriteString(s.getOrderStyle(i).Render(ordS))
 		b.WriteRune('\n')
 	}
-	b.WriteString(searchPromptStyle.Render(padFieldName("")))
+	b.WriteString(s.style.searchPromptStyle.Render(padFieldName("")))
 	ordS = s.getOrderString(orderRand)
 	b.WriteString(s.getOrderStyle(orderRand).Render(ordS))
 	b.WriteRune('\n')
 
 	b.WriteRune('\n')
-	b.WriteString(searchPromptStyle.Render(padFieldName("Reverse       ")))
+	b.WriteString(s.style.searchPromptStyle.Render(padFieldName("Reverse       ")))
 	rev := "off"
 	if s.reverse {
 		rev = "on"
 	}
-	b.WriteString(primaryColorStyle.Render(rev))
+	b.WriteString(s.style.primaryColorStyle.Render(rev))
 
 	availHeight := s.height
-	help := helpStyle.Render(s.help.View(&s.keymap))
+	help := s.style.helpStyle.Render(s.help.View(&s.keymap))
 	availHeight -= lipgloss.Height(help)
 
 	inputs := b.String()

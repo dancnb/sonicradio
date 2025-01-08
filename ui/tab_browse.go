@@ -15,12 +15,12 @@ type browseTab struct {
 	searchModel    *searchModel
 }
 
-func newBrowseTab(ctx context.Context, browser *browser.Api, infoModel *infoModel) *browseTab {
+func newBrowseTab(ctx context.Context, browser *browser.Api, infoModel *infoModel, s *style) *browseTab {
 	k := newListKeymap()
 
 	m := &browseTab{
-		stationsTabBase: newStationsTab(k, infoModel),
-		searchModel:     newSearchModel(ctx, browser),
+		stationsTabBase: newStationsTab(k, infoModel, s),
+		searchModel:     newSearchModel(ctx, browser, s),
 	}
 	return m
 }
@@ -77,7 +77,7 @@ func (t *browseTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		h, v := docStyle.GetFrameSize()
+		h, v := t.style.docStyle.GetFrameSize()
 		t.list.SetSize(msg.Width-h, msg.Height-m.headerHeight-v)
 
 	case topStationsRespMsg:

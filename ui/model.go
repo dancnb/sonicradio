@@ -54,25 +54,28 @@ func NewModel(ctx context.Context, cfg *config.Value, b *browser.Api, p *player.
 }
 
 func newModel(ctx context.Context, cfg *config.Value, b *browser.Api, p *player.Player) *Model {
+	// TODO: adaptive theme
 	lipgloss.DefaultRenderer().SetHasDarkBackground(true)
+	style := newStyle(cfg.Theme)
 
-	delegate := newStationDelegate(cfg, p, b)
+	delegate := newStationDelegate(cfg, style, p, b)
 
-	infoModel := newInfoModel(b)
+	infoModel := newInfoModel(b, style)
 	m := Model{
 		cfg:      cfg,
+		style:    style,
 		browser:  b,
 		player:   p,
 		delegate: delegate,
 		tabs: []uiTab{
-			newFavoritesTab(infoModel),
-			newBrowseTab(ctx, b, infoModel),
-			newHistoryTab(ctx, cfg),
-			newSettingsTab(ctx, cfg),
+			newFavoritesTab(infoModel, style),
+			newBrowseTab(ctx, b, infoModel, style),
+			newHistoryTab(ctx, cfg, style),
+			newSettingsTab(ctx, cfg, style),
 		},
 		statusUpdate: make(chan struct{}),
 
-		volumeBar: getVolumeBar(),
+		volumeBar: getVolumeBar(style.secondColor),
 	}
 
 	if len(cfg.Favorites) > 0 {
@@ -85,7 +88,8 @@ func newModel(ctx context.Context, cfg *config.Value, b *browser.Api, p *player.
 	return &m
 }
 
-func getVolumeBar() progress.Model {
+// TODO: update on theme change
+func getVolumeBar(secondColor string) progress.Model {
 	b := progress.New([]progress.Option{
 		progress.WithWidth(10),
 		progress.WithSolidFill(secondColor),
@@ -124,6 +128,7 @@ type Model struct {
 
 	ready    bool
 	cfg      *config.Value // use cfg.volume
+	style    *style
 	browser  *browser.Api
 	player   *player.Player
 	delegate *stationDelegate
@@ -370,18 +375,18 @@ func (m *Model) Quit() {
 	log.Debug("config saved")
 }
 
-func newSpinner() *spinner.Model {
+func (m *Model) newSpinner() *spinner.Model {
 	s := spinner.New()
 	s.Spinner = spinner.Spinner{
 		Frames: []string{"⡷", "⣧", "⣏", "⡟", "⡷", "⣧", "⣏", "⡟"},
 		FPS:    time.Second / 10,
 	}
-	s.Style = songTitleStyle
+	s.Style = m.style.songTitleStyle
 	return &s
 }
 
 func (m *Model) initSpinner() tea.Cmd {
-	m.spinner = newSpinner()
+	m.spinner = m.newSpinner()
 	return m.spinner.Tick
 }
 
@@ -389,12 +394,12 @@ func (m *Model) headerView(width int) string {
 	var res strings.Builder
 	status := ""
 	if len(m.statusMsg) > 0 {
-		status = statusBarStyle.Render(strings.Repeat(" ", headerPadDist) + m.statusMsg)
+		status = m.style.statusBarStyle.Render(strings.Repeat(" ", headerPadDist) + m.statusMsg)
 	}
 	res.WriteString(status)
-	appNameVers := statusBarStyle.Render(fmt.Sprintf("sonicradio v%v  ", m.cfg.Version))
+	appNameVers := m.style.statusBarStyle.Render(fmt.Sprintf("sonicradio v%v  ", m.cfg.Version))
 	fill := max(0, width-lipgloss.Width(status)-lipgloss.Width(appNameVers)-2*headerPadDist)
-	res.WriteString(statusBarStyle.Render(strings.Repeat(" ", fill)))
+	res.WriteString(m.style.statusBarStyle.Render(strings.Repeat(" ", fill)))
 	res.WriteString(appNameVers)
 	res.WriteString("\n\n")
 
@@ -404,19 +409,19 @@ func (m *Model) headerView(width int) string {
 	res.WriteString("\n\n")
 
 	var renderedTabs []string
-	renderedTabs = append(renderedTabs, tabGap.Render(strings.Repeat(" ", tabGapDistance)))
+	renderedTabs = append(renderedTabs, m.style.tabGap.Render(strings.Repeat(" ", tabGapDistance)))
 	for i := range m.tabs {
 		if i == int(m.activeTabIdx) {
 			tabName := m.activeTabIdx.String()
-			renderedTab := m.renderTabName(tabName, &activeTabInner, &activeTabInnerHighlight)
-			renderedTabs = append(renderedTabs, activeTabBorder.Render(renderedTab.String()))
+			renderedTab := m.renderTabName(tabName, &m.style.activeTabInner, &m.style.activeTabInnerHighlight)
+			renderedTabs = append(renderedTabs, m.style.activeTabBorder.Render(renderedTab.String()))
 		} else {
 			tabName := uiTabIndex(i).String()
-			renderedTab := m.renderTabName(tabName, &inactiveTabInner, &inactiveTabInnerHighlight)
-			renderedTabs = append(renderedTabs, inactiveTabBorder.Render(renderedTab.String()))
+			renderedTab := m.renderTabName(tabName, &m.style.inactiveTabInner, &m.style.inactiveTabInnerHighlight)
+			renderedTabs = append(renderedTabs, m.style.inactiveTabBorder.Render(renderedTab.String()))
 		}
 		if i < len(m.tabs)-1 {
-			renderedTabs = append(renderedTabs, tabGap.Render(strings.Repeat(" ", tabGapDistance)))
+			renderedTabs = append(renderedTabs, m.style.tabGap.Render(strings.Repeat(" ", tabGapDistance)))
 		}
 	}
 	row := lipgloss.JoinHorizontal(
@@ -424,7 +429,7 @@ func (m *Model) headerView(width int) string {
 		renderedTabs...,
 	)
 	hFill := width - lipgloss.Width(row) - 2*headerPadDist
-	gap := tabGap.Render(strings.Repeat(" ", max(0, hFill)))
+	gap := m.style.tabGap.Render(strings.Repeat(" ", max(0, hFill)))
 	res.WriteString(lipgloss.JoinHorizontal(lipgloss.Bottom, row, gap) + "\n\n")
 
 	return res.String()
@@ -458,12 +463,12 @@ func (m *Model) metadataView(width int) string {
 		int(m.playbackTime.Seconds())%60,
 		gap,
 	)
-	playTimeView := italicStyle.Render(playTime)
+	playTimeView := m.style.italicStyle.Render(playTime)
 	metadataParts[0] = playTimeView
 
 	volumeView := gap +
 		m.volumeBar.ViewAs(float64(m.cfg.GetVolume())/100) +
-		italicStyle.Render(fmt.Sprintf(volumeFmt, m.cfg.GetVolume(), gap))
+		m.style.italicStyle.Render(fmt.Sprintf(volumeFmt, m.cfg.GetVolume(), gap))
 	metadataParts[2] = volumeView
 
 	playTimeW := lipgloss.Width(playTimeView)
@@ -473,46 +478,46 @@ func (m *Model) metadataView(width int) string {
 	var songView strings.Builder
 	if m.delegate.currPlaying != nil {
 		if m.spinner == nil {
-			m.spinner = newSpinner()
+			m.spinner = m.newSpinner()
 		}
 		var line strings.Builder
 		line.WriteString(m.spinner.View())
-		line.WriteString(primaryColorStyle.MaxWidth(maxW - 1).Render(" " + m.delegate.currPlaying.Name))
+		line.WriteString(m.style.primaryColorStyle.MaxWidth(maxW - 1).Render(" " + m.delegate.currPlaying.Name))
 		fill := max(0, maxW-lipgloss.Width(line.String()))
-		line.WriteString(primaryColorStyle.Render(strings.Repeat(" ", fill)))
+		line.WriteString(m.style.primaryColorStyle.Render(strings.Repeat(" ", fill)))
 		songView.WriteString(line.String())
 	} else if m.delegate.prevPlaying != nil {
 		var line strings.Builder
-		line.WriteString(songTitleStyle.Render(pauseChar))
-		line.WriteString(primaryColorStyle.MaxWidth(maxW - 1).Render(" " + m.delegate.prevPlaying.Name))
+		line.WriteString(m.style.songTitleStyle.Render(pauseChar))
+		line.WriteString(m.style.primaryColorStyle.MaxWidth(maxW - 1).Render(" " + m.delegate.prevPlaying.Name))
 		fill := max(0, maxW-lipgloss.Width(line.String()))
-		line.WriteString(primaryColorStyle.Render(strings.Repeat(" ", fill)))
+		line.WriteString(m.style.primaryColorStyle.Render(strings.Repeat(" ", fill)))
 		songView.WriteString(line.String())
 	} else {
 		var line strings.Builder
-		line.WriteString(songTitleStyle.MaxWidth(maxW).Render(lineChar + " " + noPlayingMsg))
+		line.WriteString(m.style.songTitleStyle.MaxWidth(maxW).Render(lineChar + " " + noPlayingMsg))
 		fill := max(0, maxW-lipgloss.Width(line.String()))
-		line.WriteString(primaryColorStyle.Render(strings.Repeat(" ", fill)))
+		line.WriteString(m.style.primaryColorStyle.Render(strings.Repeat(" ", fill)))
 		songView.WriteString(line.String())
 	}
 	songView.WriteString("\n")
 	if m.songTitle != "" {
 		var line strings.Builder
-		line.WriteString(songTitleStyle.MaxWidth(maxW).Render("  " + m.songTitle))
+		line.WriteString(m.style.songTitleStyle.MaxWidth(maxW).Render("  " + m.songTitle))
 		fill := max(0, maxW-lipgloss.Width(line.String()))
-		line.WriteString(primaryColorStyle.Render(strings.Repeat(" ", fill)))
+		line.WriteString(m.style.primaryColorStyle.Render(strings.Repeat(" ", fill)))
 		songView.WriteString(line.String())
 	} else if m.delegate.currPlaying != nil {
 		var line strings.Builder
-		line.WriteString(songTitleStyle.MaxWidth(maxW).Render("  " + m.delegate.currPlaying.Homepage))
+		line.WriteString(m.style.songTitleStyle.MaxWidth(maxW).Render("  " + m.delegate.currPlaying.Homepage))
 		fill := max(0, maxW-lipgloss.Width(line.String()))
-		line.WriteString(primaryColorStyle.Render(strings.Repeat(" ", fill)))
+		line.WriteString(m.style.primaryColorStyle.Render(strings.Repeat(" ", fill)))
 		songView.WriteString(line.String())
 	} else if m.delegate.prevPlaying != nil {
 		var line strings.Builder
-		line.WriteString(songTitleStyle.MaxWidth(maxW).Render("  " + m.delegate.prevPlaying.Homepage))
+		line.WriteString(m.style.songTitleStyle.MaxWidth(maxW).Render("  " + m.delegate.prevPlaying.Homepage))
 		fill := max(0, maxW-lipgloss.Width(line.String()))
-		line.WriteString(primaryColorStyle.Render(strings.Repeat(" ", fill)))
+		line.WriteString(m.style.primaryColorStyle.Render(strings.Repeat(" ", fill)))
 		songView.WriteString(line.String())
 	}
 	metadataParts[1] = songView.String()
@@ -531,7 +536,7 @@ func (m Model) View() string {
 	doc.WriteString(header)
 	tabView := m.tabs[m.activeTabIdx].View()
 	doc.WriteString(tabView)
-	return docStyle.Render(doc.String())
+	return m.style.docStyle.Render(doc.String())
 }
 
 func trapSignal(p *tea.Program) {

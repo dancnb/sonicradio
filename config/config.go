@@ -28,17 +28,21 @@ const (
 var defVolume = 100
 
 type Value struct {
-	Version        string              `json:"-"`
-	Debug          bool                `json:"-"`
-	LogPath        string              `json:"-"`
-	Favorites      []string            `json:"favorites,omitempty"` // Ordered station UUID's for user favorites
-	Volume         *int                `json:"volume,omitempty"`
+	Version   string   `json:"-"`
+	Debug     bool     `json:"-"`
+	LogPath   string   `json:"-"`
+	Favorites []string `json:"favorites,omitempty"` // Ordered station UUID's for user favorites
+	Volume    *int     `json:"volume,omitempty"`
+	Theme     int      `json:"theme"`
+
 	historyMtx     *sync.Mutex         `json:"-"`
 	History        []HistoryEntry      `json:"history,omitempty"`
 	HistorySaveMax int                 `json:"historySaveMax"`
 	HistoryChan    chan []HistoryEntry `json:"-"`
-	IsRunning      bool                `json:"isRunning"`
-	saveMtx        *sync.Mutex
+
+	IsRunning bool `json:"isRunning"`
+
+	saveMtx *sync.Mutex
 }
 
 func (v *Value) GetVolume() int {

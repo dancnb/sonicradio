@@ -11,11 +11,11 @@ type favoritesTab struct {
 	stationsTabBase
 }
 
-func newFavoritesTab(infoModel *infoModel) *favoritesTab {
+func newFavoritesTab(infoModel *infoModel, s *style) *favoritesTab {
 	k := newListKeymap()
 
 	m := &favoritesTab{
-		stationsTabBase: newStationsTab(k, infoModel),
+		stationsTabBase: newStationsTab(k, infoModel, s),
 	}
 	return m
 }
@@ -64,7 +64,7 @@ func (t *favoritesTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		h, v := docStyle.GetFrameSize()
+		h, v := t.style.docStyle.GetFrameSize()
 		t.list.SetSize(msg.Width-h, msg.Height-m.headerHeight-v)
 
 	case favoritesStationRespMsg:

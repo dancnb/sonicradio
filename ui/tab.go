@@ -66,6 +66,7 @@ func (jump jumpInfo) isActive() bool {
 
 type stationsTabBase struct {
 	uiTab
+	style      *style
 	list       list.Model
 	viewMsg    string
 	listKeymap listKeymap
@@ -73,8 +74,9 @@ type stationsTabBase struct {
 	infoModel  *infoModel
 }
 
-func newStationsTab(k listKeymap, infoModel *infoModel) stationsTabBase {
+func newStationsTab(k listKeymap, infoModel *infoModel, s *style) stationsTabBase {
 	t := stationsTabBase{
+		style:      s,
 		listKeymap: k,
 		infoModel:  infoModel,
 	}
@@ -108,7 +110,7 @@ func (t *stationsTabBase) View() string {
 		availHeight := t.list.Height()
 		help := t.list.Styles.HelpStyle.Render(t.list.Help.View(t.list))
 		availHeight -= lipgloss.Height(help)
-		viewSection := viewStyle.Height(availHeight).Render(t.viewMsg)
+		viewSection := t.style.viewStyle.Height(availHeight).Render(t.viewMsg)
 		sections = append(sections, viewSection)
 		sections = append(sections, help)
 		return lipgloss.JoinVertical(lipgloss.Left, sections...)
@@ -187,20 +189,20 @@ func createList(delegate *stationDelegate, width int, height int) list.Model {
 	l.SetShowPagination(false)
 	l.SetShowFilter(true)
 	l.SetStatusBarItemName("station", "stations")
-	l.Styles.NoItems = noItemsStyle
+	l.Styles.NoItems = delegate.style.noItemsStyle
 	l.FilterInput.ShowSuggestions = true
 	l.KeyMap.Quit.SetKeys("q")
 	l.KeyMap.PrevPage.SetKeys("pgup", "ctrl+b")
 	l.KeyMap.PrevPage.SetHelp("ctrl+b/pgup", "prev page")
 	l.KeyMap.NextPage.SetKeys("pgdown", "ctrl+f")
 	l.KeyMap.NextPage.SetHelp("ctrl+f/pgdn", "next page")
-	h, v := docStyle.GetFrameSize()
+	h, v := delegate.style.docStyle.GetFrameSize()
 	l.SetSize(width-h, height-v)
 
 	l.Help.ShortSeparator = "   "
-	l.Help.Styles = helpStyles()
-	l.Styles.HelpStyle = helpStyle
+	l.Help.Styles = delegate.style.helpStyles()
+	l.Styles.HelpStyle = delegate.style.helpStyle
 
-	textInputSyle(&l.FilterInput, "Filter:       ", "station name")
+	delegate.style.textInputSyle(&l.FilterInput, "Filter:       ", "station name")
 	return l
 }

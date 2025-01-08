@@ -20,6 +20,7 @@ const configView = "config tab"
 type settingsTab struct {
 	cfg *config.Value
 
+	style  *style
 	keymap settingsKeymap
 	help   help.Model
 	width  int
@@ -35,18 +36,19 @@ const (
 	historySaveMaxIdx settingsInputIdx = iota
 )
 
-func newSettingsTab(ctx context.Context, cfg *config.Value) *settingsTab {
+func newSettingsTab(ctx context.Context, cfg *config.Value, s *style) *settingsTab {
 	h := help.New()
 	h.ShowAll = false
 	h.ShortSeparator = "   "
-	h.Styles = helpStyles()
+	h.Styles = s.helpStyles()
 
 	inputs := []textinput.Model{
-		newInputModel("History max entries", "", nil, nil, nil, nrInputValidator),
+		s.newInputModel("History max entries", "", nil, nil, nil, nrInputValidator),
 	}
 
 	return &settingsTab{
 		cfg:    cfg,
+		style:  s,
 		inputs: inputs,
 		keymap: newSettingsKeymap(),
 		help:   h,
@@ -89,7 +91,7 @@ func (s *settingsTab) onExit() {
 }
 
 func (s *settingsTab) setSize(width, height int) {
-	h, v := docStyle.GetFrameSize()
+	h, v := s.style.docStyle.GetFrameSize()
 	s.width = width - h
 	s.height = height - v
 	s.help.Width = s.width
@@ -170,7 +172,7 @@ func (s *settingsTab) View() string {
 	b.WriteRune('\n')
 	// help
 	availHeight := s.height
-	help := helpStyle.Render(s.help.View(&s.keymap))
+	help := s.style.helpStyle.Render(s.help.View(&s.keymap))
 	availHeight -= lipgloss.Height(help)
 	inputs := b.String()
 	inputsHeight := lipgloss.Height(inputs)

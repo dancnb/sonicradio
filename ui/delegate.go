@@ -19,7 +19,7 @@ import (
 
 const startWaitMillis = 500 * 3
 
-func newStationDelegate(cfg *config.Value, p *player.Player, b *browser.Api) *stationDelegate {
+func newStationDelegate(cfg *config.Value, s *style, p *player.Player, b *browser.Api) *stationDelegate {
 	keymap := newDelegateKeyMap()
 
 	d := list.NewDefaultDelegate()
@@ -28,6 +28,7 @@ func newStationDelegate(cfg *config.Value, p *player.Player, b *browser.Api) *st
 		player:          p,
 		b:               b,
 		cfg:             cfg,
+		style:           s,
 		keymap:          keymap,
 		defaultDelegate: d,
 	}
@@ -37,6 +38,7 @@ type stationDelegate struct {
 	player *player.Player
 	b      *browser.Api
 	cfg    *config.Value
+	style  *style
 
 	prevPlaying *browser.Station
 	currPlaying *browser.Station
@@ -212,15 +214,15 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 
 	listWidth := m.Width()
 	if isCurr || isPrev {
-		prefixRender := nowPlayingPrefixStyle.Render(prefix)
+		prefixRender := d.style.nowPlayingPrefixStyle.Render(prefix)
 		res.WriteString(prefixRender)
 		maxWidth := max(listWidth-lipgloss.Width(prefixRender)-headerPadDist, 0)
 
-		itStyle := primaryColorStyle
-		descStyle := secondaryColorStyle
+		itStyle := d.style.primaryColorStyle
+		descStyle := d.style.secondaryColorStyle
 		if isSel {
-			itStyle = selNowPlayingStyle
-			descStyle = selNowPlayingDescStyle
+			itStyle = d.style.selNowPlayingStyle
+			descStyle = d.style.selNowPlayingDescStyle
 		}
 
 		for lipgloss.Width(itStyle.Render(name)) > maxWidth-1 && len(name) > 0 {
@@ -232,7 +234,7 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		res.WriteString(itStyle.Render(strings.Repeat(" ", hFill)))
 		res.WriteString("\n")
 
-		res.WriteString(nowPlayingPrefixStyle.Render(strings.Repeat(" ", utf8.RuneCountInString(prefix))))
+		res.WriteString(d.style.nowPlayingPrefixStyle.Render(strings.Repeat(" ", utf8.RuneCountInString(prefix))))
 		desc := s.Description()
 		for lipgloss.Width(descStyle.Render(desc)) > maxWidth-1 && len(desc) > 0 {
 			desc = desc[:len(desc)-1]
@@ -243,17 +245,17 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		res.WriteString(descStyle.Render(strings.Repeat(" ", hFill)))
 
 		str = res.String()
-		str = selectedBorderStyle.Render(str)
+		str = d.style.selectedBorderStyle.Render(str)
 	} else {
-		prefixRender := prefixStyle.Render(prefix)
+		prefixRender := d.style.prefixStyle.Render(prefix)
 		res.WriteString(prefixRender)
 		maxWidth := max(listWidth-lipgloss.Width(prefixRender)-headerPadDist, 0)
 
-		itStyle := primaryColorStyle
-		descStyle := secondaryColorStyle
+		itStyle := d.style.primaryColorStyle
+		descStyle := d.style.secondaryColorStyle
 		if isSel {
-			itStyle = selItemStyle
-			descStyle = selDescStyle
+			itStyle = d.style.selItemStyle
+			descStyle = d.style.selDescStyle
 		}
 
 		for lipgloss.Width(itStyle.Render(name)) > maxWidth && len(name) > 0 {
@@ -265,7 +267,7 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		res.WriteString(itStyle.Render(strings.Repeat(" ", hFill)))
 		res.WriteString("\n")
 
-		res.WriteString(prefixStyle.Render(strings.Repeat(" ", utf8.RuneCountInString(prefix))))
+		res.WriteString(d.style.prefixStyle.Render(strings.Repeat(" ", utf8.RuneCountInString(prefix))))
 		desc := s.Description()
 		for lipgloss.Width(descStyle.Render(desc)) > maxWidth && len(desc) > 0 {
 			desc = desc[:len(desc)-1]
