@@ -109,6 +109,9 @@ func (s *settingsTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch {
+		case key.Matches(msg, s.keymap.quit):
+			return m, tea.Quit
+
 		case key.Matches(msg, s.keymap.showFullHelp):
 			fallthrough
 		case key.Matches(msg, s.keymap.closeFullHelp):
@@ -192,6 +195,7 @@ type settingsKeymap struct {
 	historyTab    key.Binding
 	showFullHelp  key.Binding
 	closeFullHelp key.Binding
+	quit          key.Binding
 }
 
 func newSettingsKeymap() settingsKeymap {
@@ -232,15 +236,20 @@ func newSettingsKeymap() settingsKeymap {
 			key.WithKeys("?"),
 			key.WithHelp("?", "close help"),
 		),
+		quit: key.NewBinding(
+			key.WithKeys("q"),
+			key.WithHelp("q", "quit"),
+		),
 	}
 }
 
 func (k *settingsKeymap) ShortHelp() []key.Binding {
-	return []key.Binding{k.showFullHelp}
+	return []key.Binding{k.prevInput, k.nextInput, k.quit, k.showFullHelp}
 }
 
 func (k *settingsKeymap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.closeFullHelp},
+		{k.prevInput, k.nextInput},
+		{k.quit, k.closeFullHelp},
 	}
 }
