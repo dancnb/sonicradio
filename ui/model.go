@@ -54,8 +54,6 @@ func NewModel(ctx context.Context, cfg *config.Value, b *browser.Api, p *player.
 }
 
 func newModel(ctx context.Context, cfg *config.Value, b *browser.Api, p *player.Player) *Model {
-	// TODO: adaptive theme
-	lipgloss.DefaultRenderer().SetHasDarkBackground(true)
 	style := newStyle(cfg.Theme)
 
 	delegate := newStationDelegate(cfg, style, p, b)
@@ -75,7 +73,7 @@ func newModel(ctx context.Context, cfg *config.Value, b *browser.Api, p *player.
 		},
 		statusUpdate: make(chan struct{}),
 
-		volumeBar: getVolumeBar(style.secondColor),
+		volumeBar: getVolumeBar(style.getSecondColor()),
 	}
 
 	if len(cfg.Favorites) > 0 {

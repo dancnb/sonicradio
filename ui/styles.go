@@ -22,15 +22,10 @@ const (
 )
 
 type style struct {
-	primaryColor    string
-	secondColor     string
-	invPrimaryColor string
-	invSecondColor  string
-
-	basePrimaryColor     lipgloss.AdaptiveColor
-	baseSecondColor      lipgloss.AdaptiveColor
-	invertedPrimaryColor lipgloss.AdaptiveColor
-	invertedSecondColor  lipgloss.AdaptiveColor
+	basePrimaryColor       lipgloss.AdaptiveColor
+	baseSecondaryColor     lipgloss.AdaptiveColor
+	invertedPrimaryColor   lipgloss.AdaptiveColor
+	invertedSecondaryColor lipgloss.AdaptiveColor
 
 	primaryColorStyle   lipgloss.Style
 	secondaryColorStyle lipgloss.Style
@@ -97,22 +92,16 @@ func newStyle(themeIdx int) *style {
 }
 
 func (s *style) setTheme(t theme) {
-	s.primaryColor = t.primaryColor
-	s.secondColor = t.secondColor
-	s.invPrimaryColor = t.invPrimaryColor
-	s.invSecondColor = t.invSecondColor
-
-	s.basePrimaryColor = lipgloss.AdaptiveColor{Light: t.primaryColor, Dark: t.primaryColor}
-	s.baseSecondColor = lipgloss.AdaptiveColor{Light: t.secondColor, Dark: t.secondColor}
-	s.invertedPrimaryColor = lipgloss.AdaptiveColor{Light: t.invPrimaryColor, Dark: t.invPrimaryColor}
-	s.invertedSecondColor = lipgloss.AdaptiveColor{Light: t.invSecondColor, Dark: t.invSecondColor}
+	s.basePrimaryColor = lipgloss.AdaptiveColor{Light: t.light.primaryColor, Dark: t.dark.primaryColor}
+	s.baseSecondaryColor = lipgloss.AdaptiveColor{Light: t.light.secondaryColor, Dark: t.dark.secondaryColor}
+	s.invertedPrimaryColor = lipgloss.AdaptiveColor{Light: t.light.invertedPrimaryColor, Dark: t.dark.invertedPrimaryColor}
+	s.invertedSecondaryColor = lipgloss.AdaptiveColor{Light: t.light.invertedSecondaryColor, Dark: t.dark.invertedSecondaryColor}
 
 	s.primaryColorStyle = lipgloss.NewStyle().Foreground(s.basePrimaryColor)
-	s.secondaryColorStyle = lipgloss.NewStyle().Foreground(s.baseSecondColor)
+	s.secondaryColorStyle = lipgloss.NewStyle().Foreground(s.baseSecondaryColor)
 	//
 	// general
-	// u.docStyle = lipgloss.NewStyle().Padding(1, headerPadDist, 0, headerPadDist)
-	s.statusBarStyle = lipgloss.NewStyle().Background(s.baseSecondColor).Foreground(s.invertedPrimaryColor)
+	s.statusBarStyle = lipgloss.NewStyle().Background(s.baseSecondaryColor).Foreground(s.invertedPrimaryColor)
 	s.viewStyle = s.secondaryColorStyle.PaddingLeft(headerPadDist)
 	s.noItemsStyle = s.secondaryColorStyle.PaddingLeft(3)
 
@@ -120,35 +109,35 @@ func (s *style) setTheme(t theme) {
 	s.prefixStyle = s.primaryColorStyle.PaddingLeft(1)
 	s.nowPlayingPrefixStyle = s.primaryColorStyle.PaddingLeft(0)
 	s.selNowPlayingStyle = lipgloss.NewStyle().Background(s.basePrimaryColor).Foreground(s.invertedPrimaryColor)
-	s.selNowPlayingDescStyle = lipgloss.NewStyle().Background(s.basePrimaryColor).Foreground(s.invertedSecondColor)
+	s.selNowPlayingDescStyle = lipgloss.NewStyle().Background(s.basePrimaryColor).Foreground(s.invertedSecondaryColor)
 	s.selItemStyle = lipgloss.NewStyle().Background(s.basePrimaryColor).Foreground(s.invertedPrimaryColor)
-	s.selDescStyle = lipgloss.NewStyle().Background(s.basePrimaryColor).Foreground(s.invertedSecondColor)
+	s.selDescStyle = lipgloss.NewStyle().Background(s.basePrimaryColor).Foreground(s.invertedSecondaryColor)
 	s.selectedBorderStyle = lipgloss.NewStyle().
 		Border(lipgloss.BlockBorder(), false, false, false, true).
 		BorderForeground(s.basePrimaryColor)
 
 	// header
-	s.songTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(s.baseSecondColor)
+	s.songTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(s.baseSecondaryColor)
 	s.italicStyle = lipgloss.NewStyle().
 		Border(lipgloss.HiddenBorder(), false, true).
-		Foreground(s.baseSecondColor).
+		Foreground(s.baseSecondaryColor).
 		Italic(true).
 		Padding(0, 0).Margin()
 
 	// tabs
 	s.inactiveTabInner = lipgloss.NewStyle().
 		Bold(false).
-		Foreground(s.baseSecondColor)
+		Foreground(s.baseSecondaryColor)
 	s.inactiveTabInnerHighlight = lipgloss.NewStyle().
 		Bold(true).
 		Foreground(s.basePrimaryColor)
 	s.activeTabInner = lipgloss.NewStyle().
 		Bold(false).
-		Background(s.baseSecondColor).
+		Background(s.baseSecondaryColor).
 		Foreground(s.invertedPrimaryColor)
 	s.activeTabInnerHighlight = lipgloss.NewStyle().
 		Bold(true).
-		Background(s.baseSecondColor).
+		Background(s.baseSecondaryColor).
 		Foreground(s.invertedPrimaryColor)
 	s.tabGap = lipgloss.NewStyle().
 		Border(lipgloss.Border{Left: " ", Right: " "}, true, false).
@@ -176,6 +165,15 @@ func (s *style) setTheme(t theme) {
 	s.historyDescStyle = s.primaryColorStyle.Bold(true)
 	s.historySelItemStyle = s.selDescStyle
 	s.historySelDescStyle = s.selItemStyle.Bold(true)
+}
+
+func (s *style) getSecondColor() string {
+	hasDark := lipgloss.DefaultRenderer().HasDarkBackground()
+	if hasDark {
+		return s.baseSecondaryColor.Dark
+	} else {
+		return s.baseSecondaryColor.Light
+	}
 }
 
 func (s *style) helpStyles() help.Styles {
