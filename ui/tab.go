@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"github.com/dancnb/sonicradio/ui/styles"
 	"log/slog"
 	"strconv"
 	"time"
@@ -66,7 +67,7 @@ func (jump jumpInfo) isActive() bool {
 
 type stationsTabBase struct {
 	uiTab
-	style      *style
+	style      *styles.Style
 	list       list.Model
 	viewMsg    string
 	listKeymap listKeymap
@@ -74,7 +75,7 @@ type stationsTabBase struct {
 	infoModel  *infoModel
 }
 
-func newStationsTab(k listKeymap, infoModel *infoModel, s *style) stationsTabBase {
+func newStationsTab(k listKeymap, infoModel *infoModel, s *styles.Style) stationsTabBase {
 	t := stationsTabBase{
 		style:      s,
 		listKeymap: k,
@@ -110,7 +111,7 @@ func (t *stationsTabBase) View() string {
 		availHeight := t.list.Height()
 		help := t.list.Styles.HelpStyle.Render(t.list.Help.View(t.list))
 		availHeight -= lipgloss.Height(help)
-		viewSection := t.style.viewStyle.Height(availHeight).Render(t.viewMsg)
+		viewSection := t.style.ViewStyle.Height(availHeight).Render(t.viewMsg)
 		sections = append(sections, viewSection)
 		sections = append(sections, help)
 		return lipgloss.JoinVertical(lipgloss.Left, sections...)
@@ -189,20 +190,20 @@ func createList(delegate *stationDelegate, width int, height int) list.Model {
 	l.SetShowPagination(false)
 	l.SetShowFilter(true)
 	l.SetStatusBarItemName("station", "stations")
-	l.Styles.NoItems = delegate.style.noItemsStyle
+	l.Styles.NoItems = delegate.style.NoItemsStyle
 	l.FilterInput.ShowSuggestions = true
 	l.KeyMap.Quit.SetKeys("q")
 	l.KeyMap.PrevPage.SetKeys("pgup", "ctrl+b")
 	l.KeyMap.PrevPage.SetHelp("ctrl+b/pgup", "prev page")
 	l.KeyMap.NextPage.SetKeys("pgdown", "ctrl+f")
 	l.KeyMap.NextPage.SetHelp("ctrl+f/pgdn", "next page")
-	h, v := delegate.style.docStyle.GetFrameSize()
+	h, v := delegate.style.DocStyle.GetFrameSize()
 	l.SetSize(width-h, height-v)
 
 	l.Help.ShortSeparator = "   "
-	l.Help.Styles = delegate.style.helpStyles()
-	l.Styles.HelpStyle = delegate.style.helpStyle
+	l.Help.Styles = delegate.style.HelpStyles()
+	l.Styles.HelpStyle = delegate.style.HelpStyle
 
-	delegate.style.textInputSyle(&l.FilterInput, "Filter:       ", "station name")
+	delegate.style.TextInputSyle(&l.FilterInput, "Filter:       ", "station name")
 	return l
 }

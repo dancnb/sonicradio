@@ -1,4 +1,4 @@
-package ui
+package styles
 
 type colorProfile struct {
 	primaryColor           string

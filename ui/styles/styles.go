@@ -1,0 +1,242 @@
+package styles
+
+import (
+	"strconv"
+	"strings"
+
+	"github.com/charmbracelet/bubbles/cursor"
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/lipgloss"
+)
+
+const (
+	TabGapDistance = 2
+	HeaderPadDist  = 2
+
+	FavChar   = "  ★  "
+	PlayChar  = "\u2877"
+	PauseChar = "\u28FF"
+	LineChar  = "\u2847"
+)
+
+type Style struct {
+	basePrimaryColor       lipgloss.AdaptiveColor
+	baseSecondaryColor     lipgloss.AdaptiveColor
+	invertedPrimaryColor   lipgloss.AdaptiveColor
+	invertedSecondaryColor lipgloss.AdaptiveColor
+
+	PrimaryColorStyle   lipgloss.Style
+	SecondaryColorStyle lipgloss.Style
+
+	// general
+	DocStyle       lipgloss.Style
+	StatusBarStyle lipgloss.Style
+	ViewStyle      lipgloss.Style
+	NoItemsStyle   lipgloss.Style
+
+	// station delegate
+	PrefixStyle            lipgloss.Style
+	NowPlayingPrefixStyle  lipgloss.Style
+	SelNowPlayingStyle     lipgloss.Style
+	SelNowPlayingDescStyle lipgloss.Style
+	SelItemStyle           lipgloss.Style
+	SelDescStyle           lipgloss.Style
+	SelectedBorderStyle    lipgloss.Style
+
+	// header
+	SongTitleStyle lipgloss.Style
+	ItalicStyle    lipgloss.Style
+
+	// tabs
+	InactiveTabBorder         lipgloss.Style
+	InactiveTabInner          lipgloss.Style
+	InactiveTabInnerHighlight lipgloss.Style
+	ActiveTabBorder           lipgloss.Style
+	ActiveTabInner            lipgloss.Style
+	ActiveTabInnerHighlight   lipgloss.Style
+	TabGap                    lipgloss.Style
+
+	// help
+	HelpStyle lipgloss.Style
+	// filter
+	filterPromptStyle lipgloss.Style
+
+	// search
+	SearchPromptStyle lipgloss.Style
+
+	// station info
+	InfoFieldNameStyle lipgloss.Style
+
+	// history
+	HistoryDescStyle    lipgloss.Style
+	HistorySelItemStyle lipgloss.Style
+	HistorySelDescStyle lipgloss.Style
+}
+
+func NewStyle(themeIdx int) *Style {
+	t := themes[themeIdx%len(themes)]
+	u := Style{
+		DocStyle: lipgloss.NewStyle().
+			Padding(1, HeaderPadDist, 0, HeaderPadDist),
+		InactiveTabBorder: lipgloss.NewStyle().
+			Border(lipgloss.HiddenBorder(), true).
+			Padding(0, 0).Margin(0),
+		ActiveTabBorder: lipgloss.NewStyle().
+			Border(lipgloss.HiddenBorder(), true).
+			Padding(0, 0).Margin(0),
+	}
+	u.setTheme(t)
+	return &u
+}
+
+func (s *Style) setTheme(t theme) {
+	s.basePrimaryColor = lipgloss.AdaptiveColor{Light: t.light.primaryColor, Dark: t.dark.primaryColor}
+	s.baseSecondaryColor = lipgloss.AdaptiveColor{Light: t.light.secondaryColor, Dark: t.dark.secondaryColor}
+	s.invertedPrimaryColor = lipgloss.AdaptiveColor{Light: t.light.invertedPrimaryColor, Dark: t.dark.invertedPrimaryColor}
+	s.invertedSecondaryColor = lipgloss.AdaptiveColor{Light: t.light.invertedSecondaryColor, Dark: t.dark.invertedSecondaryColor}
+
+	s.PrimaryColorStyle = lipgloss.NewStyle().Foreground(s.basePrimaryColor)
+	s.SecondaryColorStyle = lipgloss.NewStyle().Foreground(s.baseSecondaryColor)
+	//
+	// general
+	s.StatusBarStyle = lipgloss.NewStyle().Background(s.baseSecondaryColor).Foreground(s.invertedPrimaryColor)
+	s.ViewStyle = s.SecondaryColorStyle.PaddingLeft(HeaderPadDist)
+	s.NoItemsStyle = s.SecondaryColorStyle.PaddingLeft(3)
+
+	// station delegate
+	s.PrefixStyle = s.PrimaryColorStyle.PaddingLeft(1)
+	s.NowPlayingPrefixStyle = s.PrimaryColorStyle.PaddingLeft(0)
+	s.SelNowPlayingStyle = lipgloss.NewStyle().Background(s.basePrimaryColor).Foreground(s.invertedPrimaryColor)
+	s.SelNowPlayingDescStyle = lipgloss.NewStyle().Background(s.basePrimaryColor).Foreground(s.invertedSecondaryColor)
+	s.SelItemStyle = lipgloss.NewStyle().Background(s.basePrimaryColor).Foreground(s.invertedPrimaryColor)
+	s.SelDescStyle = lipgloss.NewStyle().Background(s.basePrimaryColor).Foreground(s.invertedSecondaryColor)
+	s.SelectedBorderStyle = lipgloss.NewStyle().
+		Border(lipgloss.BlockBorder(), false, false, false, true).
+		BorderForeground(s.basePrimaryColor)
+
+	// header
+	s.SongTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(s.baseSecondaryColor)
+	s.ItalicStyle = lipgloss.NewStyle().
+		Border(lipgloss.HiddenBorder(), false, true).
+		Foreground(s.baseSecondaryColor).
+		Italic(true).
+		Padding(0, 0).Margin()
+
+	// tabs
+	s.InactiveTabInner = lipgloss.NewStyle().
+		Bold(false).
+		Foreground(s.baseSecondaryColor)
+	s.InactiveTabInnerHighlight = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(s.basePrimaryColor)
+	s.ActiveTabInner = lipgloss.NewStyle().
+		Bold(false).
+		Background(s.baseSecondaryColor).
+		Foreground(s.invertedPrimaryColor)
+	s.ActiveTabInnerHighlight = lipgloss.NewStyle().
+		Bold(true).
+		Background(s.baseSecondaryColor).
+		Foreground(s.invertedPrimaryColor)
+	s.TabGap = lipgloss.NewStyle().
+		Border(lipgloss.Border{Left: " ", Right: " "}, true, false).
+		Foreground(s.basePrimaryColor).
+		BorderForeground(s.basePrimaryColor).
+		Strikethrough(true).
+		Margin(0).Padding(0)
+
+	// help
+	s.HelpStyle = lipgloss.NewStyle().
+		Padding(0, 0).Margin(0).
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(s.basePrimaryColor)
+
+	// filter
+	s.filterPromptStyle = s.PrimaryColorStyle.Bold(true).MarginLeft(1)
+
+	// search
+	s.SearchPromptStyle = s.PrimaryColorStyle.Bold(true).MarginLeft(HeaderPadDist + TabGapDistance)
+
+	// station info
+	s.InfoFieldNameStyle = s.PrimaryColorStyle.Bold(false).MarginLeft(HeaderPadDist + TabGapDistance)
+
+	// history
+	s.HistoryDescStyle = s.PrimaryColorStyle.Bold(true)
+	s.HistorySelItemStyle = s.SelDescStyle
+	s.HistorySelDescStyle = s.SelItemStyle.Bold(true)
+}
+
+func (s *Style) GetSecondColor() string {
+	hasDark := lipgloss.DefaultRenderer().HasDarkBackground()
+	if hasDark {
+		return s.baseSecondaryColor.Dark
+	} else {
+		return s.baseSecondaryColor.Light
+	}
+}
+
+func (s *Style) HelpStyles() help.Styles {
+	return help.Styles{
+		ShortKey:       s.PrimaryColorStyle,
+		ShortDesc:      s.SecondaryColorStyle,
+		ShortSeparator: s.SecondaryColorStyle,
+		Ellipsis:       s.SecondaryColorStyle,
+		FullKey:        s.PrimaryColorStyle,
+		FullDesc:       s.SecondaryColorStyle,
+		FullSeparator:  s.SecondaryColorStyle,
+	}
+}
+
+func (s *Style) NewInputModel(prompt, placeholder string,
+	prevSugg *key.Binding,
+	nextSugg *key.Binding,
+	acceptSugg *key.Binding,
+	validator textinput.ValidateFunc,
+) textinput.Model {
+	input := textinput.New()
+	input.Cursor.SetMode(cursor.CursorBlink)
+	prompt = PadFieldName(prompt)
+	s.TextInputSyle(&input, prompt, placeholder)
+	input.PromptStyle = s.SearchPromptStyle
+	if prevSugg != nil {
+		input.KeyMap.NextSuggestion = *nextSugg
+	}
+	if nextSugg != nil {
+		input.KeyMap.NextSuggestion = *nextSugg
+	}
+	if acceptSugg != nil {
+		input.KeyMap.NextSuggestion = *nextSugg
+	}
+	if validator != nil {
+		input.Validate = validator
+	}
+	return input
+}
+
+func (s *Style) TextInputSyle(textInput *textinput.Model, prompt, placeholder string) {
+	textInput.Prompt = prompt
+	textInput.PromptStyle = s.filterPromptStyle
+	textInput.TextStyle = s.PrimaryColorStyle
+	textInput.CompletionStyle = s.PrimaryColorStyle
+	textInput.Cursor.Style = s.filterPromptStyle
+	textInput.Cursor.TextStyle = s.PrimaryColorStyle
+	textInput.Placeholder = placeholder
+	textInput.PlaceholderStyle = s.SecondaryColorStyle
+}
+
+func NrInputValidator(s string) error {
+	_, err := strconv.Atoi(s)
+	return err
+}
+
+const maxFieldLen = 26
+
+func PadFieldName(v string) string {
+	var b strings.Builder
+	b.WriteString(v)
+	for i := len(v); i < maxFieldLen; i++ {
+		b.WriteString(" ")
+	}
+	return b.String()
+}

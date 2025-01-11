@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"github.com/dancnb/sonicradio/ui/styles"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -15,7 +16,7 @@ type browseTab struct {
 	searchModel    *searchModel
 }
 
-func newBrowseTab(ctx context.Context, browser *browser.Api, infoModel *infoModel, s *style) *browseTab {
+func newBrowseTab(ctx context.Context, browser *browser.Api, infoModel *infoModel, s *styles.Style) *browseTab {
 	k := newListKeymap()
 
 	m := &browseTab{
@@ -77,7 +78,7 @@ func (t *browseTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		h, v := t.style.docStyle.GetFrameSize()
+		h, v := t.style.DocStyle.GetFrameSize()
 		t.list.SetSize(msg.Width-h, msg.Height-m.headerHeight-v)
 
 	case topStationsRespMsg:

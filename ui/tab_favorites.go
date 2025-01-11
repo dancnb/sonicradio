@@ -5,13 +5,14 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/dancnb/sonicradio/browser"
+	"github.com/dancnb/sonicradio/ui/styles"
 )
 
 type favoritesTab struct {
 	stationsTabBase
 }
 
-func newFavoritesTab(infoModel *infoModel, s *style) *favoritesTab {
+func newFavoritesTab(infoModel *infoModel, s *styles.Style) *favoritesTab {
 	k := newListKeymap()
 
 	m := &favoritesTab{
@@ -64,7 +65,7 @@ func (t *favoritesTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		h, v := t.style.docStyle.GetFrameSize()
+		h, v := t.style.DocStyle.GetFrameSize()
 		t.list.SetSize(msg.Width-h, msg.Height-m.headerHeight-v)
 
 	case favoritesStationRespMsg:

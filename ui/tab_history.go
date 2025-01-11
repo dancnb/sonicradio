@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 	"fmt"
+	"github.com/dancnb/sonicradio/ui/styles"
 	"io"
 	"log/slog"
 	"slices"
@@ -22,13 +23,13 @@ const (
 
 type historyTab struct {
 	cfg     *config.Value
-	style   *style
+	style   *styles.Style
 	viewMsg string
 	list    list.Model
 	keymap  historyKeymap
 }
 
-func newHistoryTab(ctx context.Context, cfg *config.Value, s *style) *historyTab {
+func newHistoryTab(ctx context.Context, cfg *config.Value, s *styles.Style) *historyTab {
 	t := &historyTab{
 		cfg:   cfg,
 		style: s,
@@ -146,19 +147,19 @@ func (t *historyTab) createList(width int, height int) {
 	l.SetShowFilter(true)
 	l.Filter = list.UnsortedFilter
 	l.SetStatusBarItemName("entry", "entries")
-	l.Styles.NoItems = t.style.noItemsStyle
+	l.Styles.NoItems = t.style.NoItemsStyle
 	l.FilterInput.ShowSuggestions = true
 	l.KeyMap.Quit.SetKeys("q")
 	l.KeyMap.PrevPage.SetKeys("pgup", "ctrl+b")
 	l.KeyMap.PrevPage.SetHelp("ctrl+b/pgup", "prev page")
 	l.KeyMap.NextPage.SetKeys("pgdown", "ctrl+f")
 	l.KeyMap.NextPage.SetHelp("ctrl+f/pgdn", "next page")
-	h, v := t.style.docStyle.GetFrameSize()
+	h, v := t.style.DocStyle.GetFrameSize()
 	l.SetSize(width-h, height-v)
 
 	l.Help.ShortSeparator = "   "
-	l.Help.Styles = t.style.helpStyles()
-	l.Styles.HelpStyle = t.style.helpStyle
+	l.Help.Styles = t.style.HelpStyles()
+	l.Styles.HelpStyle = t.style.HelpStyle
 	l.AdditionalShortHelpKeys = func() []key.Binding {
 		return []key.Binding{t.keymap.search}
 	}
@@ -173,7 +174,7 @@ func (t *historyTab) createList(width int, height int) {
 		}
 	}
 
-	t.style.textInputSyle(&l.FilterInput, "Filter:       ", "station name or song")
+	t.style.TextInputSyle(&l.FilterInput, "Filter:       ", "station name or song")
 
 	t.list = l
 }
@@ -185,7 +186,7 @@ func (t *historyTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		h, v := t.style.docStyle.GetFrameSize()
+		h, v := t.style.DocStyle.GetFrameSize()
 		t.list.SetSize(msg.Width-h, msg.Height-m.headerHeight-v)
 
 	case tea.KeyMsg:
@@ -243,7 +244,7 @@ func (t *historyTab) View() string {
 		availHeight := t.list.Height()
 		help := t.list.Styles.HelpStyle.Render(t.list.Help.View(t.list))
 		availHeight -= lipgloss.Height(help)
-		viewSection := t.style.viewStyle.Height(availHeight).Render(t.viewMsg)
+		viewSection := t.style.ViewStyle.Height(availHeight).Render(t.viewMsg)
 		sections = append(sections, viewSection)
 		sections = append(sections, help)
 		return lipgloss.JoinVertical(lipgloss.Left, sections...)
@@ -254,7 +255,7 @@ func (t *historyTab) View() string {
 type historyEntryDelegate struct {
 	defaultDelegate list.DefaultDelegate
 	keymap          *historyKeymap
-	style           *style
+	style           *styles.Style
 }
 
 func (d *historyEntryDelegate) ShortHelp() []key.Binding {
@@ -293,15 +294,15 @@ func (d *historyEntryDelegate) Render(w io.Writer, m list.Model, index int, item
 	listWidth := m.Width()
 	station := entry.Title()
 
-	prefixRender := d.style.prefixStyle.Render(prefix)
+	prefixRender := d.style.PrefixStyle.Render(prefix)
 	res.WriteString(prefixRender)
-	maxWidth := max(listWidth-lipgloss.Width(prefixRender)-headerPadDist, 0)
+	maxWidth := max(listWidth-lipgloss.Width(prefixRender)-styles.HeaderPadDist, 0)
 
-	itStyle := d.style.secondaryColorStyle
-	descStyle := d.style.historyDescStyle
+	itStyle := d.style.SecondaryColorStyle
+	descStyle := d.style.HistoryDescStyle
 	if isSel {
-		itStyle = d.style.historySelItemStyle
-		descStyle = d.style.historySelDescStyle
+		itStyle = d.style.HistorySelItemStyle
+		descStyle = d.style.HistorySelDescStyle
 	}
 
 	for lipgloss.Width(itStyle.Render(station)) > maxWidth && len(station) > 0 {
@@ -309,18 +310,18 @@ func (d *historyEntryDelegate) Render(w io.Writer, m list.Model, index int, item
 	}
 	nameRender := itStyle.Render(station)
 	res.WriteString(nameRender)
-	hFill := max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(nameRender)-headerPadDist, 0)
+	hFill := max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(nameRender)-styles.HeaderPadDist, 0)
 	res.WriteString(itStyle.Render(strings.Repeat(" ", hFill)))
 	res.WriteString("\n")
 
-	res.WriteString(d.style.prefixStyle.Render(strings.Repeat(" ", utf8.RuneCountInString(prefix))))
+	res.WriteString(d.style.PrefixStyle.Render(strings.Repeat(" ", utf8.RuneCountInString(prefix))))
 	desc := entry.Description()
 	for lipgloss.Width(descStyle.Render(desc)) > maxWidth && len(desc) > 0 {
 		desc = desc[:len(desc)-1]
 	}
 	descRender := descStyle.Render(desc)
 	res.WriteString(descRender)
-	hFill = max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(descRender)-headerPadDist, 0)
+	hFill = max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(descRender)-styles.HeaderPadDist, 0)
 	res.WriteString(descStyle.Render(strings.Repeat(" ", hFill)))
 
 	str := res.String()

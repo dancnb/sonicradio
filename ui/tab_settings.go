@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 	"fmt"
+	"github.com/dancnb/sonicradio/ui/styles"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -20,7 +21,7 @@ const configView = "config tab"
 type settingsTab struct {
 	cfg *config.Value
 
-	style  *style
+	style  *styles.Style
 	keymap settingsKeymap
 	help   help.Model
 	width  int
@@ -36,14 +37,14 @@ const (
 	historySaveMaxIdx settingsInputIdx = iota
 )
 
-func newSettingsTab(ctx context.Context, cfg *config.Value, s *style) *settingsTab {
+func newSettingsTab(ctx context.Context, cfg *config.Value, s *styles.Style) *settingsTab {
 	h := help.New()
 	h.ShowAll = false
 	h.ShortSeparator = "   "
-	h.Styles = s.helpStyles()
+	h.Styles = s.HelpStyles()
 
 	inputs := []textinput.Model{
-		s.newInputModel("History max entries", "", nil, nil, nil, nrInputValidator),
+		s.NewInputModel("History max entries", "", nil, nil, nil, styles.NrInputValidator),
 	}
 
 	return &settingsTab{
@@ -91,7 +92,7 @@ func (s *settingsTab) onExit() {
 }
 
 func (s *settingsTab) setSize(width, height int) {
-	h, v := s.style.docStyle.GetFrameSize()
+	h, v := s.style.DocStyle.GetFrameSize()
 	s.width = width - h
 	s.height = height - v
 	s.help.Width = s.width
@@ -175,7 +176,7 @@ func (s *settingsTab) View() string {
 	b.WriteRune('\n')
 	// help
 	availHeight := s.height
-	help := s.style.helpStyle.Render(s.help.View(&s.keymap))
+	help := s.style.HelpStyle.Render(s.help.View(&s.keymap))
 	availHeight -= lipgloss.Height(help)
 	inputs := b.String()
 	inputsHeight := lipgloss.Height(inputs)

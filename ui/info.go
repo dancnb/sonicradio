@@ -11,12 +11,13 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dancnb/sonicradio/browser"
 	"github.com/dancnb/sonicradio/config"
+	"github.com/dancnb/sonicradio/ui/styles"
 )
 
 type infoModel struct {
 	enabled bool
 
-	style *style
+	style *styles.Style
 
 	b       *browser.Api
 	station browser.Station
@@ -27,13 +28,13 @@ type infoModel struct {
 	height int
 }
 
-func newInfoModel(b *browser.Api, s *style) *infoModel {
+func newInfoModel(b *browser.Api, s *styles.Style) *infoModel {
 	k := newInfoKeymap()
 
 	h := help.New()
 	h.ShowAll = false
 	h.ShortSeparator = "   "
-	h.Styles = s.helpStyles()
+	h.Styles = s.HelpStyles()
 
 	return &infoModel{
 		b:      b,
@@ -50,7 +51,7 @@ func (i *infoModel) Init(s browser.Station) tea.Cmd {
 }
 
 func (s *infoModel) setSize(width, height int) {
-	h, v := s.style.docStyle.GetFrameSize()
+	h, v := s.style.DocStyle.GetFrameSize()
 	s.width = width - h
 	s.height = height - v
 	s.help.Width = s.width
@@ -137,7 +138,7 @@ func (i *infoModel) View() string {
 	i.renderInfoField(&b, "Geo longitude ", long)
 
 	availHeight := i.height
-	help := i.style.helpStyle.Render(i.help.View(&i.keymap))
+	help := i.style.HelpStyle.Render(i.help.View(&i.keymap))
 	availHeight -= lipgloss.Height(help)
 
 	content := b.String()
@@ -149,14 +150,14 @@ func (i *infoModel) View() string {
 }
 
 func (i *infoModel) renderInfoField(b *strings.Builder, fieldName, fieldValue string) {
-	fnRender := i.style.infoFieldNameStyle.Render(padFieldName(fieldName))
+	fnRender := i.style.InfoFieldNameStyle.Render(styles.PadFieldName(fieldName))
 	b.WriteString(fnRender)
 	fnw := lipgloss.Width(fnRender)
 	fv := strings.TrimSpace(fieldValue)
-	for fnw+lipgloss.Width(i.style.secondaryColorStyle.Render(fv)) > i.width && len(fv) > 0 {
+	for fnw+lipgloss.Width(i.style.SecondaryColorStyle.Render(fv)) > i.width && len(fv) > 0 {
 		fv = fv[:len(fv)-1]
 	}
-	b.WriteString(i.style.secondaryColorStyle.Render(fv))
+	b.WriteString(i.style.SecondaryColorStyle.Render(fv))
 	b.WriteString("\n")
 }
 
