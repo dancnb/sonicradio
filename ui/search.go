@@ -192,14 +192,21 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		s.setSize(msg.Width, msg.Height)
 
 	case components.OptionMsg:
-		ord := int(msg)
-		s.oIdx = orderIx(ord)
+		s.oIdx = orderIx(msg)
 		s.keymap.setEnable(true)
 		cmds = s.updateInputs(cmds)
 		return s, tea.Batch(cmds...)
 
 	case tea.KeyMsg:
 		switch {
+
+		case key.Matches(msg, s.keymap.order):
+			if !s.orderOptions.IsActive() {
+				s.orderOptions.SetActive(true)
+				s.keymap.setEnable(false)
+				cmds = append(cmds, s.updateInputs(cmds)...)
+				return s, tea.Batch(cmds...)
+			}
 
 		case key.Matches(msg, s.keymap.showFullHelp):
 			fallthrough
@@ -209,14 +216,6 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			s.keymap.closeFullHelp.SetEnabled(s.help.ShowAll)
 			s.keymap.update(s.help.ShowAll)
 			return s, tea.Batch(cmds...)
-
-		case key.Matches(msg, s.keymap.order):
-			if !s.orderOptions.IsActive() {
-				s.orderOptions.SetActive(true)
-				s.keymap.setEnable(false)
-				cmds = append(cmds, s.updateInputs(cmds)...)
-				return s, tea.Batch(cmds...)
-			}
 
 		case key.Matches(msg, s.keymap.reverse):
 			s.reverse = !s.reverse

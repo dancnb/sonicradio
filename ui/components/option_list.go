@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/dancnb/sonicradio/ui/styles"
 
@@ -21,6 +22,7 @@ type OptionList struct {
 	prompt  string
 	options []string
 	idx     int
+	jump    JumpInfo
 
 	promptStyle *lipgloss.Style
 	selStyle    *lipgloss.Style
@@ -47,8 +49,7 @@ func NewOptionList(prompt string, options []string, idx int, s *styles.Style) Op
 	for i := 0; i <= 9; i++ {
 		x := fmt.Sprintf("%d", i)
 		orderkey := key.NewBinding(key.WithKeys(x))
-		// orderkey.SetEnabled(false)
-		k.orderkeys = append(k.orderkeys, orderkey)
+		k.digitKeys = append(k.digitKeys, orderkey)
 	}
 	o := OptionList{
 		prompt:      prompt,
@@ -80,21 +81,38 @@ func (o *OptionList) IsActive() bool {
 	return o.active
 }
 
+type jumpMgs int
+
+func (o *OptionList) setIdx(pos int) {
+	newIdx := pos - 1
+	if newIdx >= 0 && newIdx < len(o.options) {
+		o.idx = newIdx
+	}
+}
+
 func (o *OptionList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	log := slog.With("method", "components.OptionList.Update")
 	log.Debug("tea.Msg", "type", fmt.Sprintf("%T", msg), "value", msg, "#", fmt.Sprintf("%#v", msg))
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch {
-		// TODO: next,prev? + debounce
-		case key.Matches(msg, o.Keymap.orderkeys...):
-			ord, _ := strconv.Atoi(msg.String())
-			o.idx = max(0, ord-1)
+	case jumpMgs:
+		if msg := int(msg); msg == o.jump.LastPosition() {
+			o.setIdx(msg)
 			o.SetActive(false)
 			return o, func() tea.Msg {
 				return OptionMsg(o.idx)
 			}
+		}
+
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, o.Keymap.digitKeys...):
+			digit, _ := strconv.Atoi(msg.String())
+			pos := o.jump.Position(digit)
+			o.setIdx(pos)
+			return o, tea.Tick(o.jump.JumpTimeout(), func(time.Time) tea.Msg {
+				return jumpMgs(pos)
+			})
 
 		case key.Matches(msg, o.Keymap.closeKey):
 			o.SetActive(false)
@@ -136,7 +154,7 @@ type optionsKeymap struct {
 	closeKey key.Binding
 	// next      key.Binding
 	// prev      key.Binding
-	orderkeys []key.Binding
+	digitKeys []key.Binding
 }
 
 func (k *optionsKeymap) ShortHelp() []key.Binding {
@@ -152,8 +170,8 @@ func (k *optionsKeymap) setEnable(v bool) {
 	k.closeKey.SetEnabled(v)
 	// k.prev.SetEnabled(v)
 	// k.next.SetEnabled(v)
-	for i := range k.orderkeys {
-		k.orderkeys[i].SetEnabled(v)
+	for i := range k.digitKeys {
+		k.digitKeys[i].SetEnabled(v)
 	}
 }
 

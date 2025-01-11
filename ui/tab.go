@@ -1,10 +1,11 @@
 package ui
 
 import (
-	"github.com/dancnb/sonicradio/ui/styles"
 	"log/slog"
 	"strconv"
-	"time"
+
+	"github.com/dancnb/sonicradio/ui/components"
+	"github.com/dancnb/sonicradio/ui/styles"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -54,24 +55,13 @@ type stationTab interface {
 	createList(delegate *stationDelegate, width int, height int) list.Model
 }
 
-const jumpTimeout = 250 * time.Millisecond
-
-type jumpInfo struct {
-	position int
-	last     time.Time
-}
-
-func (jump jumpInfo) isActive() bool {
-	return jump.last.Add(jumpTimeout).After(time.Now())
-}
-
 type stationsTabBase struct {
 	uiTab
 	style      *styles.Style
 	list       list.Model
 	viewMsg    string
 	listKeymap listKeymap
-	jump       jumpInfo
+	jump       components.JumpInfo
 	infoModel  *infoModel
 }
 
@@ -85,24 +75,11 @@ func newStationsTab(k listKeymap, infoModel *infoModel, s *styles.Style) station
 }
 
 func (t *stationsTabBase) doJump(msg tea.KeyMsg) {
-	jumpIdx := t.jumpIdx(msg)
+	digit, _ := strconv.Atoi(msg.String())
+	jumpIdx := t.jump.Position(digit)
 	if jumpIdx > 0 && jumpIdx <= len(t.list.Items()) {
 		t.list.Select(jumpIdx - 1)
 	}
-}
-
-func (t *stationsTabBase) jumpIdx(msg tea.Msg) int {
-	log := slog.With("method", "ui.stattionsTab.getJumpIdx")
-	digit, _ := strconv.Atoi(msg.(tea.KeyMsg).String())
-	log.Debug("", "digit", digit, "oldPos", t.jump.position)
-	if t.jump.isActive() {
-		t.jump.position = t.jump.position*10 + digit
-	} else {
-		t.jump.position = digit
-	}
-	t.jump.last = time.Now()
-	log.Debug("", "newPos", t.jump.position)
-	return t.jump.position
 }
 
 func (t *stationsTabBase) View() string {
