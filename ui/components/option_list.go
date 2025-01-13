@@ -97,10 +97,9 @@ func (o *OptionList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case jumpMgs:
 		if msg := int(msg); msg == o.jump.LastPosition() {
-			o.setIdx(msg)
 			o.SetActive(false)
 			return o, func() tea.Msg {
-				return OptionMsg(o.idx)
+				return OptionMsg{o.idx, true}
 			}
 		}
 
@@ -108,16 +107,21 @@ func (o *OptionList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, o.Keymap.digitKeys...):
 			digit, _ := strconv.Atoi(msg.String())
-			pos := o.jump.Position(digit)
+			pos := o.jump.NewPosition(digit)
 			o.setIdx(pos)
-			return o, tea.Tick(o.jump.JumpTimeout(), func(time.Time) tea.Msg {
-				return jumpMgs(pos)
-			})
+			return o, tea.Batch(
+				func() tea.Msg {
+					return OptionMsg{o.idx, false}
+				},
+				tea.Tick(o.jump.JumpTimeout(), func(time.Time) tea.Msg {
+					return jumpMgs(pos)
+				}),
+			)
 
 		case key.Matches(msg, o.Keymap.closeKey):
 			o.SetActive(false)
 			return o, func() tea.Msg {
-				return OptionMsg(o.idx)
+				return OptionMsg{o.idx, true}
 			}
 		}
 	}
@@ -175,4 +179,7 @@ func (k *optionsKeymap) setEnable(v bool) {
 	}
 }
 
-type OptionMsg int
+type OptionMsg struct {
+	Val  int
+	Done bool
+}

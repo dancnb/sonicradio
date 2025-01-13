@@ -192,10 +192,12 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		s.setSize(msg.Width, msg.Height)
 
 	case components.OptionMsg:
-		s.oIdx = orderIx(msg)
-		s.keymap.setEnable(true)
-		cmds = s.updateInputs(cmds)
-		return s, tea.Batch(cmds...)
+		s.oIdx = orderIx(msg.Val)
+		if msg.Done {
+			s.keymap.setEnable(true)
+			cmds = s.updateInputs(cmds)
+			return s, tea.Batch(cmds...)
+		}
 
 	case tea.KeyMsg:
 		switch {

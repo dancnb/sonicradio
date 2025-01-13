@@ -20,7 +20,7 @@ func (j *JumpInfo) isActive() bool {
 	return j.last.Add(jumpTimeout).After(time.Now())
 }
 
-func (j *JumpInfo) Position(digit int) int {
+func (j *JumpInfo) NewPosition(digit int) int {
 	log := slog.With("method", "components.JumpInfo.getJumpIdx")
 	log.Debug("", "digit", digit, "oldPos", j.position)
 	if j.isActive() {

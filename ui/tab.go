@@ -76,7 +76,7 @@ func newStationsTab(k listKeymap, infoModel *infoModel, s *styles.Style) station
 
 func (t *stationsTabBase) doJump(msg tea.KeyMsg) {
 	digit, _ := strconv.Atoi(msg.String())
-	jumpIdx := t.jump.Position(digit)
+	jumpIdx := t.jump.NewPosition(digit)
 	if jumpIdx > 0 && jumpIdx <= len(t.list.Items()) {
 		t.list.Select(jumpIdx - 1)
 	}
