@@ -150,7 +150,7 @@ func (i *infoModel) View() string {
 }
 
 func (i *infoModel) renderInfoField(b *strings.Builder, fieldName, fieldValue string) {
-	fnRender := i.style.InfoFieldNameStyle.Render(styles.PadFieldName(fieldName))
+	fnRender := i.style.InfoFieldNameStyle.Render(styles.PadFieldName(fieldName, nil))
 	b.WriteString(fnRender)
 	fnw := lipgloss.Width(fnRender)
 	fv := strings.TrimSpace(fieldValue)

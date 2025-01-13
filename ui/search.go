@@ -84,16 +84,16 @@ var searchOrder = map[orderIx]browser.OrderBy{
 }
 
 var orderView = []string{
-	"Votes",
-	"Clicks",
-	"Recent trends",
-	"Bitrate",
-	"Name",
-	"Tags",
-	"Country",
-	"Language",
-	"Codecs",
-	"Random",
+	"Votes            ",
+	"Clicks           ",
+	"Recent trends    ",
+	"Bitrate          ",
+	"Name             ",
+	"Tags             ",
+	"Country          ",
+	"Language         ",
+	"Codecs           ",
+	"Random           ",
 }
 
 func newSearchModel(ctx context.Context, browser *browser.Api, s *styles.Style) *searchModel {
@@ -192,8 +192,8 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		s.setSize(msg.Width, msg.Height)
 
 	case components.OptionMsg:
-		s.oIdx = orderIx(msg.Val)
 		if msg.Done {
+			s.oIdx = orderIx(msg.SelIdx)
 			s.keymap.setEnable(true)
 			cmds = s.updateInputs(cmds)
 			return s, tea.Batch(cmds...)
@@ -305,7 +305,7 @@ func (s *searchModel) View() string {
 	b.WriteString(s.orderOptions.View())
 	b.WriteRune('\n')
 
-	b.WriteString(s.style.SearchPromptStyle.Render(styles.PadFieldName("Reverse       ")))
+	b.WriteString(s.style.SearchPromptStyle.Render(styles.PadFieldName("Reverse       ", nil)))
 	rev := "off"
 	if s.reverse {
 		rev = "on"

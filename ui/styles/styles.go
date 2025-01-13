@@ -1,6 +1,7 @@
 package styles
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -196,7 +197,7 @@ func (s *Style) NewInputModel(prompt, placeholder string,
 ) textinput.Model {
 	input := textinput.New()
 	input.Cursor.SetMode(cursor.CursorBlink)
-	prompt = PadFieldName(prompt)
+	prompt = PadFieldName(prompt, nil)
 	s.TextInputSyle(&input, prompt, placeholder)
 	input.PromptStyle = s.SearchPromptStyle
 	if prevSugg != nil {
@@ -230,13 +231,31 @@ func NrInputValidator(s string) error {
 	return err
 }
 
-const maxFieldLen = 26
+const MaxFieldLen = 26
 
-func PadFieldName(v string) string {
+func PadFieldName(v string, padAmt *int) string {
+	amt := MaxFieldLen
+	if padAmt != nil {
+		amt = *padAmt
+	}
 	var b strings.Builder
 	b.WriteString(v)
-	for i := len(v); i < maxFieldLen; i++ {
+	for i := len(v); i < amt; i++ {
 		b.WriteString(" ")
 	}
 	return b.String()
+}
+
+const IndexStringPadAmt = 3
+
+func IndexString(index int) string {
+	prefix := fmt.Sprintf("%d. ", index+1)
+	if index+1 < 10 {
+		prefix = fmt.Sprintf("%s%s", strings.Repeat(" ", IndexStringPadAmt), prefix)
+	} else if index+1 < 100 {
+		prefix = fmt.Sprintf("%s%s", strings.Repeat(" ", IndexStringPadAmt-1), prefix)
+	} else if index+1 < 1000 {
+		prefix = fmt.Sprintf("%s%s", strings.Repeat(" ", IndexStringPadAmt-2), prefix)
+	}
+	return prefix
 }

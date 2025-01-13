@@ -3,11 +3,12 @@ package ui
 import (
 	"context"
 	"fmt"
-	"github.com/dancnb/sonicradio/ui/styles"
 	"io"
 	"log/slog"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/dancnb/sonicradio/ui/styles"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -204,14 +205,7 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 	var res strings.Builder
 	var str string
 
-	prefix := fmt.Sprintf("%d. ", index+1)
-	if index+1 < 10 {
-		prefix = fmt.Sprintf("   %s", prefix)
-	} else if index+1 < 100 {
-		prefix = fmt.Sprintf("  %s", prefix)
-	} else if index+1 < 1000 {
-		prefix = fmt.Sprintf(" %s", prefix)
-	}
+	prefix := styles.IndexString(index)
 
 	listWidth := m.Width()
 	if isCurr || isPrev {
