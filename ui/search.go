@@ -160,6 +160,7 @@ func (s *searchModel) isEnabled() bool {
 	return s.enabled
 }
 
+// setEnabled is called on search page enter/exit only
 func (s *searchModel) setEnabled(v bool) {
 	s.enabled = v
 	s.idx = name
@@ -173,8 +174,9 @@ func (s *searchModel) setEnabled(v bool) {
 	}
 	s.oIdx = orderVotes
 	s.reverse = true
-	s.keymap.setEnable(v)
-	s.help.ShowAll = false
+	showAll := false
+	s.help.ShowAll = showAll
+	s.keymap.setEnable(v, showAll)
 }
 
 func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -194,7 +196,7 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case components.OptionMsg:
 		if msg.Done {
 			s.oIdx = orderIx(msg.SelIdx)
-			s.keymap.setEnable(true)
+			s.keymap.setEnable(true, s.help.ShowAll)
 			cmds = s.updateInputs(cmds)
 			return s, tea.Batch(cmds...)
 		}
@@ -205,7 +207,7 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, s.keymap.order):
 			if !s.orderOptions.IsActive() {
 				s.orderOptions.SetActive(true)
-				s.keymap.setEnable(false)
+				s.keymap.setEnable(false, s.help.ShowAll)
 				cmds = append(cmds, s.updateInputs(cmds)...)
 				return s, tea.Batch(cmds...)
 			}
@@ -406,18 +408,23 @@ func (k *searchKeymap) FullHelp() [][]key.Binding {
 	}
 }
 
-func (k *searchKeymap) setEnable(v bool) {
-	k.submit.SetEnabled(v)
-	k.cancel.SetEnabled(v)
-	k.prevInput.SetEnabled(v)
-	k.nextInput.SetEnabled(v)
-	k.order.SetEnabled(v)
-	k.reverse.SetEnabled(v)
-	k.prevSugg.SetEnabled(v)
-	k.nextSugg.SetEnabled(v)
-	k.acceptSugg.SetEnabled(v)
-	k.showFullHelp.SetEnabled(v)
-	k.closeFullHelp.SetEnabled(false)
+func (k *searchKeymap) setEnable(enabled bool, showAll bool) {
+	k.submit.SetEnabled(enabled)
+	k.cancel.SetEnabled(enabled)
+	k.prevInput.SetEnabled(enabled)
+	k.nextInput.SetEnabled(enabled)
+	k.order.SetEnabled(enabled)
+	k.reverse.SetEnabled(enabled)
+	k.prevSugg.SetEnabled(enabled)
+	k.nextSugg.SetEnabled(enabled)
+	k.acceptSugg.SetEnabled(enabled)
+	if enabled {
+		k.showFullHelp.SetEnabled(!showAll)
+		k.closeFullHelp.SetEnabled(showAll)
+	} else {
+		k.showFullHelp.SetEnabled(false)
+		k.closeFullHelp.SetEnabled(false)
+	}
 }
 
 func (k *searchKeymap) update(showAll bool) {

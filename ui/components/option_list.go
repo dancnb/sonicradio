@@ -79,6 +79,8 @@ func (o *OptionList) Init() tea.Cmd {
 }
 
 func (o *OptionList) SetIdx(v int) {
+	v = max(v, 0)
+	v = min(v, len(o.options)-1)
 	o.idx = v
 	o.previewIdx = v
 }

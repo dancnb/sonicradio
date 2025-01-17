@@ -3,7 +3,6 @@ package ui
 import (
 	"context"
 	"fmt"
-	"github.com/dancnb/sonicradio/ui/styles"
 	"log/slog"
 	"math"
 	"os"
@@ -12,6 +11,8 @@ import (
 	"syscall"
 	"time"
 	"unicode"
+
+	"github.com/dancnb/sonicradio/ui/styles"
 
 	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/key"
@@ -365,7 +366,7 @@ func (m *Model) Quit() {
 		slog.Error(fmt.Sprintf("player close error: %v", err))
 	}
 	st := m.tabs[settingsTabIx].(*settingsTab)
-	st.onExit()
+	st.saveConfig()
 	m.cfg.IsRunning = false
 	err = m.cfg.Save()
 	if err != nil {
