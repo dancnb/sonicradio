@@ -3,12 +3,13 @@ package ui
 import (
 	"context"
 	"fmt"
-	"github.com/dancnb/sonicradio/ui/styles"
 	"io"
 	"log/slog"
 	"slices"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/dancnb/sonicradio/ui/styles"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"

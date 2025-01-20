@@ -16,6 +16,8 @@ func NewFormElement(input *textinput.Model, options *OptionList) *FormElement {
 }
 
 func (e *FormElement) Update(msg tea.Msg) (*FormElement, tea.Cmd) {
+	logTeaMsg(msg, "components.FormElement.Update")
+
 	var cmd tea.Cmd
 	switch {
 	case e.input != nil:
@@ -36,9 +38,9 @@ func (e *FormElement) Focus() tea.Cmd {
 	case e.input != nil:
 		cmd = e.input.Focus()
 	case e.optionList != nil:
-		// if !e.optionList.IsActive() {
-		e.optionList.SetActive(true)
-		// }
+		if !e.optionList.IsActive() {
+			e.optionList.SetActive(true)
+		}
 	}
 	return cmd
 }
@@ -48,9 +50,9 @@ func (e *FormElement) Blur() {
 	case e.input != nil:
 		e.input.Blur()
 	case e.optionList != nil:
-		// if e.optionList.IsActive() {
-		e.optionList.SetActive(false)
-		// }
+		if e.optionList.IsActive() {
+			e.optionList.SetActive(false)
+		}
 	}
 }
 
@@ -63,6 +65,16 @@ func (e *FormElement) View() string {
 	}
 	return ""
 }
+
+// func (e *FormElement) checkSelected(isSel bool, s *styles.Style) {
+// 	if isSel {
+// 		e.input.PromptStyle = s.SelPromptStyle
+// 		// e.input.TextStyle = s.SelDescStyle
+// 	} else {
+// 		e.input.PromptStyle = s.PromptStyle
+// 		// e.input.TextStyle = s.PrimaryColorStyle
+// 	}
+// }
 
 func (e *FormElement) Value() string {
 	switch {
@@ -91,4 +103,14 @@ func (e *FormElement) Keymap() help.KeyMap {
 		return &e.optionList.Keymap
 	}
 	return nil
+}
+
+func (e *FormElement) IsActive() bool {
+	switch {
+	case e.input != nil:
+		return e.input.Focused()
+	case e.optionList != nil:
+		return e.optionList.IsActive()
+	}
+	return false
 }

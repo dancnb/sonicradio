@@ -9,7 +9,9 @@ import (
 
 	"github.com/dancnb/sonicradio/ui/styles"
 
+	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -97,8 +99,7 @@ func (o *OptionList) IsActive() bool {
 type jumpPositionMgs int
 
 func (o *OptionList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	log := slog.With("method", "components.OptionList.Update")
-	log.Debug("tea.Msg", "type", fmt.Sprintf("%T", msg), "value", msg, "#", fmt.Sprintf("%#v", msg))
+	logTeaMsg(msg, "components.OptionList.Update")
 
 	switch msg := msg.(type) {
 	case jumpPositionMgs:
@@ -187,7 +188,7 @@ func (o *OptionList) View() string {
 		if isSel {
 			*padAmt -= 1
 		}
-		b.WriteString(o.style.SearchPromptStyle.Render(styles.PadFieldName(prefix, padAmt)))
+		b.WriteString(o.style.PromptStyle.Render(styles.PadFieldName(prefix, padAmt)))
 
 		var opts strings.Builder
 		optIdx := styles.IndexString(idx)
@@ -242,4 +243,14 @@ type OptionMsg struct {
 	SelIdx     int
 	PreviewIdx int
 	Done       bool
+}
+
+func logTeaMsg(msg tea.Msg, tag string) {
+	log := slog.With("method", tag)
+	switch msg.(type) {
+	case cursor.BlinkMsg, spinner.TickMsg:
+		break
+	default:
+		log.Debug("tea.Msg", "type", fmt.Sprintf("%T", msg), "value", msg, "#", fmt.Sprintf("%#v", msg))
+	}
 }

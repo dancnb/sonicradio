@@ -64,8 +64,9 @@ type Style struct {
 	// filter
 	filterPromptStyle lipgloss.Style
 
-	// search
-	SearchPromptStyle lipgloss.Style
+	// textInput
+	PromptStyle    lipgloss.Style
+	SelPromptStyle lipgloss.Style
 
 	// station info
 	InfoFieldNameStyle lipgloss.Style
@@ -157,7 +158,9 @@ func (s *Style) setTheme(t theme) {
 	s.filterPromptStyle = s.PrimaryColorStyle.Bold(true).MarginLeft(1)
 
 	// search
-	s.SearchPromptStyle = s.PrimaryColorStyle.Bold(true).MarginLeft(HeaderPadDist + TabGapDistance)
+	s.PromptStyle = s.PrimaryColorStyle.Bold(true).MarginLeft(HeaderPadDist + TabGapDistance)
+	s.SelPromptStyle = lipgloss.NewStyle().Background(s.basePrimaryColor).Foreground(s.invertedPrimaryColor).
+		Bold(true).MarginLeft(HeaderPadDist + TabGapDistance)
 
 	// station info
 	s.InfoFieldNameStyle = s.PrimaryColorStyle.Bold(false).MarginLeft(HeaderPadDist + TabGapDistance)
@@ -199,7 +202,7 @@ func (s *Style) NewInputModel(prompt, placeholder string,
 	input.Cursor.SetMode(cursor.CursorBlink)
 	prompt = PadFieldName(prompt, nil)
 	s.TextInputSyle(&input, prompt, placeholder)
-	input.PromptStyle = s.SearchPromptStyle
+	input.PromptStyle = s.PromptStyle
 	if prevSugg != nil {
 		input.KeyMap.NextSuggestion = *nextSugg
 	}
@@ -231,7 +234,7 @@ func NrInputValidator(s string) error {
 	return err
 }
 
-const MaxFieldLen = 26
+const MaxFieldLen = 30
 
 func PadFieldName(v string, padAmt *int) string {
 	amt := MaxFieldLen

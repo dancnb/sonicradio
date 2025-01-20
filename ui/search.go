@@ -307,7 +307,7 @@ func (s *searchModel) View() string {
 	b.WriteString(s.orderOptions.View())
 	b.WriteRune('\n')
 
-	b.WriteString(s.style.SearchPromptStyle.Render(styles.PadFieldName("Reverse       ", nil)))
+	b.WriteString(s.style.PromptStyle.Render(styles.PadFieldName("Reverse       ", nil)))
 	rev := "off"
 	if s.reverse {
 		rev = "on"

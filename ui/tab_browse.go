@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+
 	"github.com/dancnb/sonicradio/ui/styles"
 
 	"github.com/charmbracelet/bubbles/key"

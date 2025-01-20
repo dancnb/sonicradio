@@ -36,7 +36,7 @@ type settingsInputIdx byte
 
 const (
 	historySaveMaxIdx settingsInputIdx = iota
-	// themesIdx
+	themesIdx
 )
 
 func newSettingsTab(ctx context.Context, cfg *config.Value, s *styles.Style) *settingsTab {
@@ -46,10 +46,15 @@ func newSettingsTab(ctx context.Context, cfg *config.Value, s *styles.Style) *se
 	h.Styles = s.HelpStyles()
 
 	hystorySaveMax := s.NewInputModel("History max entries", "", nil, nil, nil, styles.NrInputValidator)
-	// themes := components.NewOptionList("Theme", []string{"theme1", "theme2", "theme3", "theme4"}, 0, s)
+	themes := components.NewOptionList("Theme",
+		[]string{
+			"theme1", "theme2", "theme3", "theme4",
+			"theme11", "theme12", "theme13", "theme14",
+			"theme21", "theme22", "theme23", "theme24",
+		}, 0, s)
 	inputs := []*components.FormElement{
 		components.NewFormElement(&hystorySaveMax, nil),
-		// components.NewFormElement(nil, &themes),
+		components.NewFormElement(nil, &themes),
 	}
 
 	return &settingsTab{
@@ -73,13 +78,14 @@ func (s *settingsTab) Init(m *Model) tea.Cmd {
 
 // onEnter: reads values from config file on tab enter
 func (s *settingsTab) onEnter() tea.Cmd {
+	slog.Debug("settingsTab.onEnter")
 	s.idx = 0
 	s.keymap.setEnable(true, s.help.ShowAll)
 
 	s.loadConfig()
-	//
-	// s.inputs[themesIdx].Blur()
+
 	return s.inputs[historySaveMaxIdx].Focus()
+	// return nil
 }
 
 func (s *settingsTab) loadConfig() {
@@ -87,6 +93,7 @@ func (s *settingsTab) loadConfig() {
 }
 
 func (s *settingsTab) onExit() {
+	slog.Debug("settingsTab.onExit")
 	s.keymap.setEnable(false, false)
 	go s.saveConfig()
 }
@@ -125,6 +132,17 @@ func (s *settingsTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		availableHeight := msg.Height - m.headerHeight
 		s.setSize(msg.Width, availableHeight)
 
+	case components.OptionMsg:
+		if msg.Done {
+			currInput := s.inputs[s.idx]
+			if !currInput.IsActive() {
+				s.keymap.setEnable(true, s.help.ShowAll)
+			}
+			// TODO: theme preview/select
+
+			return m, tea.Batch(cmds...)
+		}
+
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, s.keymap.quit):
@@ -138,6 +156,10 @@ func (s *settingsTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			s.keymap.closeFullHelp.SetEnabled(s.help.ShowAll)
 			return m, tea.Batch(cmds...)
 
+		case key.Matches(msg, s.keymap.search):
+			s.onExit()
+			m.toBrowseTab()
+			return m.tabs[browseTabIx].Update(m, msg)
 		case key.Matches(msg, s.keymap.nextTab, s.keymap.favoritesTab):
 			s.onExit()
 			m.toFavoritesTab()
@@ -151,14 +173,15 @@ func (s *settingsTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, s.keymap.nextInput):
 			s.idx++
 			s.idx = s.idx % settingsInputIdx(len(s.inputs))
-			cmds = s.updateInputs(cmds)
+			cmds = s.changeInput(cmds)
+			return m, tea.Batch(cmds...)
 		case key.Matches(msg, s.keymap.prevInput):
 			if s.idx == 0 {
 				s.idx = settingsInputIdx(len(s.inputs))
 			}
 			s.idx--
-			cmds = s.updateInputs(cmds)
-
+			cmds = s.changeInput(cmds)
+			return m, tea.Batch(cmds...)
 		}
 	}
 
@@ -172,7 +195,7 @@ func (s *settingsTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (s *settingsTab) updateInputs(cmds []tea.Cmd) []tea.Cmd {
+func (s *settingsTab) changeInput(cmds []tea.Cmd) []tea.Cmd {
 	for i := range s.inputs {
 		if i == int(s.idx) {
 			s.keymap.setEnable(s.inputs[i].Keymap() == nil, s.help.ShowAll)
@@ -192,17 +215,18 @@ func (s *settingsTab) View() string {
 		b.WriteRune('\n')
 		b.WriteRune('\n')
 	}
-	// b.WriteRune('\n')
 
 	// help
+	currInput := s.inputs[s.idx]
 	availHeight := s.height
-	elemKeymap := s.inputs[s.idx].Keymap()
+	var elemKeymap help.KeyMap
 	var help string
-	if elemKeymap == nil {
-		help = s.style.HelpStyle.Render(s.help.View(&s.keymap))
+	if currInput.Keymap() != nil && currInput.IsActive() {
+		elemKeymap = currInput.Keymap()
 	} else {
-		help = s.style.HelpStyle.Render(s.help.View(elemKeymap))
+		elemKeymap = &s.keymap
 	}
+	help = s.style.HelpStyle.Render(s.help.View(elemKeymap))
 	availHeight -= lipgloss.Height(help)
 
 	inputs := b.String()
@@ -216,6 +240,9 @@ func (s *settingsTab) View() string {
 type settingsKeymap struct {
 	nextInput     key.Binding
 	prevInput     key.Binding
+	focusInput    key.Binding
+	blurInput     key.Binding
+	search        key.Binding
 	nextTab       key.Binding
 	prevTab       key.Binding
 	favoritesTab  key.Binding
@@ -235,6 +262,14 @@ func newSettingsKeymap() settingsKeymap {
 		prevInput: key.NewBinding(
 			key.WithKeys("up", "ctrl+k"),
 			key.WithHelp("↑/ctrl+k", "prev input"),
+		),
+		focusInput: key.NewBinding(
+			key.WithKeys("enter"),
+			key.WithHelp("enter", "change setting"),
+		),
+		search: key.NewBinding(
+			key.WithKeys("s"),
+			key.WithHelp("s", "search"),
 		),
 		nextTab: key.NewBinding(
 			key.WithKeys("tab"),
@@ -290,13 +325,13 @@ func (k *settingsKeymap) setEnable(v bool, showAll bool) {
 }
 
 func (k *settingsKeymap) ShortHelp() []key.Binding {
-	return []key.Binding{k.prevInput, k.nextInput, k.quit, k.showFullHelp}
+	return []key.Binding{k.prevInput, k.nextInput, k.search, k.quit, k.showFullHelp}
 }
 
 func (k *settingsKeymap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.prevInput, k.nextInput},
-		{k.prevTab, k.nextTab, k.favoritesTab, k.browseTab, k.historyTab},
+		{k.search, k.prevTab, k.nextTab, k.favoritesTab, k.browseTab, k.historyTab},
 		{k.quit, k.closeFullHelp},
 	}
 }
