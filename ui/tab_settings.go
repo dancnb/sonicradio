@@ -182,15 +182,16 @@ func (s *settingsTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			s.idx--
 			cmds = s.changeInput(cmds)
 			return m, tea.Batch(cmds...)
+		case key.Matches(msg, s.keymap.setActiveInput):
+			s.keymap.setEnable(s.inputs[s.idx].Keymap() == nil, s.help.ShowAll)
+			s.inputs[s.idx].SetActive()
+			return m, tea.Batch(cmds...)
 		}
 	}
 
-	// update all fields: inputs, etc
-	for i := range s.inputs {
-		var cmd tea.Cmd
-		s.inputs[i], cmd = s.inputs[i].Update(msg)
-		cmds = append(cmds, cmd)
-	}
+	var cmd tea.Cmd
+	s.inputs[s.idx], cmd = s.inputs[s.idx].Update(msg)
+	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
 }
@@ -198,7 +199,6 @@ func (s *settingsTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 func (s *settingsTab) changeInput(cmds []tea.Cmd) []tea.Cmd {
 	for i := range s.inputs {
 		if i == int(s.idx) {
-			s.keymap.setEnable(s.inputs[i].Keymap() == nil, s.help.ShowAll)
 			cmds = append(cmds, s.inputs[i].Focus())
 			continue
 		}
@@ -238,34 +238,33 @@ func (s *settingsTab) View() string {
 }
 
 type settingsKeymap struct {
-	nextInput     key.Binding
-	prevInput     key.Binding
-	focusInput    key.Binding
-	blurInput     key.Binding
-	search        key.Binding
-	nextTab       key.Binding
-	prevTab       key.Binding
-	favoritesTab  key.Binding
-	browseTab     key.Binding
-	historyTab    key.Binding
-	showFullHelp  key.Binding
-	closeFullHelp key.Binding
-	quit          key.Binding
+	nextInput      key.Binding
+	prevInput      key.Binding
+	setActiveInput key.Binding
+	search         key.Binding // TODO: keep?
+	nextTab        key.Binding
+	prevTab        key.Binding
+	favoritesTab   key.Binding
+	browseTab      key.Binding
+	historyTab     key.Binding
+	showFullHelp   key.Binding
+	closeFullHelp  key.Binding
+	quit           key.Binding
 }
 
 func newSettingsKeymap() settingsKeymap {
 	return settingsKeymap{
 		nextInput: key.NewBinding(
-			key.WithKeys("down", "ctrl+j"),
-			key.WithHelp("↓/ctrl+j", "next input"),
+			key.WithKeys("down", "j"),
+			key.WithHelp("↓/j", "next setting"),
 		),
 		prevInput: key.NewBinding(
-			key.WithKeys("up", "ctrl+k"),
-			key.WithHelp("↑/ctrl+k", "prev input"),
+			key.WithKeys("up", "k"),
+			key.WithHelp("↑/k", "prev setting"),
 		),
-		focusInput: key.NewBinding(
-			key.WithKeys("enter"),
-			key.WithHelp("enter", "change setting"),
+		setActiveInput: key.NewBinding(
+			key.WithKeys(" ", "enter"),
+			key.WithHelp("enter/space", "change setting"),
 		),
 		search: key.NewBinding(
 			key.WithKeys("s"),
@@ -307,8 +306,11 @@ func newSettingsKeymap() settingsKeymap {
 }
 
 func (k *settingsKeymap) setEnable(v bool, showAll bool) {
+	slog.Debug(fmt.Sprintf(">>>>   sett keymap set setEnable %v", v))
+
 	k.nextInput.SetEnabled(v)
 	k.prevInput.SetEnabled(v)
+	k.setActiveInput.SetEnabled(v)
 	k.nextTab.SetEnabled(v)
 	k.prevTab.SetEnabled(v)
 	k.favoritesTab.SetEnabled(v)
@@ -325,12 +327,12 @@ func (k *settingsKeymap) setEnable(v bool, showAll bool) {
 }
 
 func (k *settingsKeymap) ShortHelp() []key.Binding {
-	return []key.Binding{k.prevInput, k.nextInput, k.search, k.quit, k.showFullHelp}
+	return []key.Binding{k.prevInput, k.nextInput, k.setActiveInput, k.search, k.quit, k.showFullHelp}
 }
 
 func (k *settingsKeymap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.prevInput, k.nextInput},
+		{k.prevInput, k.nextInput, k.setActiveInput},
 		{k.search, k.prevTab, k.nextTab, k.favoritesTab, k.browseTab, k.historyTab},
 		{k.quit, k.closeFullHelp},
 	}

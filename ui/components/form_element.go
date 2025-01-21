@@ -32,17 +32,40 @@ func (e *FormElement) Update(msg tea.Msg) (*FormElement, tea.Cmd) {
 	return e, cmd
 }
 
+// Focus:
+// - input:      1.Focus + 2.SetActive(noop)
+// - optionList: 1.Focus
 func (e *FormElement) Focus() tea.Cmd {
 	var cmd tea.Cmd
 	switch {
 	case e.input != nil:
 		cmd = e.input.Focus()
 	case e.optionList != nil:
-		if !e.optionList.IsActive() {
-			e.optionList.SetActive(true)
-		}
+		e.optionList.SetFocused(true)
 	}
 	return cmd
+}
+
+// SetActive:
+// - input:      noop
+// - optionList: 2.SetActive
+func (e *FormElement) SetActive() {
+	switch {
+	case e.input != nil:
+		break
+	case e.optionList != nil:
+		e.optionList.SetActive(true)
+	}
+}
+
+func (e *FormElement) IsActive() bool {
+	switch {
+	case e.input != nil:
+		return e.input.Focused()
+	case e.optionList != nil:
+		return e.optionList.IsActive()
+	}
+	return false
 }
 
 func (e *FormElement) Blur() {
@@ -50,9 +73,8 @@ func (e *FormElement) Blur() {
 	case e.input != nil:
 		e.input.Blur()
 	case e.optionList != nil:
-		if e.optionList.IsActive() {
-			e.optionList.SetActive(false)
-		}
+		e.optionList.SetActive(false)
+		e.optionList.SetFocused(false)
 	}
 }
 
@@ -65,16 +87,6 @@ func (e *FormElement) View() string {
 	}
 	return ""
 }
-
-// func (e *FormElement) checkSelected(isSel bool, s *styles.Style) {
-// 	if isSel {
-// 		e.input.PromptStyle = s.SelPromptStyle
-// 		// e.input.TextStyle = s.SelDescStyle
-// 	} else {
-// 		e.input.PromptStyle = s.PromptStyle
-// 		// e.input.TextStyle = s.PrimaryColorStyle
-// 	}
-// }
 
 func (e *FormElement) Value() string {
 	switch {
@@ -103,14 +115,4 @@ func (e *FormElement) Keymap() help.KeyMap {
 		return &e.optionList.Keymap
 	}
 	return nil
-}
-
-func (e *FormElement) IsActive() bool {
-	switch {
-	case e.input != nil:
-		return e.input.Focused()
-	case e.optionList != nil:
-		return e.optionList.IsActive()
-	}
-	return false
 }

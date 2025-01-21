@@ -38,13 +38,14 @@ type Style struct {
 	NoItemsStyle   lipgloss.Style
 
 	// station delegate
-	PrefixStyle            lipgloss.Style
-	NowPlayingPrefixStyle  lipgloss.Style
-	SelNowPlayingStyle     lipgloss.Style
-	SelNowPlayingDescStyle lipgloss.Style
-	SelItemStyle           lipgloss.Style
-	SelDescStyle           lipgloss.Style
-	SelectedBorderStyle    lipgloss.Style
+	PrefixStyle                 lipgloss.Style
+	NowPlayingPrefixStyle       lipgloss.Style
+	SelNowPlayingStyle          lipgloss.Style
+	SelNowPlayingDescStyle      lipgloss.Style
+	SelItemStyle                lipgloss.Style
+	SelDescStyle                lipgloss.Style
+	SelectedBorderStyle         lipgloss.Style
+	SelectedBorderStyleInactive lipgloss.Style
 
 	// header
 	SongTitleStyle lipgloss.Style
@@ -117,6 +118,7 @@ func (s *Style) setTheme(t theme) {
 	s.SelectedBorderStyle = lipgloss.NewStyle().
 		Border(lipgloss.BlockBorder(), false, false, false, true).
 		BorderForeground(s.basePrimaryColor)
+	s.SelectedBorderStyleInactive = lipgloss.NewStyle().Inherit(s.SelectedBorderStyle).BorderForeground(s.baseSecondaryColor)
 
 	// header
 	s.SongTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(s.baseSecondaryColor)

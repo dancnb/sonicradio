@@ -15,13 +15,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-const (
-	enterPrompt = "  >>>"
-	exitPrompt  = "  <<<"
-)
-
 type OptionList struct {
-	active bool
+	focused bool
+	active  bool
 
 	prompt string
 
@@ -92,8 +88,18 @@ func (o *OptionList) SetActive(v bool) {
 	o.Keymap.setEnable(v)
 }
 
+// IsActive: 1.focused + 2.active
 func (o *OptionList) IsActive() bool {
 	return o.active
+}
+
+func (o *OptionList) SetFocused(v bool) {
+	o.focused = v
+}
+
+// IsFocused: 1.focused
+func (o *OptionList) IsFocused() bool {
+	return o.focused
 }
 
 type jumpPositionMgs int
@@ -166,11 +172,11 @@ func (o *OptionList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (o *OptionList) View() string {
 	var b strings.Builder
 
-	prompt := o.prompt + enterPrompt
+	prompt := o.prompt
 	optStyle := o.style.SecondaryColorStyle
 	previewOptStyle := o.style.ActiveTabInner
 	if o.IsActive() {
-		prompt = o.prompt + exitPrompt
+		prompt = o.prompt
 		optStyle = o.style.PrimaryColorStyle
 		previewOptStyle = o.style.SelItemStyle
 	}
@@ -202,7 +208,11 @@ func (o *OptionList) View() string {
 		opts.WriteString(optName)
 		optName = opts.String()
 		if isSel {
-			optName = o.style.SelectedBorderStyle.Render(optName)
+			if o.focused {
+				optName = o.style.SelectedBorderStyle.Render(optName)
+			} else {
+				optName = o.style.SelectedBorderStyleInactive.Render(optName)
+			}
 		}
 		b.WriteString(optName)
 		b.WriteRune('\n')

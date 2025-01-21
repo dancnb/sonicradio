@@ -195,6 +195,7 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case components.OptionMsg:
 		if msg.Done {
+			s.orderOptions.SetFocused(false)
 			s.oIdx = orderIx(msg.SelIdx)
 			s.keymap.setEnable(true, s.help.ShowAll)
 			cmds = s.updateInputs(cmds)
@@ -206,6 +207,7 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, s.keymap.order):
 			if !s.orderOptions.IsActive() {
+				s.orderOptions.SetFocused(true)
 				s.orderOptions.SetActive(true)
 				s.keymap.setEnable(false, s.help.ShowAll)
 				cmds = append(cmds, s.updateInputs(cmds)...)
