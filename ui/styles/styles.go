@@ -254,12 +254,12 @@ func PadFieldName(v string, padAmt *int) string {
 const IndexStringPadAmt = 3
 
 func IndexString(index int) string {
-	prefix := fmt.Sprintf("%d. ", index+1)
-	if index+1 < 10 {
+	prefix := fmt.Sprintf("%d. ", index)
+	if index < 10 {
 		prefix = fmt.Sprintf("%s%s", strings.Repeat(" ", IndexStringPadAmt), prefix)
-	} else if index+1 < 100 {
+	} else if index < 100 {
 		prefix = fmt.Sprintf("%s%s", strings.Repeat(" ", IndexStringPadAmt-1), prefix)
-	} else if index+1 < 1000 {
+	} else if index < 1000 {
 		prefix = fmt.Sprintf("%s%s", strings.Repeat(" ", IndexStringPadAmt-2), prefix)
 	}
 	return prefix

@@ -47,11 +47,23 @@ func newSettingsTab(ctx context.Context, cfg *config.Value, s *styles.Style) *se
 
 	hystorySaveMax := s.NewInputModel("History max entries", "", nil, nil, nil, styles.NrInputValidator)
 	themes := components.NewOptionList("Theme",
-		[]string{
-			"theme1", "theme2", "theme3", "theme4",
-			"theme11", "theme12", "theme13", "theme14",
-			"theme21", "theme22", "theme23", "theme24",
-		}, 0, s)
+		[]components.OptionValue{
+			{Idx: 1, Name: "Votes            "},
+			{Idx: 2, Name: "Clicks           "},
+			{Idx: 3, Name: "Recent trends    "},
+			{Idx: 4, Name: "Bitrate          "},
+			{Idx: 5, Name: "Name             "},
+			{Idx: 6, Name: "Tags             "},
+			{Idx: 7, Name: "Country          "},
+			{Idx: 8, Name: "Language         "},
+			{Idx: 9, Name: "Codecs           "},
+			{Idx: 0, Name: "Random0           "},
+			{Idx: 20, Name: "Random20           "},
+			{Idx: 12, Name: "Random12           "},
+			{Idx: 15, Name: "Random15           "},
+		},
+
+		0, s)
 	inputs := []*components.FormElement{
 		components.NewFormElement(&hystorySaveMax, nil),
 		components.NewFormElement(nil, &themes),
@@ -155,10 +167,10 @@ func (s *settingsTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			s.keymap.closeFullHelp.SetEnabled(s.help.ShowAll)
 			return m, tea.Batch(cmds...)
 
-		case key.Matches(msg, s.keymap.search):
-			s.onExit()
-			m.toBrowseTab()
-			return m.tabs[browseTabIx].Update(m, msg)
+		// case key.Matches(msg, s.keymap.search):
+		// 	s.onExit()
+		// 	m.toBrowseTab()
+		// 	return m.tabs[browseTabIx].Update(m, msg)
 		case key.Matches(msg, s.keymap.nextTab, s.keymap.favoritesTab):
 			s.onExit()
 			m.toFavoritesTab()
@@ -240,7 +252,6 @@ type settingsKeymap struct {
 	nextInput      key.Binding
 	prevInput      key.Binding
 	setActiveInput key.Binding
-	search         key.Binding // TODO: keep?
 	nextTab        key.Binding
 	prevTab        key.Binding
 	favoritesTab   key.Binding
@@ -264,10 +275,6 @@ func newSettingsKeymap() settingsKeymap {
 		setActiveInput: key.NewBinding(
 			key.WithKeys(" ", "enter"),
 			key.WithHelp("enter/space", "change setting"),
-		),
-		search: key.NewBinding(
-			key.WithKeys("s"),
-			key.WithHelp("s", "search"),
 		),
 		nextTab: key.NewBinding(
 			key.WithKeys("tab"),
@@ -326,13 +333,13 @@ func (k *settingsKeymap) setEnable(v bool, showAll bool) {
 }
 
 func (k *settingsKeymap) ShortHelp() []key.Binding {
-	return []key.Binding{k.prevInput, k.nextInput, k.setActiveInput, k.search, k.quit, k.showFullHelp}
+	return []key.Binding{k.prevInput, k.nextInput, k.setActiveInput, k.quit, k.showFullHelp}
 }
 
 func (k *settingsKeymap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.prevInput, k.nextInput, k.setActiveInput},
-		{k.search, k.prevTab, k.nextTab, k.favoritesTab, k.browseTab, k.historyTab},
+		{k.prevTab, k.nextTab, k.favoritesTab, k.browseTab, k.historyTab},
 		{k.quit, k.closeFullHelp},
 	}
 }

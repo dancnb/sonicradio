@@ -83,17 +83,17 @@ var searchOrder = map[orderIx]browser.OrderBy{
 	orderRand:       browser.Random,
 }
 
-var orderView = []string{
-	"Votes            ",
-	"Clicks           ",
-	"Recent trends    ",
-	"Bitrate          ",
-	"Name             ",
-	"Tags             ",
-	"Country          ",
-	"Language         ",
-	"Codecs           ",
-	"Random           ",
+var orderView = []components.OptionValue{
+	{Idx: 1, Name: "Votes            "},
+	{Idx: 2, Name: "Clicks           "},
+	{Idx: 3, Name: "Recent trends    "},
+	{Idx: 4, Name: "Bitrate          "},
+	{Idx: 5, Name: "Name             "},
+	{Idx: 6, Name: "Tags             "},
+	{Idx: 7, Name: "Country          "},
+	{Idx: 8, Name: "Language         "},
+	{Idx: 9, Name: "Codecs           "},
+	{Idx: 0, Name: "Random           "},
 }
 
 func newSearchModel(ctx context.Context, browser *browser.Api, s *styles.Style) *searchModel {

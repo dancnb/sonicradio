@@ -205,7 +205,7 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 	var res strings.Builder
 	var str string
 
-	prefix := styles.IndexString(index)
+	prefix := styles.IndexString(index + 1)
 
 	listWidth := m.Width()
 	if isCurr || isPrev {

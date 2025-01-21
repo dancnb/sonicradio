@@ -21,7 +21,7 @@ type OptionList struct {
 
 	prompt string
 
-	options []string
+	options []OptionValue
 
 	idx        int
 	previewIdx int
@@ -32,7 +32,12 @@ type OptionList struct {
 	Keymap optionsKeymap
 }
 
-func NewOptionList(prompt string, options []string, idx int, s *styles.Style) OptionList {
+type OptionValue struct {
+	Idx  int
+	Name string
+}
+
+func NewOptionList(prompt string, options []OptionValue, idx int, s *styles.Style) OptionList {
 	k := optionsKeymap{
 		acceptKey: key.NewBinding(
 			key.WithKeys("enter"),
@@ -104,6 +109,15 @@ func (o *OptionList) IsFocused() bool {
 
 type jumpPositionMgs int
 
+func (o *OptionList) jumpPos2Idx(pos int) int {
+	for i := 0; i < len(o.options); i++ {
+		if o.options[i].Idx == pos {
+			return i
+		}
+	}
+	return -1
+}
+
 func (o *OptionList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	logTeaMsg(msg, "components.OptionList.Update")
 
@@ -121,7 +135,7 @@ func (o *OptionList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, o.Keymap.digitKeys...):
 			digit, _ := strconv.Atoi(msg.String())
 			pos := o.jump.NewPosition(digit)
-			newIdx := pos - 1
+			newIdx := o.jumpPos2Idx(pos)
 			if newIdx >= 0 && newIdx < len(o.options) {
 				o.idx = newIdx
 				o.previewIdx = newIdx
@@ -197,9 +211,9 @@ func (o *OptionList) View() string {
 		b.WriteString(o.style.PromptStyle.Render(styles.PadFieldName(prefix, padAmt)))
 
 		var opts strings.Builder
-		optIdx := styles.IndexString(idx)
+		optIdx := styles.IndexString(o.options[idx].Idx)
 		opts.WriteString(optStyle.Render(optIdx))
-		optName := o.options[idx]
+		optName := o.options[idx].Name
 		if isPreview {
 			optName = previewOptStyle.Render(optName)
 		} else {
