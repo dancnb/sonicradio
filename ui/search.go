@@ -110,12 +110,14 @@ func newSearchModel(ctx context.Context, browser *browser.Api, s *styles.Style) 
 	h.ShortSeparator = "   "
 	h.Styles = s.HelpStyles()
 
+	orderOpts := components.NewOptionList("Order by", orderView, 0, s)
+	orderOpts.SetQuick(true)
 	sm := &searchModel{
 		browser:      browser,
 		keymap:       k,
 		help:         h,
 		inputs:       inputs,
-		orderOptions: components.NewOptionList("Order by", orderView, 0, s),
+		orderOptions: orderOpts,
 		style:        s,
 	}
 	go sm.getSuggestions(ctx)

@@ -18,11 +18,11 @@ import (
 type OptionList struct {
 	focused bool
 	active  bool
+	quick   bool
 
 	prompt string
 
-	options []OptionValue
-
+	options    []OptionValue
 	idx        int
 	previewIdx int
 	jump       JumpInfo
@@ -37,7 +37,7 @@ type OptionValue struct {
 	Name string
 }
 
-func NewOptionList(prompt string, options []OptionValue, idx int, s *styles.Style) OptionList {
+func NewOptionList(prompt string, options []OptionValue, startIdx int, s *styles.Style) OptionList {
 	k := optionsKeymap{
 		acceptKey: key.NewBinding(
 			key.WithKeys("enter"),
@@ -68,8 +68,8 @@ func NewOptionList(prompt string, options []OptionValue, idx int, s *styles.Styl
 	o := OptionList{
 		prompt:     prompt,
 		options:    options,
-		idx:        idx,
-		previewIdx: idx,
+		idx:        startIdx,
+		previewIdx: startIdx,
 		style:      s,
 		Keymap:     k,
 	}
@@ -107,6 +107,10 @@ func (o *OptionList) IsFocused() bool {
 	return o.focused
 }
 
+func (o *OptionList) SetQuick(v bool) {
+	o.quick = v
+}
+
 type jumpPositionMgs int
 
 func (o *OptionList) jumpPos2Idx(pos int) int {
@@ -139,6 +143,12 @@ func (o *OptionList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if newIdx >= 0 && newIdx < len(o.options) {
 				o.idx = newIdx
 				o.previewIdx = newIdx
+			}
+			if o.quick {
+				o.SetActive(false)
+				return o, func() tea.Msg {
+					return OptionMsg{SelIdx: o.idx, PreviewIdx: o.previewIdx, Done: true}
+				}
 			}
 			return o, tea.Batch(
 				func() tea.Msg {
