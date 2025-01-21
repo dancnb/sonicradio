@@ -64,9 +64,12 @@ func newSettingsTab(ctx context.Context, cfg *config.Value, s *styles.Style) *se
 		},
 
 		0, s)
+	dummy := s.NewInputModel("Dummy Input", "", nil, nil, nil, nil)
+	dummy.SetValue("dummy value")
 	inputs := []*components.FormElement{
 		components.NewFormElement(&hystorySaveMax, nil),
 		components.NewFormElement(nil, &themes),
+		components.NewFormElement(&dummy, nil),
 	}
 
 	return &settingsTab{
@@ -273,8 +276,8 @@ func newSettingsKeymap() settingsKeymap {
 			key.WithHelp("↑/k", "prev setting"),
 		),
 		setActiveInput: key.NewBinding(
-			key.WithKeys(" ", "enter"),
-			key.WithHelp("enter/space", "change setting"),
+			key.WithKeys("enter"),
+			key.WithHelp("enter", "change setting"),
 		),
 		nextTab: key.NewBinding(
 			key.WithKeys("tab"),
@@ -312,8 +315,6 @@ func newSettingsKeymap() settingsKeymap {
 }
 
 func (k *settingsKeymap) setEnable(v bool, showAll bool) {
-	slog.Debug(fmt.Sprintf(">>>>   sett keymap set setEnable %v", v))
-
 	k.nextInput.SetEnabled(v)
 	k.prevInput.SetEnabled(v)
 	k.setActiveInput.SetEnabled(v)

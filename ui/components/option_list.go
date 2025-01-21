@@ -186,11 +186,9 @@ func (o *OptionList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (o *OptionList) View() string {
 	var b strings.Builder
 
-	prompt := o.prompt
 	optStyle := o.style.SecondaryColorStyle
 	previewOptStyle := o.style.ActiveTabInner
 	if o.IsActive() {
-		prompt = o.prompt
 		optStyle = o.style.PrimaryColorStyle
 		previewOptStyle = o.style.SelItemStyle
 	}
@@ -201,32 +199,28 @@ func (o *OptionList) View() string {
 
 		prefix := ""
 		if idx == 0 {
-			prefix = prompt
+			prefix = o.prompt
 		}
 		v := styles.MaxFieldLen - styles.IndexStringPadAmt
 		padAmt := &v
-		if isSel {
+		if isSel && o.IsFocused() {
 			*padAmt -= 1
 		}
 		b.WriteString(o.style.PromptStyle.Render(styles.PadFieldName(prefix, padAmt)))
 
-		var opts strings.Builder
+		var optS strings.Builder
 		optIdx := styles.IndexString(o.options[idx].Idx)
-		opts.WriteString(optStyle.Render(optIdx))
+		optS.WriteString(optStyle.Render(optIdx))
 		optName := o.options[idx].Name
 		if isPreview {
 			optName = previewOptStyle.Render(optName)
 		} else {
 			optName = optStyle.Render(optName)
 		}
-		opts.WriteString(optName)
-		optName = opts.String()
-		if isSel {
-			if o.focused {
-				optName = o.style.SelectedBorderStyle.Render(optName)
-			} else {
-				optName = o.style.SelectedBorderStyleInactive.Render(optName)
-			}
+		optS.WriteString(optName)
+		optName = optS.String()
+		if isSel && (o.IsActive() || o.IsFocused()) {
+			optName = o.style.SelectedBorderStyle.Render(optName)
 		}
 		b.WriteString(optName)
 		b.WriteRune('\n')
