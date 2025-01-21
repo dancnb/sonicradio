@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log/slog"
 	"slices"
 	"strings"
 	"unicode/utf8"
@@ -108,7 +107,6 @@ func (t *historyTab) setEntries(entries []config.HistoryEntry) tea.Cmd {
 		t.viewMsg = emptyHistoryMsg
 	}
 	t.list.Select(0)
-	slog.Debug("setEntries", "len", len(t.list.Items()), "index", t.list.Index())
 	return cmd
 }
 

@@ -71,7 +71,6 @@ func (s *settingsTab) Init(m *Model) tea.Cmd {
 
 	showAll := false
 	s.help.ShowAll = showAll
-	s.keymap.setEnable(true, showAll)
 
 	return nil
 }
