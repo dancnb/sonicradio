@@ -79,7 +79,7 @@ type Style struct {
 }
 
 func NewStyle(themeIdx int) *Style {
-	t := themes[themeIdx%len(themes)]
+	t := Themes[themeIdx%len(Themes)]
 	u := Style{
 		DocStyle: lipgloss.NewStyle().
 			Padding(1, HeaderPadDist, 0, HeaderPadDist),
@@ -90,15 +90,15 @@ func NewStyle(themeIdx int) *Style {
 			Border(lipgloss.HiddenBorder(), true).
 			Padding(0, 0).Margin(0),
 	}
-	u.setTheme(t)
+	u.SetTheme(t)
 	return &u
 }
 
-func (s *Style) setTheme(t theme) {
-	s.basePrimaryColor = lipgloss.AdaptiveColor{Light: t.light.primaryColor, Dark: t.dark.primaryColor}
-	s.baseSecondaryColor = lipgloss.AdaptiveColor{Light: t.light.secondaryColor, Dark: t.dark.secondaryColor}
-	s.invertedPrimaryColor = lipgloss.AdaptiveColor{Light: t.light.invertedPrimaryColor, Dark: t.dark.invertedPrimaryColor}
-	s.invertedSecondaryColor = lipgloss.AdaptiveColor{Light: t.light.invertedSecondaryColor, Dark: t.dark.invertedSecondaryColor}
+func (s *Style) SetTheme(t Theme) {
+	s.basePrimaryColor = lipgloss.AdaptiveColor{Light: t.Light.primaryColor, Dark: t.Dark.primaryColor}
+	s.baseSecondaryColor = lipgloss.AdaptiveColor{Light: t.Light.secondaryColor, Dark: t.Dark.secondaryColor}
+	s.invertedPrimaryColor = lipgloss.AdaptiveColor{Light: t.Light.invertedPrimaryColor, Dark: t.Dark.invertedPrimaryColor}
+	s.invertedSecondaryColor = lipgloss.AdaptiveColor{Light: t.Light.invertedSecondaryColor, Dark: t.Dark.invertedSecondaryColor}
 
 	s.PrimaryColorStyle = lipgloss.NewStyle().Foreground(s.basePrimaryColor)
 	s.SecondaryColorStyle = lipgloss.NewStyle().Foreground(s.baseSecondaryColor)

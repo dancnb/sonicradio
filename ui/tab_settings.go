@@ -45,37 +45,19 @@ func newSettingsTab(ctx context.Context, cfg *config.Value, s *styles.Style) *se
 	h.ShortSeparator = "   "
 	h.Styles = s.HelpStyles()
 
-	hystorySaveMax := s.NewInputModel("History max entries", "", nil, nil, nil, styles.NrInputValidator)
-	themes := components.NewOptionList("Theme",
-		[]components.OptionValue{
-			{Idx: 1, Name: "Votes            "},
-			{Idx: 2, Name: "Clicks           "},
-			{Idx: 3, Name: "Recent trends    "},
-			{Idx: 4, Name: "Bitrate          "},
-			{Idx: 5, Name: "Name             "},
-			{Idx: 6, Name: "Tags             "},
-			{Idx: 7, Name: "Country          "},
-			{Idx: 8, Name: "Language         "},
-			{Idx: 9, Name: "Codecs           "},
-			{Idx: 0, Name: "Random0           "},
-			{Idx: 20, Name: "Random20           "},
-			{Idx: 12, Name: "Random12           "},
-			{Idx: 15, Name: "Random15           "},
-		},
-
-		0, s)
-	dummy := s.NewInputModel("Dummy Input", "", nil, nil, nil, nil)
-	dummy.SetValue("dummy value")
-	inputs := []*components.FormElement{
-		components.NewFormElement(&hystorySaveMax, nil),
-		components.NewFormElement(nil, &themes),
-		components.NewFormElement(&dummy, nil),
+	historySaveMax := s.NewInputModel("History max entries", "", nil, nil, nil, styles.NrInputValidator)
+	themeOpts := make([]components.OptionValue, len(styles.Themes))
+	for i := range styles.Themes {
+		themeOpts[i] = components.OptionValue{Idx: i + 1, Name: styles.Themes[i].Name}
 	}
-
+	themesOptList := components.NewOptionList("Theme", themeOpts, cfg.Theme, s)
 	return &settingsTab{
-		cfg:    cfg,
-		style:  s,
-		inputs: inputs,
+		cfg:   cfg,
+		style: s,
+		inputs: []*components.FormElement{
+			components.NewFormElement(components.WithTextInput(&historySaveMax)),
+			components.NewFormElement(components.WithOptionList(&themesOptList)),
+		},
 		keymap: newSettingsKeymap(),
 		help:   h,
 	}

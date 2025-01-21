@@ -11,8 +11,26 @@ type FormElement struct {
 	optionList *OptionList
 }
 
-func NewFormElement(input *textinput.Model, options *OptionList) *FormElement {
-	return &FormElement{input, options}
+type FormElementOpt func(f *FormElement)
+
+func WithTextInput(i *textinput.Model) FormElementOpt {
+	return func(f *FormElement) {
+		f.input = i
+	}
+}
+
+func WithOptionList(o *OptionList) FormElementOpt {
+	return func(f *FormElement) {
+		f.optionList = o
+	}
+}
+
+func NewFormElement(opts ...FormElementOpt) *FormElement {
+	f := &FormElement{}
+	for _, opt := range opts {
+		opt(f)
+	}
+	return f
 }
 
 func (e *FormElement) Update(msg tea.Msg) (*FormElement, tea.Cmd) {
