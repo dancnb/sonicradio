@@ -62,20 +62,20 @@ func newModel(ctx context.Context, cfg *config.Value, b *browser.Api, p *player.
 
 	infoModel := newInfoModel(b, style)
 	m := Model{
-		cfg:      cfg,
-		style:    style,
-		browser:  b,
-		player:   p,
-		delegate: delegate,
-		tabs: []uiTab{
-			newFavoritesTab(infoModel, style),
-			newBrowseTab(ctx, b, infoModel, style),
-			newHistoryTab(ctx, cfg, style),
-			newSettingsTab(ctx, cfg, style),
-		},
+		cfg:          cfg,
+		style:        style,
+		browser:      b,
+		player:       p,
+		delegate:     delegate,
 		statusUpdate: make(chan struct{}),
 
 		volumeBar: getVolumeBar(style.GetSecondColor()),
+	}
+	m.tabs = []uiTab{
+		newFavoritesTab(infoModel, style),
+		newBrowseTab(ctx, b, infoModel, style),
+		newHistoryTab(ctx, cfg, style),
+		newSettingsTab(ctx, cfg, style, m.changeTheme),
 	}
 
 	if len(cfg.Favorites) > 0 {
@@ -88,7 +88,6 @@ func newModel(ctx context.Context, cfg *config.Value, b *browser.Api, p *player.
 	return &m
 }
 
-// TODO: update on theme change
 func getVolumeBar(secondColor string) progress.Model {
 	b := progress.New([]progress.Option{
 		progress.WithWidth(10),
@@ -258,13 +257,23 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.volumeCmd(true)
 		}
 		if key.Matches(msg, d.keymap.seekBack) {
+			if m.activeTabIdx == settingsTabIx {
+				return m.tabs[settingsTabIx].Update(m, msg)
+			}
 			return m, m.seekCmd(-seekStepSec)
 		}
 		if key.Matches(msg, d.keymap.seekFw) {
+			if m.activeTabIdx == settingsTabIx {
+				return m.tabs[settingsTabIx].Update(m, msg)
+			}
 			return m, m.seekCmd(seekStepSec)
 		}
 
 		if key.Matches(msg, d.keymap.pause) {
+			if m.activeTabIdx == settingsTabIx {
+				return m.tabs[settingsTabIx].Update(m, msg)
+			}
+
 			if d.currPlaying != nil {
 				return m, d.pauseCmd()
 			} else if d.prevPlaying != nil {
@@ -274,7 +283,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				activeTab, ok := activeTab.(stationTab)
 				if !ok {
 					break
-					// TODO handle pause key for other tabs if necessary
 				}
 				selStation, ok := activeTab.Stations().list.SelectedItem().(browser.Station)
 				if ok {
@@ -290,10 +298,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if key.Matches(msg, d.keymap.playSelected) {
+			if m.activeTabIdx == settingsTabIx {
+				return m.tabs[settingsTabIx].Update(m, msg)
+			}
+
 			activeTab, ok := activeTab.(stationTab)
 			if !ok {
 				break
-				// TODO handle enter for other tabs if necessary
 			}
 			selStation, ok := activeTab.Stations().list.SelectedItem().(browser.Station)
 			if ok {
@@ -537,6 +548,50 @@ func (m Model) View() string {
 	tabView := m.tabs[m.activeTabIdx].View()
 	doc.WriteString(tabView)
 	return m.style.DocStyle.Render(doc.String())
+}
+
+func (m *Model) changeTheme(themeIdx int) {
+	m.style.SetThemeIdx(themeIdx)
+	m.cfg.Theme = themeIdx
+	if m.spinner != nil {
+		m.spinner.Style = m.style.SongTitleStyle
+	}
+	m.volumeBar.FullColor = m.style.GetSecondColor()
+	m.volumeBar.EmptyColor = m.style.GetSecondColor()
+
+	helpStyle := m.style.HelpStyles()
+	for i := range m.tabs {
+		if t, ok := m.tabs[i].(stationTab); ok {
+			m.style.TextInputSyle(&t.Stations().list.FilterInput, stationsFilterPrompt, stationsFilterPlaceholder)
+			t.Stations().list.Help.Styles = helpStyle
+			t.Stations().list.Styles.HelpStyle = m.style.HelpStyle
+
+			if browse, ok := t.(*browseTab); ok {
+				for iIdx := range browse.searchModel.inputs {
+					input := &browse.searchModel.inputs[iIdx]
+					m.style.TextInputSyle(input, input.Prompt, input.Placeholder)
+					input.PromptStyle = m.style.PromptStyle
+				}
+				browse.searchModel.help.Styles = helpStyle
+			}
+
+		} else if ht, ok := m.tabs[i].(*historyTab); ok {
+			m.style.TextInputSyle(&ht.list.FilterInput, stationsFilterPrompt, historyFilterPlaceholder)
+			ht.list.Help.Styles = helpStyle
+			ht.list.Styles.HelpStyle = m.style.HelpStyle
+
+		} else if st, ok := m.tabs[i].(*settingsTab); ok {
+			for iIdx := range st.inputs {
+				if st.inputs[iIdx] == nil || st.inputs[iIdx].TextInput() == nil {
+					continue
+				}
+				input := st.inputs[iIdx].TextInput()
+				m.style.TextInputSyle(input, input.Prompt, input.Placeholder)
+				input.PromptStyle = m.style.PromptStyle
+			}
+			st.help.Styles = helpStyle
+		}
+	}
 }
 
 func trapSignal(p *tea.Program) {

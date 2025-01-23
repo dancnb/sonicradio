@@ -18,7 +18,8 @@ import (
 )
 
 const (
-	emptyHistoryMsg = "  No playback history available. \n"
+	emptyHistoryMsg          = "  No playback history available. \n"
+	historyFilterPlaceholder = "station name or song"
 )
 
 type historyTab struct {
@@ -173,7 +174,7 @@ func (t *historyTab) createList(width int, height int) {
 		}
 	}
 
-	t.style.TextInputSyle(&l.FilterInput, "Filter:       ", "station name or song")
+	t.style.TextInputSyle(&l.FilterInput, stationsFilterPrompt, historyFilterPlaceholder)
 
 	t.list = l
 }

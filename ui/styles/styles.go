@@ -23,6 +23,8 @@ const (
 )
 
 type Style struct {
+	theme string
+
 	basePrimaryColor       lipgloss.AdaptiveColor
 	baseSecondaryColor     lipgloss.AdaptiveColor
 	invertedPrimaryColor   lipgloss.AdaptiveColor
@@ -90,11 +92,20 @@ func NewStyle(themeIdx int) *Style {
 			Border(lipgloss.HiddenBorder(), true).
 			Padding(0, 0).Margin(0),
 	}
-	u.SetTheme(t)
+	u.setTheme(t)
 	return &u
 }
 
-func (s *Style) SetTheme(t Theme) {
+func (s *Style) SetThemeIdx(themeIdx int) {
+	t := Themes[themeIdx%len(Themes)]
+	if s.theme == t.Name {
+		return
+	}
+	s.setTheme(t)
+}
+
+func (s *Style) setTheme(t Theme) {
+	s.theme = t.Name
 	s.basePrimaryColor = lipgloss.AdaptiveColor{Light: t.Light.primaryColor, Dark: t.Dark.primaryColor}
 	s.baseSecondaryColor = lipgloss.AdaptiveColor{Light: t.Light.secondaryColor, Dark: t.Dark.secondaryColor}
 	s.invertedPrimaryColor = lipgloss.AdaptiveColor{Light: t.Light.invertedPrimaryColor, Dark: t.Dark.invertedPrimaryColor}
@@ -156,11 +167,13 @@ func (s *Style) SetTheme(t Theme) {
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(s.basePrimaryColor)
 
+	prompyStyleBase := s.PrimaryColorStyle.Bold(true)
+
 	// filter
-	s.filterPromptStyle = s.PrimaryColorStyle.Bold(true).MarginLeft(1)
+	s.filterPromptStyle = prompyStyleBase.MarginLeft(TabGapDistance)
 
 	// search
-	s.PromptStyle = s.PrimaryColorStyle.Bold(true).MarginLeft(HeaderPadDist + TabGapDistance)
+	s.PromptStyle = prompyStyleBase.MarginLeft(HeaderPadDist + TabGapDistance)
 	s.SelPromptStyle = lipgloss.NewStyle().Background(s.basePrimaryColor).Foreground(s.invertedPrimaryColor).
 		Bold(true).MarginLeft(HeaderPadDist + TabGapDistance)
 
@@ -194,7 +207,8 @@ func (s *Style) HelpStyles() help.Styles {
 	}
 }
 
-func (s *Style) NewInputModel(prompt, placeholder string,
+func (s *Style) NewInputModel(
+	prompt, placeholder string,
 	prevSugg *key.Binding,
 	nextSugg *key.Binding,
 	acceptSugg *key.Binding,

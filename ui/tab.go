@@ -13,6 +13,11 @@ import (
 	"github.com/dancnb/sonicradio/browser"
 )
 
+const (
+	stationsFilterPrompt      = "Filter:       "
+	stationsFilterPlaceholder = "station name"
+)
+
 type uiTabIndex uint8
 
 func (t uiTabIndex) String() string {
@@ -181,6 +186,6 @@ func createList(delegate *stationDelegate, width int, height int) list.Model {
 	l.Help.Styles = delegate.style.HelpStyles()
 	l.Styles.HelpStyle = delegate.style.HelpStyle
 
-	delegate.style.TextInputSyle(&l.FilterInput, "Filter:       ", "station name")
+	delegate.style.TextInputSyle(&l.FilterInput, stationsFilterPrompt, stationsFilterPlaceholder)
 	return l
 }

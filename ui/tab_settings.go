@@ -39,7 +39,7 @@ const (
 	themesIdx
 )
 
-func newSettingsTab(ctx context.Context, cfg *config.Value, s *styles.Style) *settingsTab {
+func newSettingsTab(ctx context.Context, cfg *config.Value, s *styles.Style, changeThemeFn func(int)) *settingsTab {
 	h := help.New()
 	h.ShowAll = false
 	h.ShortSeparator = "   "
@@ -50,16 +50,25 @@ func newSettingsTab(ctx context.Context, cfg *config.Value, s *styles.Style) *se
 	for i := range styles.Themes {
 		themeOpts[i] = components.OptionValue{Idx: i + 1, Name: styles.Themes[i].Name}
 	}
-	themesOptList := components.NewOptionList("Theme", themeOpts, cfg.Theme, s)
+	themeList := components.NewOptionList("Theme", themeOpts, cfg.Theme, s)
+	themeList.PartialCallbackFn = changeThemeFn
+	themeList.DoneCallbackFn = changeThemeFn
 	return &settingsTab{
 		cfg:   cfg,
 		style: s,
 		inputs: []*components.FormElement{
 			components.NewFormElement(components.WithTextInput(&historySaveMax)),
-			components.NewFormElement(components.WithOptionList(&themesOptList)),
+			components.NewFormElement(components.WithOptionList(&themeList)),
 		},
 		keymap: newSettingsKeymap(),
 		help:   h,
+	}
+}
+
+func changeTheme(cfg *config.Value, s *styles.Style) func(int) {
+	return func(idx int) {
+		s.SetThemeIdx(idx)
+		cfg.Theme = idx
 	}
 }
 
@@ -90,6 +99,7 @@ func (s *settingsTab) loadConfig() {
 
 func (s *settingsTab) onExit() {
 	slog.Debug("settingsTab.onExit")
+	s.inputs[themesIdx].Blur()
 	s.keymap.setEnable(false, false)
 	go s.saveConfig()
 }
@@ -129,15 +139,20 @@ func (s *settingsTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		s.setSize(msg.Width, availableHeight)
 
 	case components.OptionMsg:
+		var idx int
 		if msg.Done {
+			idx = msg.SelIdx
 			currInput := s.inputs[s.idx]
 			if !currInput.IsActive() {
 				s.keymap.setEnable(true, s.help.ShowAll)
 			}
-			// TODO: theme preview/select
-
-			return m, tea.Batch(cmds...)
+		} else {
+			idx = msg.PreviewIdx
 		}
+		if msg.CallbackFn != nil {
+			msg.CallbackFn(idx)
+		}
+		return m, tea.Batch(cmds...)
 
 	case tea.KeyMsg:
 		switch {
@@ -178,7 +193,7 @@ func (s *settingsTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			s.idx--
 			cmds = s.changeInput(cmds)
 			return m, tea.Batch(cmds...)
-		case key.Matches(msg, s.keymap.setActiveInput):
+		case key.Matches(msg, s.keymap.enterInput):
 			s.keymap.setEnable(s.inputs[s.idx].Keymap() == nil, s.help.ShowAll)
 			s.inputs[s.idx].SetActive()
 			return m, tea.Batch(cmds...)
@@ -234,17 +249,17 @@ func (s *settingsTab) View() string {
 }
 
 type settingsKeymap struct {
-	nextInput      key.Binding
-	prevInput      key.Binding
-	setActiveInput key.Binding
-	nextTab        key.Binding
-	prevTab        key.Binding
-	favoritesTab   key.Binding
-	browseTab      key.Binding
-	historyTab     key.Binding
-	showFullHelp   key.Binding
-	closeFullHelp  key.Binding
-	quit           key.Binding
+	nextInput     key.Binding
+	prevInput     key.Binding
+	enterInput    key.Binding
+	nextTab       key.Binding
+	prevTab       key.Binding
+	favoritesTab  key.Binding
+	browseTab     key.Binding
+	historyTab    key.Binding
+	showFullHelp  key.Binding
+	closeFullHelp key.Binding
+	quit          key.Binding
 }
 
 func newSettingsKeymap() settingsKeymap {
@@ -257,9 +272,9 @@ func newSettingsKeymap() settingsKeymap {
 			key.WithKeys("up", "k"),
 			key.WithHelp("↑/k", "prev setting"),
 		),
-		setActiveInput: key.NewBinding(
-			key.WithKeys("enter"),
-			key.WithHelp("enter", "change setting"),
+		enterInput: key.NewBinding(
+			key.WithKeys("enter", " "),
+			key.WithHelp("space/enter", "change setting"),
 		),
 		nextTab: key.NewBinding(
 			key.WithKeys("tab"),
@@ -299,7 +314,7 @@ func newSettingsKeymap() settingsKeymap {
 func (k *settingsKeymap) setEnable(v bool, showAll bool) {
 	k.nextInput.SetEnabled(v)
 	k.prevInput.SetEnabled(v)
-	k.setActiveInput.SetEnabled(v)
+	k.enterInput.SetEnabled(v)
 	k.nextTab.SetEnabled(v)
 	k.prevTab.SetEnabled(v)
 	k.favoritesTab.SetEnabled(v)
@@ -316,12 +331,12 @@ func (k *settingsKeymap) setEnable(v bool, showAll bool) {
 }
 
 func (k *settingsKeymap) ShortHelp() []key.Binding {
-	return []key.Binding{k.prevInput, k.nextInput, k.setActiveInput, k.quit, k.showFullHelp}
+	return []key.Binding{k.prevInput, k.nextInput, k.enterInput, k.quit, k.showFullHelp}
 }
 
 func (k *settingsKeymap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.prevInput, k.nextInput, k.setActiveInput},
+		{k.prevInput, k.nextInput, k.enterInput},
 		{k.prevTab, k.nextTab, k.favoritesTab, k.browseTab, k.historyTab},
 		{k.quit, k.closeFullHelp},
 	}

@@ -29,6 +29,9 @@ type OptionList struct {
 
 	style *styles.Style
 
+	PartialCallbackFn func(int)
+	DoneCallbackFn    func(int)
+
 	Keymap optionsKeymap
 }
 
@@ -40,8 +43,8 @@ type OptionValue struct {
 func NewOptionList(prompt string, options []OptionValue, startIdx int, s *styles.Style) OptionList {
 	k := optionsKeymap{
 		acceptKey: key.NewBinding(
-			key.WithKeys("enter"),
-			key.WithHelp("enter", "accept"),
+			key.WithKeys("enter", " "),
+			key.WithHelp("space/enter", "accept"),
 		),
 		closeKey: key.NewBinding(
 			key.WithKeys("esc"),
@@ -130,7 +133,7 @@ func (o *OptionList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg := int(msg); msg == o.jump.LastPosition() && o.idx == o.previewIdx {
 			o.SetActive(false)
 			return o, func() tea.Msg {
-				return OptionMsg{SelIdx: o.idx, PreviewIdx: o.previewIdx, Done: true}
+				return OptionMsg{SelIdx: o.idx, PreviewIdx: o.previewIdx, Done: true, CallbackFn: o.DoneCallbackFn}
 			}
 		}
 
@@ -147,7 +150,7 @@ func (o *OptionList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if o.quick {
 				o.SetActive(false)
 				return o, func() tea.Msg {
-					return OptionMsg{SelIdx: o.idx, PreviewIdx: o.previewIdx, Done: true}
+					return OptionMsg{SelIdx: o.idx, PreviewIdx: o.previewIdx, Done: true, CallbackFn: o.DoneCallbackFn}
 				}
 			}
 			return o, tea.Batch(
@@ -163,7 +166,7 @@ func (o *OptionList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			newIdx := (o.previewIdx + 1) % len(o.options)
 			o.previewIdx = newIdx
 			return o, func() tea.Msg {
-				return OptionMsg{SelIdx: o.idx, PreviewIdx: o.previewIdx, Done: false}
+				return OptionMsg{SelIdx: o.idx, PreviewIdx: o.previewIdx, Done: false, CallbackFn: o.PartialCallbackFn}
 			}
 		case key.Matches(msg, o.Keymap.prev):
 			newIdx := o.previewIdx - 1
@@ -172,20 +175,20 @@ func (o *OptionList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			o.previewIdx = newIdx
 			return o, func() tea.Msg {
-				return OptionMsg{SelIdx: o.idx, PreviewIdx: o.previewIdx, Done: false}
+				return OptionMsg{SelIdx: o.idx, PreviewIdx: o.previewIdx, Done: false, CallbackFn: o.PartialCallbackFn}
 			}
 
 		case key.Matches(msg, o.Keymap.acceptKey):
 			o.idx = o.previewIdx
 			o.SetActive(false)
 			return o, func() tea.Msg {
-				return OptionMsg{SelIdx: o.idx, PreviewIdx: o.previewIdx, Done: true}
+				return OptionMsg{SelIdx: o.idx, PreviewIdx: o.previewIdx, Done: true, CallbackFn: o.DoneCallbackFn}
 			}
 		case key.Matches(msg, o.Keymap.closeKey):
 			o.previewIdx = o.idx
 			o.SetActive(false)
 			return o, func() tea.Msg {
-				return OptionMsg{SelIdx: o.idx, PreviewIdx: o.previewIdx, Done: true}
+				return OptionMsg{SelIdx: o.idx, PreviewIdx: o.previewIdx, Done: true, CallbackFn: o.DoneCallbackFn}
 			}
 		}
 	}
@@ -271,6 +274,7 @@ type OptionMsg struct {
 	SelIdx     int
 	PreviewIdx int
 	Done       bool
+	CallbackFn func(int)
 }
 
 func logTeaMsg(msg tea.Msg, tag string) {

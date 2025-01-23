@@ -33,6 +33,10 @@ func NewFormElement(opts ...FormElementOpt) *FormElement {
 	return f
 }
 
+func (e *FormElement) TextInput() *textinput.Model {
+	return e.input
+}
+
 func (e *FormElement) Update(msg tea.Msg) (*FormElement, tea.Cmd) {
 	logTeaMsg(msg, "components.FormElement.Update")
 
