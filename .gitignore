@@ -21,4 +21,5 @@
 go.work
 __*
 sonicradio
-.idea/*
+.idea/*# Added by goreleaser init:
+dist/
