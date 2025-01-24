@@ -42,6 +42,8 @@ type Value struct {
 	HistorySaveMax *int                `json:"historySaveMax,omitempty"`
 	HistoryChan    chan []HistoryEntry `json:"-"`
 
+	AutoplayFavorite string `json:"autoplayFavorite"`
+
 	IsRunning bool `json:"isRunning"`
 
 	saveMtx *sync.Mutex
@@ -62,6 +64,7 @@ func (v *Value) IsFavorite(uuid string) bool {
 	return slices.Contains(v.Favorites, uuid)
 }
 
+// ToggleFavorite return true if uuid was added, false if it was removed
 func (v *Value) ToggleFavorite(uuid string) bool {
 	l1 := len(v.Favorites)
 	v.Favorites = slices.DeleteFunc(v.Favorites, func(el string) bool { return el == uuid })
@@ -73,6 +76,7 @@ func (v *Value) ToggleFavorite(uuid string) bool {
 	return false
 }
 
+// DeleteFavorite returns true if uuid was removed, false if not
 func (v *Value) DeleteFavorite(uuid string) bool {
 	l1 := len(v.Favorites)
 	v.Favorites = slices.DeleteFunc(v.Favorites, func(el string) bool { return el == uuid })

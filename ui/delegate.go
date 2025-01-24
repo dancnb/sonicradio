@@ -80,6 +80,15 @@ func (d *stationDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 			}
 			added := d.cfg.ToggleFavorite(selStation.Stationuuid)
 			return func() tea.Msg { return toggleFavoriteMsg{added, selStation} }
+		case key.Matches(msg, d.keymap.toggleAutoplay):
+			if !isSel {
+				break
+			}
+			if d.cfg.AutoplayFavorite == selStation.Stationuuid {
+				d.cfg.AutoplayFavorite = ""
+			} else {
+				d.cfg.AutoplayFavorite = selStation.Stationuuid
+			}
 
 		case key.Matches(msg, d.keymap.delete):
 			if !isSel {
@@ -198,6 +207,9 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 	if d.cfg.IsFavorite(s.Stationuuid) {
 		name += styles.FavChar
 	}
+	if d.cfg.AutoplayFavorite == s.Stationuuid {
+		name += d.style.BaseBold.Render(styles.AutoplayChar)
+	}
 
 	isSel := index == m.Index()
 	isCurr := d.currPlaying != nil && d.currPlaying.Stationuuid == s.Stationuuid
@@ -280,7 +292,7 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 
 func (d *stationDelegate) ShortHelp() []key.Binding {
 	return []key.Binding{
-		d.keymap.playSelected, d.keymap.pause, d.keymap.toggleFavorite,
+		d.keymap.playSelected, d.keymap.pause, d.keymap.toggleFavorite, d.keymap.toggleAutoplay,
 	}
 }
 
@@ -295,6 +307,7 @@ func (d *stationDelegate) FullHelp() [][]key.Binding {
 			d.keymap.seekFw,
 			d.keymap.info,
 			d.keymap.toggleFavorite,
+			d.keymap.toggleAutoplay,
 			d.keymap.delete,
 			d.keymap.pasteAfter,
 			d.keymap.pasteBefore,
@@ -319,6 +332,10 @@ func newDelegateKeyMap() *delegateKeyMap {
 		toggleFavorite: key.NewBinding(
 			key.WithKeys("f"),
 			key.WithHelp("f", "favorite station"),
+		),
+		toggleAutoplay: key.NewBinding(
+			key.WithKeys("a"),
+			key.WithHelp("a", "autoplay station"),
 		),
 		delete: key.NewBinding(
 			key.WithKeys("d"),
@@ -356,6 +373,7 @@ type delegateKeyMap struct {
 	playSelected   key.Binding
 	info           key.Binding
 	toggleFavorite key.Binding
+	toggleAutoplay key.Binding
 	delete         key.Binding
 	pasteAfter     key.Binding
 	pasteBefore    key.Binding

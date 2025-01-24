@@ -339,11 +339,13 @@ func (m *Model) statusHandler(ctx context.Context) {
 
 func (m *Model) toFavoritesTab() {
 	m.delegate.keymap.toggleFavorite.SetEnabled(false)
+	m.delegate.keymap.toggleAutoplay.SetEnabled(true)
 	m.activeTabIdx = favoriteTabIx
 }
 
 func (m *Model) toBrowseTab() {
 	m.delegate.keymap.toggleFavorite.SetEnabled(true)
+	m.delegate.keymap.toggleAutoplay.SetEnabled(false)
 	m.activeTabIdx = browseTabIx
 }
 
@@ -368,6 +370,8 @@ func (m *Model) updateStatus(msg string) {
 func (m *Model) Quit() {
 	log := slog.With("method", "ui.model.quit")
 	log.Info("----------------------Quitting----------------------")
+
+	// stop player
 	err := m.player.Stop()
 	if err != nil {
 		log.Error("player stop", "error", err.Error())
@@ -376,9 +380,21 @@ func (m *Model) Quit() {
 	if err != nil {
 		slog.Error(fmt.Sprintf("player close error: %v", err))
 	}
+
+	// save config
 	st := m.tabs[settingsTabIx].(*settingsTab)
 	st.saveConfig()
 	m.cfg.IsRunning = false
+	autoplayFound := false
+	for _, v := range m.cfg.Favorites {
+		if v == m.cfg.AutoplayFavorite {
+			autoplayFound = true
+			break
+		}
+	}
+	if !autoplayFound {
+		m.cfg.AutoplayFavorite = ""
+	}
 	err = m.cfg.Save()
 	if err != nil {
 		log.Error("config save", "error", err.Error())

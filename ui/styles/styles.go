@@ -16,10 +16,11 @@ const (
 	TabGapDistance = 2
 	HeaderPadDist  = 2
 
-	FavChar   = "  ★  "
-	PlayChar  = "\u2877"
-	PauseChar = "\u28FF"
-	LineChar  = "\u2847"
+	FavChar      = "  ★"
+	AutoplayChar = " Auto"
+	PlayChar     = "\u2877"
+	PauseChar    = "\u28FF"
+	LineChar     = "\u2847"
 )
 
 type Style struct {
@@ -34,6 +35,7 @@ type Style struct {
 	SecondaryColorStyle lipgloss.Style
 
 	// general
+	BaseBold       lipgloss.Style
 	DocStyle       lipgloss.Style
 	StatusBarStyle lipgloss.Style
 	ViewStyle      lipgloss.Style
@@ -83,6 +85,7 @@ type Style struct {
 func NewStyle(themeIdx int) *Style {
 	t := Themes[themeIdx%len(Themes)]
 	u := Style{
+		BaseBold: lipgloss.NewStyle().Bold(true),
 		DocStyle: lipgloss.NewStyle().
 			Padding(1, HeaderPadDist, 0, HeaderPadDist),
 		InactiveTabBorder: lipgloss.NewStyle().
