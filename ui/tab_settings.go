@@ -45,7 +45,7 @@ func newSettingsTab(ctx context.Context, cfg *config.Value, s *styles.Style, cha
 	h.ShortSeparator = "   "
 	h.Styles = s.HelpStyles()
 
-	historySaveMax := s.NewInputModel("History max entries", "", nil, nil, nil, styles.NrInputValidator)
+	historySaveMax := s.NewInputModel("History max entries", "---", nil, nil, nil, styles.NrInputValidator)
 	themeOpts := make([]components.OptionValue, len(styles.Themes))
 	for i := range styles.Themes {
 		themeOpts[i] = components.OptionValue{Idx: i + 1, Name: styles.Themes[i].Name}
@@ -90,11 +90,10 @@ func (s *settingsTab) onEnter() tea.Cmd {
 	s.loadConfig()
 
 	return s.inputs[historySaveMaxIdx].Focus()
-	// return nil
 }
 
 func (s *settingsTab) loadConfig() {
-	s.inputs[historySaveMaxIdx].SetValue(fmt.Sprintf("%d", s.cfg.HistorySaveMax))
+	s.inputs[historySaveMaxIdx].SetValue(fmt.Sprintf("%d", *s.cfg.HistorySaveMax))
 }
 
 func (s *settingsTab) onExit() {
@@ -112,7 +111,7 @@ func (s *settingsTab) saveConfig() {
 	if err != nil {
 		log.Debug(fmt.Sprintf("invalid HistorySaveMax input value: %v", err))
 	} else {
-		s.cfg.HistorySaveMax = intVal
+		s.cfg.HistorySaveMax = &intVal
 	}
 	// .... other fields
 	err = s.cfg.Save()
