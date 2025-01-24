@@ -12,6 +12,8 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/dancnb/sonicradio/ui/styles"
+
 	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -26,9 +28,9 @@ import (
 
 const (
 	// view messages
-	loadingMsg          = "\n Fetching stations... \n"
-	noFavoritesAddedMsg = "\n No favorite stations added.\n"
-	noStationsFound     = "\n No stations found. \n"
+	loadingMsg          = "  Fetching stations... \n"
+	noFavoritesAddedMsg = "  No favorite stations added.\n"
+	noStationsFound     = "  No stations found. \n"
 
 	// header status
 	noPlayingMsg     = "Nothing playing"
@@ -54,24 +56,26 @@ func NewModel(ctx context.Context, cfg *config.Value, b *browser.Api, p *player.
 }
 
 func newModel(ctx context.Context, cfg *config.Value, b *browser.Api, p *player.Player) *Model {
-	lipgloss.DefaultRenderer().SetHasDarkBackground(true)
+	style := styles.NewStyle(cfg.Theme)
 
-	delegate := newStationDelegate(cfg, p, b)
+	delegate := newStationDelegate(cfg, style, p, b)
 
-	infoModel := newInfoModel(b)
+	infoModel := newInfoModel(b, style)
 	m := Model{
-		cfg:      cfg,
-		browser:  b,
-		player:   p,
-		delegate: delegate,
-		tabs: []uiTab{
-			newFavoritesTab(infoModel),
-			newBrowseTab(ctx, b, infoModel),
-			newHistoryTab(ctx, cfg),
-		},
+		cfg:          cfg,
+		style:        style,
+		browser:      b,
+		player:       p,
+		delegate:     delegate,
 		statusUpdate: make(chan struct{}),
 
-		volumeBar: getVolumeBar(),
+		volumeBar: getVolumeBar(style.GetSecondColor()),
+	}
+	m.tabs = []uiTab{
+		newFavoritesTab(infoModel, style),
+		newBrowseTab(ctx, b, infoModel, style),
+		newHistoryTab(ctx, cfg, style),
+		newSettingsTab(ctx, cfg, style, m.changeTheme),
 	}
 
 	if len(cfg.Favorites) > 0 {
@@ -84,7 +88,7 @@ func newModel(ctx context.Context, cfg *config.Value, b *browser.Api, p *player.
 	return &m
 }
 
-func getVolumeBar() progress.Model {
+func getVolumeBar(secondColor string) progress.Model {
 	b := progress.New([]progress.Option{
 		progress.WithWidth(10),
 		progress.WithSolidFill(secondColor),
@@ -123,6 +127,7 @@ type Model struct {
 
 	ready    bool
 	cfg      *config.Value // use cfg.volume
+	style    *styles.Style
 	browser  *browser.Api
 	player   *player.Player
 	delegate *stationDelegate
@@ -252,13 +257,23 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.volumeCmd(true)
 		}
 		if key.Matches(msg, d.keymap.seekBack) {
+			if m.activeTabIdx == settingsTabIx {
+				return m.tabs[settingsTabIx].Update(m, msg)
+			}
 			return m, m.seekCmd(-seekStepSec)
 		}
 		if key.Matches(msg, d.keymap.seekFw) {
+			if m.activeTabIdx == settingsTabIx {
+				return m.tabs[settingsTabIx].Update(m, msg)
+			}
 			return m, m.seekCmd(seekStepSec)
 		}
 
 		if key.Matches(msg, d.keymap.pause) {
+			if m.activeTabIdx == settingsTabIx {
+				return m.tabs[settingsTabIx].Update(m, msg)
+			}
+
 			if d.currPlaying != nil {
 				return m, d.pauseCmd()
 			} else if d.prevPlaying != nil {
@@ -268,7 +283,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				activeTab, ok := activeTab.(stationTab)
 				if !ok {
 					break
-					// TODO handle pause key for other tabs if necessary
 				}
 				selStation, ok := activeTab.Stations().list.SelectedItem().(browser.Station)
 				if ok {
@@ -284,10 +298,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if key.Matches(msg, d.keymap.playSelected) {
+			if m.activeTabIdx == settingsTabIx {
+				return m.tabs[settingsTabIx].Update(m, msg)
+			}
+
 			activeTab, ok := activeTab.(stationTab)
 			if !ok {
 				break
-				// TODO handle enter for other tabs if necessary
 			}
 			selStation, ok := activeTab.Stations().list.SelectedItem().(browser.Station)
 			if ok {
@@ -322,15 +339,24 @@ func (m *Model) statusHandler(ctx context.Context) {
 
 func (m *Model) toFavoritesTab() {
 	m.delegate.keymap.toggleFavorite.SetEnabled(false)
+	m.delegate.keymap.toggleAutoplay.SetEnabled(true)
 	m.activeTabIdx = favoriteTabIx
 }
+
 func (m *Model) toBrowseTab() {
 	m.delegate.keymap.toggleFavorite.SetEnabled(true)
+	m.delegate.keymap.toggleAutoplay.SetEnabled(false)
 	m.activeTabIdx = browseTabIx
 }
+
 func (m *Model) toHistoryTab() {
-	m.delegate.keymap.toggleFavorite.SetEnabled(false)
 	m.activeTabIdx = historyTabIx
+}
+
+func (m *Model) toSettingsTab() tea.Cmd {
+	m.activeTabIdx = settingsTabIx
+	st := m.tabs[settingsTabIx].(*settingsTab)
+	return st.onEnter()
 }
 
 func (m *Model) updateStatus(msg string) {
@@ -344,6 +370,8 @@ func (m *Model) updateStatus(msg string) {
 func (m *Model) Quit() {
 	log := slog.With("method", "ui.model.quit")
 	log.Info("----------------------Quitting----------------------")
+
+	// stop player
 	err := m.player.Stop()
 	if err != nil {
 		log.Error("player stop", "error", err.Error())
@@ -352,25 +380,40 @@ func (m *Model) Quit() {
 	if err != nil {
 		slog.Error(fmt.Sprintf("player close error: %v", err))
 	}
+
+	// save config
+	st := m.tabs[settingsTabIx].(*settingsTab)
+	st.saveConfig()
 	m.cfg.IsRunning = false
+	autoplayFound := false
+	for _, v := range m.cfg.Favorites {
+		if v == m.cfg.AutoplayFavorite {
+			autoplayFound = true
+			break
+		}
+	}
+	if !autoplayFound {
+		m.cfg.AutoplayFavorite = ""
+	}
 	err = m.cfg.Save()
 	if err != nil {
 		log.Error("config save", "error", err.Error())
 	}
+	log.Debug("config saved")
 }
 
-func newSpinner() *spinner.Model {
+func (m *Model) newSpinner() *spinner.Model {
 	s := spinner.New()
 	s.Spinner = spinner.Spinner{
 		Frames: []string{"⡷", "⣧", "⣏", "⡟", "⡷", "⣧", "⣏", "⡟"},
 		FPS:    time.Second / 10,
 	}
-	s.Style = songTitleStyle
+	s.Style = m.style.SongTitleStyle
 	return &s
 }
 
 func (m *Model) initSpinner() tea.Cmd {
-	m.spinner = newSpinner()
+	m.spinner = m.newSpinner()
 	return m.spinner.Tick
 }
 
@@ -378,12 +421,12 @@ func (m *Model) headerView(width int) string {
 	var res strings.Builder
 	status := ""
 	if len(m.statusMsg) > 0 {
-		status = statusBarStyle.Render(strings.Repeat(" ", headerPadDist) + m.statusMsg)
+		status = m.style.StatusBarStyle.Render(strings.Repeat(" ", styles.HeaderPadDist) + m.statusMsg)
 	}
 	res.WriteString(status)
-	appNameVers := statusBarStyle.Render(fmt.Sprintf("sonicradio v%v  ", m.cfg.Version))
-	fill := max(0, width-lipgloss.Width(status)-lipgloss.Width(appNameVers)-2*headerPadDist)
-	res.WriteString(statusBarStyle.Render(strings.Repeat(" ", fill)))
+	appNameVers := m.style.StatusBarStyle.Render(fmt.Sprintf("sonicradio v%v  ", m.cfg.Version))
+	fill := max(0, width-lipgloss.Width(status)-lipgloss.Width(appNameVers)-2*styles.HeaderPadDist)
+	res.WriteString(m.style.StatusBarStyle.Render(strings.Repeat(" ", fill)))
 	res.WriteString(appNameVers)
 	res.WriteString("\n\n")
 
@@ -393,27 +436,27 @@ func (m *Model) headerView(width int) string {
 	res.WriteString("\n\n")
 
 	var renderedTabs []string
-	renderedTabs = append(renderedTabs, tabGap.Render(strings.Repeat(" ", tabGapDistance)))
+	renderedTabs = append(renderedTabs, m.style.TabGap.Render(strings.Repeat(" ", styles.TabGapDistance)))
 	for i := range m.tabs {
 		if i == int(m.activeTabIdx) {
 			tabName := m.activeTabIdx.String()
-			renderedTab := m.renderTabName(tabName, &activeTabInner, &activeTabInnerHighlight)
-			renderedTabs = append(renderedTabs, activeTabBorder.Render(renderedTab.String()))
+			renderedTab := m.renderTabName(tabName, &m.style.ActiveTabInner, &m.style.ActiveTabInnerHighlight)
+			renderedTabs = append(renderedTabs, m.style.ActiveTabBorder.Render(renderedTab.String()))
 		} else {
 			tabName := uiTabIndex(i).String()
-			renderedTab := m.renderTabName(tabName, &inactiveTabInner, &inactiveTabInnerHighlight)
-			renderedTabs = append(renderedTabs, inactiveTabBorder.Render(renderedTab.String()))
+			renderedTab := m.renderTabName(tabName, &m.style.InactiveTabInner, &m.style.InactiveTabInnerHighlight)
+			renderedTabs = append(renderedTabs, m.style.InactiveTabBorder.Render(renderedTab.String()))
 		}
 		if i < len(m.tabs)-1 {
-			renderedTabs = append(renderedTabs, tabGap.Render(strings.Repeat(" ", tabGapDistance)))
+			renderedTabs = append(renderedTabs, m.style.TabGap.Render(strings.Repeat(" ", styles.TabGapDistance)))
 		}
 	}
 	row := lipgloss.JoinHorizontal(
 		lipgloss.Top,
 		renderedTabs...,
 	)
-	hFill := width - lipgloss.Width(row) - 2*headerPadDist
-	gap := tabGap.Render(strings.Repeat(" ", max(0, hFill)))
+	hFill := width - lipgloss.Width(row) - 2*styles.HeaderPadDist
+	gap := m.style.TabGap.Render(strings.Repeat(" ", max(0, hFill)))
 	res.WriteString(lipgloss.JoinHorizontal(lipgloss.Bottom, row, gap) + "\n\n")
 
 	return res.String()
@@ -438,7 +481,7 @@ func (*Model) renderTabName(tabName string, tabInner *lipgloss.Style, tabInnerHi
 
 func (m *Model) metadataView(width int) string {
 	metadataParts := []string{"", "", ""}
-	gap := strings.Repeat(" ", headerPadDist)
+	gap := strings.Repeat(" ", styles.HeaderPadDist)
 
 	playTime := fmt.Sprintf("%s%03d:%02d:%02d%s",
 		gap,
@@ -447,61 +490,61 @@ func (m *Model) metadataView(width int) string {
 		int(m.playbackTime.Seconds())%60,
 		gap,
 	)
-	playTimeView := italicStyle.Render(playTime)
+	playTimeView := m.style.ItalicStyle.Render(playTime)
 	metadataParts[0] = playTimeView
 
 	volumeView := gap +
 		m.volumeBar.ViewAs(float64(m.cfg.GetVolume())/100) +
-		italicStyle.Render(fmt.Sprintf(volumeFmt, m.cfg.GetVolume(), gap))
+		m.style.ItalicStyle.Render(fmt.Sprintf(volumeFmt, m.cfg.GetVolume(), gap))
 	metadataParts[2] = volumeView
 
 	playTimeW := lipgloss.Width(playTimeView)
 	volumeW := lipgloss.Width(volumeView)
-	maxW := max(0, width-playTimeW-volumeW-2*headerPadDist)
+	maxW := max(0, width-playTimeW-volumeW-2*styles.HeaderPadDist)
 
 	var songView strings.Builder
 	if m.delegate.currPlaying != nil {
 		if m.spinner == nil {
-			m.spinner = newSpinner()
+			m.spinner = m.newSpinner()
 		}
 		var line strings.Builder
 		line.WriteString(m.spinner.View())
-		line.WriteString(itemStyle.MaxWidth(maxW - 1).Render(" " + m.delegate.currPlaying.Name))
+		line.WriteString(m.style.PrimaryColorStyle.MaxWidth(maxW - 1).Render(" " + m.delegate.currPlaying.Name))
 		fill := max(0, maxW-lipgloss.Width(line.String()))
-		line.WriteString(itemStyle.Render(strings.Repeat(" ", fill)))
+		line.WriteString(m.style.PrimaryColorStyle.Render(strings.Repeat(" ", fill)))
 		songView.WriteString(line.String())
 	} else if m.delegate.prevPlaying != nil {
 		var line strings.Builder
-		line.WriteString(songTitleStyle.Render(pauseChar))
-		line.WriteString(itemStyle.MaxWidth(maxW - 1).Render(" " + m.delegate.prevPlaying.Name))
+		line.WriteString(m.style.SongTitleStyle.Render(styles.PauseChar))
+		line.WriteString(m.style.PrimaryColorStyle.MaxWidth(maxW - 1).Render(" " + m.delegate.prevPlaying.Name))
 		fill := max(0, maxW-lipgloss.Width(line.String()))
-		line.WriteString(itemStyle.Render(strings.Repeat(" ", fill)))
+		line.WriteString(m.style.PrimaryColorStyle.Render(strings.Repeat(" ", fill)))
 		songView.WriteString(line.String())
 	} else {
 		var line strings.Builder
-		line.WriteString(songTitleStyle.MaxWidth(maxW).Render(lineChar + " " + noPlayingMsg))
+		line.WriteString(m.style.SongTitleStyle.MaxWidth(maxW).Render(styles.LineChar + " " + noPlayingMsg))
 		fill := max(0, maxW-lipgloss.Width(line.String()))
-		line.WriteString(itemStyle.Render(strings.Repeat(" ", fill)))
+		line.WriteString(m.style.PrimaryColorStyle.Render(strings.Repeat(" ", fill)))
 		songView.WriteString(line.String())
 	}
 	songView.WriteString("\n")
 	if m.songTitle != "" {
 		var line strings.Builder
-		line.WriteString(songTitleStyle.MaxWidth(maxW).Render("  " + m.songTitle))
+		line.WriteString(m.style.SongTitleStyle.MaxWidth(maxW).Render("  " + m.songTitle))
 		fill := max(0, maxW-lipgloss.Width(line.String()))
-		line.WriteString(itemStyle.Render(strings.Repeat(" ", fill)))
+		line.WriteString(m.style.PrimaryColorStyle.Render(strings.Repeat(" ", fill)))
 		songView.WriteString(line.String())
 	} else if m.delegate.currPlaying != nil {
 		var line strings.Builder
-		line.WriteString(songTitleStyle.MaxWidth(maxW).Render("  " + m.delegate.currPlaying.Homepage))
+		line.WriteString(m.style.SongTitleStyle.MaxWidth(maxW).Render("  " + m.delegate.currPlaying.Homepage))
 		fill := max(0, maxW-lipgloss.Width(line.String()))
-		line.WriteString(itemStyle.Render(strings.Repeat(" ", fill)))
+		line.WriteString(m.style.PrimaryColorStyle.Render(strings.Repeat(" ", fill)))
 		songView.WriteString(line.String())
 	} else if m.delegate.prevPlaying != nil {
 		var line strings.Builder
-		line.WriteString(songTitleStyle.MaxWidth(maxW).Render("  " + m.delegate.prevPlaying.Homepage))
+		line.WriteString(m.style.SongTitleStyle.MaxWidth(maxW).Render("  " + m.delegate.prevPlaying.Homepage))
 		fill := max(0, maxW-lipgloss.Width(line.String()))
-		line.WriteString(itemStyle.Render(strings.Repeat(" ", fill)))
+		line.WriteString(m.style.PrimaryColorStyle.Render(strings.Repeat(" ", fill)))
 		songView.WriteString(line.String())
 	}
 	metadataParts[1] = songView.String()
@@ -520,7 +563,51 @@ func (m Model) View() string {
 	doc.WriteString(header)
 	tabView := m.tabs[m.activeTabIdx].View()
 	doc.WriteString(tabView)
-	return docStyle.Render(doc.String())
+	return m.style.DocStyle.Render(doc.String())
+}
+
+func (m *Model) changeTheme(themeIdx int) {
+	m.style.SetThemeIdx(themeIdx)
+	m.cfg.Theme = themeIdx
+	if m.spinner != nil {
+		m.spinner.Style = m.style.SongTitleStyle
+	}
+	m.volumeBar.FullColor = m.style.GetSecondColor()
+	m.volumeBar.EmptyColor = m.style.GetSecondColor()
+
+	helpStyle := m.style.HelpStyles()
+	for i := range m.tabs {
+		if t, ok := m.tabs[i].(stationTab); ok {
+			m.style.TextInputSyle(&t.Stations().list.FilterInput, stationsFilterPrompt, stationsFilterPlaceholder)
+			t.Stations().list.Help.Styles = helpStyle
+			t.Stations().list.Styles.HelpStyle = m.style.HelpStyle
+
+			if browse, ok := t.(*browseTab); ok {
+				for iIdx := range browse.searchModel.inputs {
+					input := browse.searchModel.inputs[iIdx].TextInput()
+					m.style.TextInputSyle(input, input.Prompt, input.Placeholder)
+					input.PromptStyle = m.style.PromptStyle
+				}
+				browse.searchModel.help.Styles = helpStyle
+			}
+
+		} else if ht, ok := m.tabs[i].(*historyTab); ok {
+			m.style.TextInputSyle(&ht.list.FilterInput, stationsFilterPrompt, historyFilterPlaceholder)
+			ht.list.Help.Styles = helpStyle
+			ht.list.Styles.HelpStyle = m.style.HelpStyle
+
+		} else if st, ok := m.tabs[i].(*settingsTab); ok {
+			for iIdx := range st.inputs {
+				if st.inputs[iIdx] == nil || st.inputs[iIdx].TextInput() == nil {
+					continue
+				}
+				input := st.inputs[iIdx].TextInput()
+				m.style.TextInputSyle(input, input.Prompt, input.Placeholder)
+				input.PromptStyle = m.style.PromptStyle
+			}
+			st.help.Styles = helpStyle
+		}
+	}
 }
 
 func trapSignal(p *tea.Program) {

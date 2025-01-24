@@ -51,7 +51,7 @@ func (v *Value) ClearHistory() {
 
 func (v *Value) saveHistory() []HistoryEntry {
 	log := slog.With("method", "config.Value.saveHistory")
-	startIx := max(0, len(v.History)-v.HistorySaveMax)
+	startIx := max(0, len(v.History)-*v.HistorySaveMax)
 	entries := v.History[startIx:len(v.History)]
 	v.History = entries
 	log.Debug("saved entries", "len", len(entries), "startIdx", startIx)

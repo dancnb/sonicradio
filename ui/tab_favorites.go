@@ -5,17 +5,18 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/dancnb/sonicradio/browser"
+	"github.com/dancnb/sonicradio/ui/styles"
 )
 
 type favoritesTab struct {
 	stationsTabBase
 }
 
-func newFavoritesTab(infoModel *infoModel) *favoritesTab {
+func newFavoritesTab(infoModel *infoModel, s *styles.Style) *favoritesTab {
 	k := newListKeymap()
 
 	m := &favoritesTab{
-		stationsTabBase: newStationsTab(k, infoModel),
+		stationsTabBase: newStationsTab(k, infoModel, s),
 	}
 	return m
 }
@@ -34,6 +35,7 @@ func (t *favoritesTab) createList(delegate *stationDelegate, width int, height i
 			t.listKeymap.nextTab,
 			t.listKeymap.browseTab,
 			t.listKeymap.historyTab,
+			t.listKeymap.settingsTab,
 		}
 	}
 
@@ -63,18 +65,26 @@ func (t *favoritesTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		h, v := docStyle.GetFrameSize()
+		h, v := t.style.DocStyle.GetFrameSize()
 		t.list.SetSize(msg.Width-h, msg.Height-m.headerHeight-v)
 
 	case favoritesStationRespMsg:
 		t.viewMsg = string(msg.viewMsg)
 		items := make([]list.Item, 0)
+		var autoplayUuid *browser.Station
+		var autoplayIdx int
 		var notFound []string
 		for j := 0; j < len(m.cfg.Favorites); j++ {
 			found := false
 			for i := 0; i < len(msg.stations); i++ {
 				if msg.stations[i].Stationuuid == m.cfg.Favorites[j] {
 					items = append(items, msg.stations[i])
+
+					if m.cfg.AutoplayFavorite == msg.stations[i].Stationuuid {
+						autoplayUuid = &msg.stations[i]
+						autoplayIdx = len(items) - 1
+					}
+
 					found = true
 					break
 				}
@@ -90,6 +100,10 @@ func (t *favoritesTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateStatus(string(sm))
 		cmd := t.list.SetItems(items)
 		cmds = append(cmds, cmd)
+		if autoplayUuid != nil {
+			t.list.Select(autoplayIdx)
+			cmds = append(cmds, m.playStationCmd(*autoplayUuid))
+		}
 
 	case playHistoryEntryMsg:
 		s, idx := t.getListStationByUuid(msg.uuid)
@@ -186,8 +200,11 @@ func (t *favoritesTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, t.listKeymap.nextTab, t.listKeymap.browseTab):
 			m.toBrowseTab()
 
-		case key.Matches(msg, t.listKeymap.prevTab, t.listKeymap.historyTab):
+		case key.Matches(msg, t.listKeymap.historyTab):
 			m.toHistoryTab()
+
+		case key.Matches(msg, t.listKeymap.prevTab, t.listKeymap.settingsTab):
+			return m, m.toSettingsTab()
 
 		case key.Matches(msg, t.listKeymap.digits...):
 			t.doJump(msg)

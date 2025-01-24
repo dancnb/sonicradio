@@ -6,7 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/cursor"
+	"github.com/dancnb/sonicradio/ui/components"
+	"github.com/dancnb/sonicradio/ui/styles"
+
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -19,15 +21,19 @@ import (
 type searchModel struct {
 	enabled bool
 
+	style *styles.Style
+
 	browser   *browser.Api
 	countries []string
 	languages []string
 
-	inputs      []textinput.Model
-	idx         inputIdx
-	orderActive bool
-	oIdx        orderIx
-	reverse     bool
+	inputs []components.FormElement
+	idx    inputIdx
+
+	orderOptions components.OptionList
+	oIdx         orderIx
+
+	reverse bool
 
 	keymap searchKeymap
 	help   help.Model
@@ -48,8 +54,7 @@ const (
 type orderIx uint8
 
 const (
-	orderRand orderIx = iota
-	orderVotes
+	orderVotes orderIx = iota
 	orderClickcount
 	orderClicktrend
 	orderBitrate
@@ -58,6 +63,7 @@ const (
 	orderCountry
 	orderLang
 	orderCodec
+	orderRand
 )
 
 func (o orderIx) toSearchOrder() browser.OrderBy {
@@ -77,58 +83,49 @@ var searchOrder = map[orderIx]browser.OrderBy{
 	orderRand:       browser.Random,
 }
 
-var orderView = map[orderIx]string{
-	orderVotes:      "Votes",
-	orderClickcount: "Clicks",
-	orderClicktrend: "Recent trends",
-	orderBitrate:    "Bitrate",
-	orderName:       "Name",
-	orderTags:       "Tags",
-	orderCountry:    "Country",
-	orderLang:       "Language",
-	orderCodec:      "Codecs",
-	orderRand:       "Random",
+var orderView = []components.OptionValue{
+	{Idx: 1, Name: "Votes            "},
+	{Idx: 2, Name: "Clicks           "},
+	{Idx: 3, Name: "Recent trends    "},
+	{Idx: 4, Name: "Bitrate          "},
+	{Idx: 5, Name: "Name             "},
+	{Idx: 6, Name: "Tags             "},
+	{Idx: 7, Name: "Country          "},
+	{Idx: 8, Name: "Language         "},
+	{Idx: 9, Name: "Codecs           "},
+	{Idx: 0, Name: "Random           "},
 }
 
-func newSearchModel(ctx context.Context, browser *browser.Api) *searchModel {
+func newSearchModel(ctx context.Context, browser *browser.Api, s *styles.Style) *searchModel {
 	k := newSearchKeymap()
 	inputs := []textinput.Model{
-		makeInput("Name          ", "leave empty for all", k),
-		makeInput("Tags          ", "comma separated list", k),
-		makeInput("Country       ", "---", k),
-		makeInput("Language      ", "---", k),
-		makeInput("Limit         ", "---", k),
+		s.NewInputModel("Name          ", "leave empty for all", &k.prevSugg, &k.nextSugg, &k.acceptSugg, nil),
+		s.NewInputModel("Tags          ", "comma separated list", &k.prevSugg, &k.nextSugg, &k.acceptSugg, nil),
+		s.NewInputModel("Country       ", "---", &k.prevSugg, &k.nextSugg, &k.acceptSugg, nil),
+		s.NewInputModel("Language      ", "---", &k.prevSugg, &k.nextSugg, &k.acceptSugg, nil),
+		s.NewInputModel("Limit         ", "---", &k.prevSugg, &k.nextSugg, &k.acceptSugg, styles.NrInputValidator),
 	}
-	inputs[limit].Validate = func(s string) error {
-		_, err := strconv.Atoi(s)
-		return err
+	formElems := make([]components.FormElement, len(inputs))
+	for ii := range inputs {
+		formElems[ii] = *components.NewFormElement(components.WithTextInput(&inputs[ii]))
 	}
-
 	h := help.New()
 	h.ShowAll = false
 	h.ShortSeparator = "   "
-	h.Styles = helpStyles()
+	h.Styles = s.HelpStyles()
 
+	orderOpts := components.NewOptionList("Order by", orderView, 0, s)
+	orderOpts.SetQuick(true)
 	sm := &searchModel{
-		browser: browser,
-		keymap:  k,
-		help:    h,
-		inputs:  inputs,
+		browser:      browser,
+		keymap:       k,
+		help:         h,
+		inputs:       formElems,
+		orderOptions: orderOpts,
+		style:        s,
 	}
 	go sm.getSuggestions(ctx)
 	return sm
-}
-
-func makeInput(prompt, placeholder string, keymap searchKeymap) textinput.Model {
-	input := textinput.New()
-	input.Cursor.SetMode(cursor.CursorBlink)
-	prompt = padFieldName(prompt)
-	textInputSyle(&input, prompt, placeholder)
-	input.PromptStyle = searchPromptStyle
-	input.KeyMap.NextSuggestion = keymap.nextSugg
-	input.KeyMap.PrevSuggestion = keymap.prevSugg
-	input.KeyMap.AcceptSuggestion = keymap.acceptSugg
-	return input
 }
 
 func (s *searchModel) getSuggestions(ctx context.Context) {
@@ -137,8 +134,8 @@ func (s *searchModel) getSuggestions(ctx context.Context) {
 		for i := range countries {
 			s.countries = append(s.countries, countries[i].Name)
 		}
-		s.inputs[country].ShowSuggestions = true
-		s.inputs[country].SetSuggestions(s.countries)
+		s.inputs[country].TextInput().ShowSuggestions = true
+		s.inputs[country].TextInput().SetSuggestions(s.countries)
 	}
 
 	langs, err := s.browser.GetLanguages(ctx)
@@ -146,8 +143,8 @@ func (s *searchModel) getSuggestions(ctx context.Context) {
 		for i := range langs {
 			s.languages = append(s.languages, langs[i].Name)
 		}
-		s.inputs[language].ShowSuggestions = true
-		s.inputs[language].SetSuggestions(s.languages)
+		s.inputs[language].TextInput().ShowSuggestions = true
+		s.inputs[language].TextInput().SetSuggestions(s.languages)
 	}
 }
 
@@ -159,7 +156,7 @@ func (s *searchModel) Init() tea.Cmd {
 }
 
 func (s *searchModel) setSize(width, height int) {
-	h, v := docStyle.GetFrameSize()
+	h, v := s.style.DocStyle.GetFrameSize()
 	s.width = width - h
 	s.height = height - v
 	s.help.Width = s.width
@@ -169,31 +166,59 @@ func (s *searchModel) isEnabled() bool {
 	return s.enabled
 }
 
+// setEnabled is called on search page enter/exit only
 func (s *searchModel) setEnabled(v bool) {
 	s.enabled = v
 	s.idx = name
 	for i := range s.inputs {
 		s.inputs[i].Blur()
-		s.inputs[i].Reset()
+		s.inputs[i].TextInput().Reset()
 	}
 	s.inputs[limit].SetValue(fmt.Sprintf("%d", browser.DefLimit))
-	s.orderActive = false
+	if !v {
+		s.orderOptions.SetIdx(0)
+	}
 	s.oIdx = orderVotes
 	s.reverse = true
-	s.keymap.setEnable(v)
-	s.help.ShowAll = false
+	showAll := false
+	s.help.ShowAll = showAll
+	s.keymap.setEnable(v, showAll)
 }
 
 func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	logTeaMsg(msg, "ui.searchModel.Update")
 	var cmds []tea.Cmd
 
+	if s.orderOptions.IsActive() {
+		newOptions, cmd := s.orderOptions.Update(msg)
+		s.orderOptions = *newOptions.(*components.OptionList)
+		cmds = append(cmds, cmd)
+	}
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		s.setSize(msg.Width, msg.Height)
 
+	case components.OptionMsg:
+		if msg.Done {
+			s.orderOptions.SetFocused(false)
+			s.oIdx = orderIx(msg.SelIdx)
+			s.keymap.setEnable(true, s.help.ShowAll)
+			cmds = s.updateInputs(cmds)
+			return s, tea.Batch(cmds...)
+		}
+
 	case tea.KeyMsg:
 		switch {
+
+		case key.Matches(msg, s.keymap.order):
+			if !s.orderOptions.IsActive() {
+				s.orderOptions.SetFocused(true)
+				s.orderOptions.SetActive(true)
+				s.keymap.setEnable(false, s.help.ShowAll)
+				cmds = append(cmds, s.updateInputs(cmds)...)
+				return s, tea.Batch(cmds...)
+			}
 
 		case key.Matches(msg, s.keymap.showFullHelp):
 			fallthrough
@@ -204,39 +229,13 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			s.keymap.update(s.help.ShowAll)
 			return s, tea.Batch(cmds...)
 
-		case key.Matches(msg, s.keymap.order):
-			if !s.orderActive {
-				s.orderActive = true
-				s.keymap.setEnable(false)
-				s.keymap.cancel.SetEnabled(true)
-				s.keymap.setEnableOrderKeys(true)
-				cmds = s.updateInputs(cmds)
-			}
-		case key.Matches(msg, s.keymap.orderkeys...):
-			ord, err := strconv.Atoi(msg.String())
-			if err == nil {
-				s.oIdx = orderIx(ord)
-				s.orderActive = false
-				s.keymap.setEnable(true)
-				s.keymap.setEnableOrderKeys(false)
-				cmds = s.updateInputs(cmds)
-				return s, tea.Batch(cmds...)
-			}
-
 		case key.Matches(msg, s.keymap.reverse):
 			s.reverse = !s.reverse
 
 		case key.Matches(msg, s.keymap.cancel):
-			if s.orderActive {
-				s.orderActive = false
-				s.keymap.setEnable(true)
-				s.keymap.setEnableOrderKeys(false)
-				cmds = s.updateInputs(cmds)
-			} else {
-				return s, func() tea.Msg {
-					s.setEnabled(false)
-					return searchRespMsg{cancelled: true}
-				}
+			return s, func() tea.Msg {
+				s.setEnabled(false)
+				return searchRespMsg{cancelled: true}
 			}
 
 		case key.Matches(msg, s.keymap.submit):
@@ -268,9 +267,9 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case key.Matches(msg, s.keymap.nextInput):
-			if msg.String() == "tab" && strings.TrimSpace(s.inputs[s.idx].Value()) != "" && s.inputs[s.idx].ShowSuggestions {
-				s.inputs[s.idx].SetValue(s.inputs[s.idx].CurrentSuggestion())
-				s.inputs[s.idx].CursorEnd()
+			if msg.String() == "tab" && strings.TrimSpace(s.inputs[s.idx].Value()) != "" && s.inputs[s.idx].TextInput().ShowSuggestions {
+				s.inputs[s.idx].SetValue(s.inputs[s.idx].TextInput().CurrentSuggestion())
+				s.inputs[s.idx].TextInput().CursorEnd()
 			}
 			s.idx++
 			s.idx = s.idx % inputIdx(len(s.inputs))
@@ -286,7 +285,8 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	for i := range s.inputs {
 		var cmd tea.Cmd
-		s.inputs[i], cmd = s.inputs[i].Update(msg)
+		fEl, cmd := s.inputs[i].Update(msg)
+		s.inputs[i] = *fEl
 		cmds = append(cmds, cmd)
 	}
 
@@ -295,7 +295,7 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (s *searchModel) updateInputs(cmds []tea.Cmd) []tea.Cmd {
 	for i := range s.inputs {
-		if !s.orderActive && i == int(s.idx) {
+		if !s.orderOptions.IsActive() && i == int(s.idx) {
 			cmds = append(cmds, s.inputs[i].Focus())
 			continue
 		}
@@ -304,56 +304,32 @@ func (s *searchModel) updateInputs(cmds []tea.Cmd) []tea.Cmd {
 	return cmds
 }
 
-func (s *searchModel) getOrderString(o orderIx) string {
-	idx := o
-	return fmt.Sprintf("%d. %s", idx, orderView[o])
-}
-
-func (s *searchModel) getOrderStyle(o orderIx) lipgloss.Style {
-	if s.oIdx == o {
-		return orderBySelStyle
-	}
-	return orderByStyle
-}
-
 func (s *searchModel) View() string {
 	var b strings.Builder
 	for i := range s.inputs {
 		b.WriteString(s.inputs[i].View())
 		b.WriteRune('\n')
 	}
-
 	b.WriteRune('\n')
-	b.WriteRune('\n')
-	orderPrompt := "Order by      "
-	if s.orderActive {
-		orderPrompt = "Enter #       "
-	}
-	b.WriteString(searchPromptStyle.Render(padFieldName(orderPrompt)))
-	ordS := s.getOrderString(orderVotes)
-	b.WriteString(s.getOrderStyle(orderVotes).Render(ordS))
-	b.WriteRune('\n')
-	for i := orderClickcount; i <= orderCodec; i++ {
-		b.WriteString(searchPromptStyle.Render(padFieldName("")))
-		ordS := s.getOrderString(i)
-		b.WriteString(s.getOrderStyle(i).Render(ordS))
-		b.WriteRune('\n')
-	}
-	b.WriteString(searchPromptStyle.Render(padFieldName("")))
-	ordS = s.getOrderString(orderRand)
-	b.WriteString(s.getOrderStyle(orderRand).Render(ordS))
 	b.WriteRune('\n')
 
+	b.WriteString(s.orderOptions.View())
 	b.WriteRune('\n')
-	b.WriteString(searchPromptStyle.Render(padFieldName("Reverse       ")))
+
+	b.WriteString(s.style.PromptStyle.Render(styles.PadFieldName("Reverse       ", nil)))
 	rev := "off"
 	if s.reverse {
 		rev = "on"
 	}
-	b.WriteString(filterTextStyle.Render(rev))
+	b.WriteString(s.style.PrimaryColorStyle.Render(rev))
 
 	availHeight := s.height
-	help := helpStyle.Render(s.help.View(&s.keymap))
+	var help string
+	if !s.orderOptions.IsActive() {
+		help = s.style.HelpStyle.Render(s.help.View(&s.keymap))
+	} else {
+		help = s.style.HelpStyle.Render(s.help.View(&s.orderOptions.Keymap))
+	}
 	availHeight -= lipgloss.Height(help)
 
 	inputs := b.String()
@@ -370,7 +346,6 @@ type searchKeymap struct {
 	nextInput     key.Binding
 	prevInput     key.Binding
 	order         key.Binding
-	orderkeys     []key.Binding
 	reverse       key.Binding
 	prevSugg      key.Binding
 	nextSugg      key.Binding
@@ -426,12 +401,6 @@ func newSearchKeymap() searchKeymap {
 			key.WithHelp("?", "close help"),
 		),
 	}
-	for i := orderRand; i <= orderCodec; i++ {
-		x := fmt.Sprintf("%d", i)
-		ordkey := key.NewBinding(key.WithKeys(x))
-		ordkey.SetEnabled(false)
-		k.orderkeys = append(k.orderkeys, ordkey)
-	}
 	return k
 }
 
@@ -448,24 +417,22 @@ func (k *searchKeymap) FullHelp() [][]key.Binding {
 	}
 }
 
-func (k *searchKeymap) setEnable(v bool) {
-	k.submit.SetEnabled(v)
-	k.cancel.SetEnabled(v)
-	k.prevInput.SetEnabled(v)
-	k.nextInput.SetEnabled(v)
-	k.order.SetEnabled(v)
-	k.reverse.SetEnabled(v)
-	k.prevSugg.SetEnabled(v)
-	k.nextSugg.SetEnabled(v)
-	k.acceptSugg.SetEnabled(v)
-	k.showFullHelp.SetEnabled(v)
-	k.closeFullHelp.SetEnabled(false)
-	k.setEnableOrderKeys(false)
-}
-
-func (k *searchKeymap) setEnableOrderKeys(v bool) {
-	for i := range k.orderkeys {
-		k.orderkeys[i].SetEnabled(v)
+func (k *searchKeymap) setEnable(enabled bool, showAll bool) {
+	k.submit.SetEnabled(enabled)
+	k.cancel.SetEnabled(enabled)
+	k.prevInput.SetEnabled(enabled)
+	k.nextInput.SetEnabled(enabled)
+	k.order.SetEnabled(enabled)
+	k.reverse.SetEnabled(enabled)
+	k.prevSugg.SetEnabled(enabled)
+	k.nextSugg.SetEnabled(enabled)
+	k.acceptSugg.SetEnabled(enabled)
+	if enabled {
+		k.showFullHelp.SetEnabled(!showAll)
+		k.closeFullHelp.SetEnabled(showAll)
+	} else {
+		k.showFullHelp.SetEnabled(false)
+		k.closeFullHelp.SetEnabled(false)
 	}
 }
 

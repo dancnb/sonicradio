@@ -3,12 +3,19 @@ package ui
 import (
 	"log/slog"
 	"strconv"
-	"time"
+
+	"github.com/dancnb/sonicradio/ui/components"
+	"github.com/dancnb/sonicradio/ui/styles"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dancnb/sonicradio/browser"
+)
+
+const (
+	stationsFilterPrompt      = "Filter:       "
+	stationsFilterPlaceholder = "station name"
 )
 
 type uiTabIndex uint8
@@ -21,6 +28,8 @@ func (t uiTabIndex) String() string {
 		return "  Browse  "
 	case historyTabIx:
 		return "  History  "
+	case settingsTabIx:
+		return " Settings "
 	}
 	return ""
 }
@@ -29,7 +38,7 @@ const (
 	favoriteTabIx uiTabIndex = iota
 	browseTabIx
 	historyTabIx
-	// configTab
+	settingsTabIx
 )
 
 type uiTab interface {
@@ -51,28 +60,19 @@ type stationTab interface {
 	createList(delegate *stationDelegate, width int, height int) list.Model
 }
 
-const jumpTimeout = 250 * time.Millisecond
-
-type jumpInfo struct {
-	position int
-	last     time.Time
-}
-
-func (jump jumpInfo) isActive() bool {
-	return jump.last.Add(jumpTimeout).After(time.Now())
-}
-
 type stationsTabBase struct {
 	uiTab
+	style      *styles.Style
 	list       list.Model
 	viewMsg    string
 	listKeymap listKeymap
-	jump       jumpInfo
+	jump       components.JumpInfo
 	infoModel  *infoModel
 }
 
-func newStationsTab(k listKeymap, infoModel *infoModel) stationsTabBase {
+func newStationsTab(k listKeymap, infoModel *infoModel, s *styles.Style) stationsTabBase {
 	t := stationsTabBase{
+		style:      s,
 		listKeymap: k,
 		infoModel:  infoModel,
 	}
@@ -80,24 +80,11 @@ func newStationsTab(k listKeymap, infoModel *infoModel) stationsTabBase {
 }
 
 func (t *stationsTabBase) doJump(msg tea.KeyMsg) {
-	jumpIdx := t.jumpIdx(msg)
+	digit, _ := strconv.Atoi(msg.String())
+	jumpIdx := t.jump.NewPosition(digit)
 	if jumpIdx > 0 && jumpIdx <= len(t.list.Items()) {
 		t.list.Select(jumpIdx - 1)
 	}
-}
-
-func (t *stationsTabBase) jumpIdx(msg tea.Msg) int {
-	log := slog.With("method", "ui.stattionsTab.getJumpIdx")
-	digit, _ := strconv.Atoi(msg.(tea.KeyMsg).String())
-	log.Debug("", "digit", digit, "oldPos", t.jump.position)
-	if t.jump.isActive() {
-		t.jump.position = t.jump.position*10 + digit
-	} else {
-		t.jump.position = digit
-	}
-	t.jump.last = time.Now()
-	log.Debug("", "newPos", t.jump.position)
-	return t.jump.position
 }
 
 func (t *stationsTabBase) View() string {
@@ -106,7 +93,7 @@ func (t *stationsTabBase) View() string {
 		availHeight := t.list.Height()
 		help := t.list.Styles.HelpStyle.Render(t.list.Help.View(t.list))
 		availHeight -= lipgloss.Height(help)
-		viewSection := viewStyle.Height(availHeight).Render(t.viewMsg)
+		viewSection := t.style.ViewStyle.Height(availHeight).Render(t.viewMsg)
 		sections = append(sections, viewSection)
 		sections = append(sections, help)
 		return lipgloss.JoinVertical(lipgloss.Left, sections...)
@@ -185,20 +172,20 @@ func createList(delegate *stationDelegate, width int, height int) list.Model {
 	l.SetShowPagination(false)
 	l.SetShowFilter(true)
 	l.SetStatusBarItemName("station", "stations")
-	l.Styles.NoItems = noItemsStyle
+	l.Styles.NoItems = delegate.style.NoItemsStyle
 	l.FilterInput.ShowSuggestions = true
 	l.KeyMap.Quit.SetKeys("q")
 	l.KeyMap.PrevPage.SetKeys("pgup", "ctrl+b")
 	l.KeyMap.PrevPage.SetHelp("ctrl+b/pgup", "prev page")
 	l.KeyMap.NextPage.SetKeys("pgdown", "ctrl+f")
 	l.KeyMap.NextPage.SetHelp("ctrl+f/pgdn", "next page")
-	h, v := docStyle.GetFrameSize()
+	h, v := delegate.style.DocStyle.GetFrameSize()
 	l.SetSize(width-h, height-v)
 
 	l.Help.ShortSeparator = "   "
-	l.Help.Styles = helpStyles()
-	l.Styles.HelpStyle = helpStyle
+	l.Help.Styles = delegate.style.HelpStyles()
+	l.Styles.HelpStyle = delegate.style.HelpStyle
 
-	textInputSyle(&l.FilterInput, "Filter:       ", "station name")
+	delegate.style.TextInputSyle(&l.FilterInput, stationsFilterPrompt, stationsFilterPlaceholder)
 	return l
 }

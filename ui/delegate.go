@@ -8,6 +8,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/dancnb/sonicradio/ui/styles"
+
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -19,7 +21,7 @@ import (
 
 const startWaitMillis = 500 * 3
 
-func newStationDelegate(cfg *config.Value, p *player.Player, b *browser.Api) *stationDelegate {
+func newStationDelegate(cfg *config.Value, s *styles.Style, p *player.Player, b *browser.Api) *stationDelegate {
 	keymap := newDelegateKeyMap()
 
 	d := list.NewDefaultDelegate()
@@ -28,6 +30,7 @@ func newStationDelegate(cfg *config.Value, p *player.Player, b *browser.Api) *st
 		player:          p,
 		b:               b,
 		cfg:             cfg,
+		style:           s,
 		keymap:          keymap,
 		defaultDelegate: d,
 	}
@@ -37,6 +40,7 @@ type stationDelegate struct {
 	player *player.Player
 	b      *browser.Api
 	cfg    *config.Value
+	style  *styles.Style
 
 	prevPlaying *browser.Station
 	currPlaying *browser.Station
@@ -76,6 +80,15 @@ func (d *stationDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 			}
 			added := d.cfg.ToggleFavorite(selStation.Stationuuid)
 			return func() tea.Msg { return toggleFavoriteMsg{added, selStation} }
+		case key.Matches(msg, d.keymap.toggleAutoplay):
+			if !isSel {
+				break
+			}
+			if d.cfg.AutoplayFavorite == selStation.Stationuuid {
+				d.cfg.AutoplayFavorite = ""
+			} else {
+				d.cfg.AutoplayFavorite = selStation.Stationuuid
+			}
 
 		case key.Matches(msg, d.keymap.delete):
 			if !isSel {
@@ -192,7 +205,10 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 	}
 	name := s.Name
 	if d.cfg.IsFavorite(s.Stationuuid) {
-		name += favChar
+		name += styles.FavChar
+	}
+	if d.cfg.AutoplayFavorite == s.Stationuuid {
+		name += d.style.BaseBold.Render(styles.AutoplayChar)
 	}
 
 	isSel := index == m.Index()
@@ -201,26 +217,19 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 	var res strings.Builder
 	var str string
 
-	prefix := fmt.Sprintf("%d. ", index+1)
-	if index+1 < 10 {
-		prefix = fmt.Sprintf("   %s", prefix)
-	} else if index+1 < 100 {
-		prefix = fmt.Sprintf("  %s", prefix)
-	} else if index+1 < 1000 {
-		prefix = fmt.Sprintf(" %s", prefix)
-	}
+	prefix := styles.IndexString(index + 1)
 
 	listWidth := m.Width()
 	if isCurr || isPrev {
-		prefixRender := nowPlayingPrefixStyle.Render(prefix)
+		prefixRender := d.style.NowPlayingPrefixStyle.Render(prefix)
 		res.WriteString(prefixRender)
-		maxWidth := max(listWidth-lipgloss.Width(prefixRender)-headerPadDist, 0)
+		maxWidth := max(listWidth-lipgloss.Width(prefixRender)-styles.HeaderPadDist, 0)
 
-		itStyle := nowPlayingStyle
-		descStyle := nowPlayingDescStyle
+		itStyle := d.style.PrimaryColorStyle
+		descStyle := d.style.SecondaryColorStyle
 		if isSel {
-			itStyle = selNowPlayingStyle
-			descStyle = selNowPlayingDescStyle
+			itStyle = d.style.SelNowPlayingStyle
+			descStyle = d.style.SelNowPlayingDescStyle
 		}
 
 		for lipgloss.Width(itStyle.Render(name)) > maxWidth-1 && len(name) > 0 {
@@ -228,32 +237,32 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		}
 		nameRender := itStyle.Render(name)
 		res.WriteString(nameRender)
-		hFill := max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(nameRender)-headerPadDist-1, 0)
+		hFill := max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(nameRender)-styles.HeaderPadDist-1, 0)
 		res.WriteString(itStyle.Render(strings.Repeat(" ", hFill)))
 		res.WriteString("\n")
 
-		res.WriteString(nowPlayingPrefixStyle.Render(strings.Repeat(" ", utf8.RuneCountInString(prefix))))
+		res.WriteString(d.style.NowPlayingPrefixStyle.Render(strings.Repeat(" ", utf8.RuneCountInString(prefix))))
 		desc := s.Description()
 		for lipgloss.Width(descStyle.Render(desc)) > maxWidth-1 && len(desc) > 0 {
 			desc = desc[:len(desc)-1]
 		}
 		descRender := descStyle.Render(desc)
 		res.WriteString(descRender)
-		hFill = max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(descRender)-headerPadDist-1, 0)
+		hFill = max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(descRender)-styles.HeaderPadDist-1, 0)
 		res.WriteString(descStyle.Render(strings.Repeat(" ", hFill)))
 
 		str = res.String()
-		str = selectedBorderStyle.Render(str)
+		str = d.style.SelectedBorderStyle.Render(str)
 	} else {
-		prefixRender := prefixStyle.Render(prefix)
+		prefixRender := d.style.PrefixStyle.Render(prefix)
 		res.WriteString(prefixRender)
-		maxWidth := max(listWidth-lipgloss.Width(prefixRender)-headerPadDist, 0)
+		maxWidth := max(listWidth-lipgloss.Width(prefixRender)-styles.HeaderPadDist, 0)
 
-		itStyle := itemStyle
-		descStyle := descStyle
+		itStyle := d.style.PrimaryColorStyle
+		descStyle := d.style.SecondaryColorStyle
 		if isSel {
-			itStyle = selItemStyle
-			descStyle = selDescStyle
+			itStyle = d.style.SelItemStyle
+			descStyle = d.style.SelDescStyle
 		}
 
 		for lipgloss.Width(itStyle.Render(name)) > maxWidth && len(name) > 0 {
@@ -261,18 +270,18 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		}
 		nameRender := itStyle.Render(name)
 		res.WriteString(nameRender)
-		hFill := max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(nameRender)-headerPadDist, 0)
+		hFill := max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(nameRender)-styles.HeaderPadDist, 0)
 		res.WriteString(itStyle.Render(strings.Repeat(" ", hFill)))
 		res.WriteString("\n")
 
-		res.WriteString(prefixStyle.Render(strings.Repeat(" ", utf8.RuneCountInString(prefix))))
+		res.WriteString(d.style.PrefixStyle.Render(strings.Repeat(" ", utf8.RuneCountInString(prefix))))
 		desc := s.Description()
 		for lipgloss.Width(descStyle.Render(desc)) > maxWidth && len(desc) > 0 {
 			desc = desc[:len(desc)-1]
 		}
 		descRender := descStyle.Render(desc)
 		res.WriteString(descRender)
-		hFill = max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(descRender)-headerPadDist, 0)
+		hFill = max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(descRender)-styles.HeaderPadDist, 0)
 		res.WriteString(descStyle.Render(strings.Repeat(" ", hFill)))
 
 		str = res.String()
@@ -283,7 +292,7 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 
 func (d *stationDelegate) ShortHelp() []key.Binding {
 	return []key.Binding{
-		d.keymap.playSelected, d.keymap.pause, d.keymap.toggleFavorite,
+		d.keymap.playSelected, d.keymap.pause, d.keymap.toggleFavorite, d.keymap.toggleAutoplay,
 	}
 }
 
@@ -298,6 +307,7 @@ func (d *stationDelegate) FullHelp() [][]key.Binding {
 			d.keymap.seekFw,
 			d.keymap.info,
 			d.keymap.toggleFavorite,
+			d.keymap.toggleAutoplay,
 			d.keymap.delete,
 			d.keymap.pasteAfter,
 			d.keymap.pasteBefore,
@@ -322,6 +332,10 @@ func newDelegateKeyMap() *delegateKeyMap {
 		toggleFavorite: key.NewBinding(
 			key.WithKeys("f"),
 			key.WithHelp("f", "favorite station"),
+		),
+		toggleAutoplay: key.NewBinding(
+			key.WithKeys("a"),
+			key.WithHelp("a", "autoplay station"),
 		),
 		delete: key.NewBinding(
 			key.WithKeys("d"),
@@ -359,6 +373,7 @@ type delegateKeyMap struct {
 	playSelected   key.Binding
 	info           key.Binding
 	toggleFavorite key.Binding
+	toggleAutoplay key.Binding
 	delete         key.Binding
 	pasteAfter     key.Binding
 	pasteBefore    key.Binding

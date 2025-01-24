@@ -19,26 +19,34 @@ var debug = flag.Bool("debug", false, "use -debug arg to log to a file")
 const (
 	ReqTimeout = 10 * time.Second
 
-	defVersion        = "0.4.2"
-	cfgSubDir         = "sonicRadio"
-	cfgFilename       = "config.json"
+	defVersion  = "0.4.2"
+	cfgSubDir   = "sonicRadio"
+	cfgFilename = "config.json"
+)
+
+var (
+	defVolume         = 100
 	defHistorySaveMax = 100
 )
 
-var defVolume = 100
-
 type Value struct {
-	Version        string              `json:"-"`
-	Debug          bool                `json:"-"`
-	LogPath        string              `json:"-"`
-	Favorites      []string            `json:"favorites,omitempty"` // Ordered station UUID's for user favorites
-	Volume         *int                `json:"volume,omitempty"`
+	Version   string   `json:"-"`
+	Debug     bool     `json:"-"`
+	LogPath   string   `json:"-"`
+	Favorites []string `json:"favorites,omitempty"` // Ordered station UUID's for user favorites
+	Volume    *int     `json:"volume,omitempty"`
+	Theme     int      `json:"theme"`
+
 	historyMtx     *sync.Mutex         `json:"-"`
 	History        []HistoryEntry      `json:"history,omitempty"`
-	HistorySaveMax int                 `json:"historySaveMax"`
+	HistorySaveMax *int                `json:"historySaveMax,omitempty"`
 	HistoryChan    chan []HistoryEntry `json:"-"`
-	IsRunning      bool                `json:"isRunning"`
-	saveMtx        *sync.Mutex
+
+	AutoplayFavorite string `json:"autoplayFavorite"`
+
+	IsRunning bool `json:"isRunning"`
+
+	saveMtx *sync.Mutex
 }
 
 func (v *Value) GetVolume() int {
@@ -56,6 +64,7 @@ func (v *Value) IsFavorite(uuid string) bool {
 	return slices.Contains(v.Favorites, uuid)
 }
 
+// ToggleFavorite return true if uuid was added, false if it was removed
 func (v *Value) ToggleFavorite(uuid string) bool {
 	l1 := len(v.Favorites)
 	v.Favorites = slices.DeleteFunc(v.Favorites, func(el string) bool { return el == uuid })
@@ -67,6 +76,7 @@ func (v *Value) ToggleFavorite(uuid string) bool {
 	return false
 }
 
+// DeleteFavorite returns true if uuid was removed, false if not
 func (v *Value) DeleteFavorite(uuid string) bool {
 	l1 := len(v.Favorites)
 	v.Favorites = slices.DeleteFunc(v.Favorites, func(el string) bool { return el == uuid })
@@ -91,7 +101,7 @@ func (v *Value) String() string {
 	if v.Volume != nil {
 		vol = *v.Volume
 	}
-	return fmt.Sprintf("{version:%q, debug: %v, logPath=%q, favorites=%d, volume=%d, history=%d, historySaveMax=%d}",
+	return fmt.Sprintf("{version:%q, debug: %v, logPath=%q, favorites=%d, volume=%d, history=%d, historySaveMax=%v}",
 		v.Version, v.Debug, v.LogPath, len(v.Favorites), vol, len(v.History), v.HistorySaveMax)
 }
 
@@ -113,7 +123,7 @@ func Load() (cfg *Value, err error) {
 		LogPath:        os.TempDir(),
 		Volume:         &defVolume,
 		historyMtx:     &sync.Mutex{},
-		HistorySaveMax: defHistorySaveMax,
+		HistorySaveMax: &defHistorySaveMax,
 		HistoryChan:    make(chan []HistoryEntry),
 		saveMtx:        &sync.Mutex{},
 	}
@@ -143,8 +153,11 @@ func Load() (cfg *Value, err error) {
 	if cfg.Volume == nil {
 		cfg.Volume = &defVolume
 	}
-	if cfg.HistorySaveMax == 0 {
-		cfg.HistorySaveMax = defHistorySaveMax
+	if cfg.HistorySaveMax == nil {
+		cfg.HistorySaveMax = &defHistorySaveMax
+	}
+	if len(cfg.History) > *cfg.HistorySaveMax {
+		cfg.History = cfg.History[len(cfg.History)-*cfg.HistorySaveMax:]
 	}
 	return
 }
