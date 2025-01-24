@@ -19,7 +19,7 @@ var debug = flag.Bool("debug", false, "use -debug arg to log to a file")
 const (
 	ReqTimeout = 10 * time.Second
 
-	defVersion  = "0.4.2"
+	defVersion  = "0.5.0"
 	cfgSubDir   = "sonicRadio"
 	cfgFilename = "config.json"
 )
