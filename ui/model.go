@@ -568,7 +568,7 @@ func (m *Model) changeTheme(themeIdx int) {
 
 			if browse, ok := t.(*browseTab); ok {
 				for iIdx := range browse.searchModel.inputs {
-					input := &browse.searchModel.inputs[iIdx]
+					input := browse.searchModel.inputs[iIdx].TextInput()
 					m.style.TextInputSyle(input, input.Prompt, input.Placeholder)
 					input.PromptStyle = m.style.PromptStyle
 				}

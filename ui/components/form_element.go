@@ -7,7 +7,9 @@ import (
 )
 
 type FormElement struct {
-	input      *textinput.Model
+	input        *textinput.Model
+	inputLastVal string
+
 	optionList *OptionList
 }
 
@@ -45,6 +47,11 @@ func (e *FormElement) Update(msg tea.Msg) (*FormElement, tea.Cmd) {
 	case e.input != nil:
 		var input textinput.Model
 		input, cmd = e.input.Update(msg)
+		if input.Err != nil && input.Value() != "" {
+			input.SetValue(e.inputLastVal)
+		} else {
+			e.inputLastVal = input.Value()
+		}
 		e.input = &input
 	case e.optionList != nil:
 		var opt tea.Model

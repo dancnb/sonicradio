@@ -27,7 +27,7 @@ type searchModel struct {
 	countries []string
 	languages []string
 
-	inputs []textinput.Model
+	inputs []components.FormElement
 	idx    inputIdx
 
 	orderOptions components.OptionList
@@ -105,6 +105,10 @@ func newSearchModel(ctx context.Context, browser *browser.Api, s *styles.Style) 
 		s.NewInputModel("Language      ", "---", &k.prevSugg, &k.nextSugg, &k.acceptSugg, nil),
 		s.NewInputModel("Limit         ", "---", &k.prevSugg, &k.nextSugg, &k.acceptSugg, styles.NrInputValidator),
 	}
+	formElems := make([]components.FormElement, len(inputs))
+	for ii := range inputs {
+		formElems[ii] = *components.NewFormElement(components.WithTextInput(&inputs[ii]))
+	}
 	h := help.New()
 	h.ShowAll = false
 	h.ShortSeparator = "   "
@@ -116,7 +120,7 @@ func newSearchModel(ctx context.Context, browser *browser.Api, s *styles.Style) 
 		browser:      browser,
 		keymap:       k,
 		help:         h,
-		inputs:       inputs,
+		inputs:       formElems,
 		orderOptions: orderOpts,
 		style:        s,
 	}
@@ -130,8 +134,8 @@ func (s *searchModel) getSuggestions(ctx context.Context) {
 		for i := range countries {
 			s.countries = append(s.countries, countries[i].Name)
 		}
-		s.inputs[country].ShowSuggestions = true
-		s.inputs[country].SetSuggestions(s.countries)
+		s.inputs[country].TextInput().ShowSuggestions = true
+		s.inputs[country].TextInput().SetSuggestions(s.countries)
 	}
 
 	langs, err := s.browser.GetLanguages(ctx)
@@ -139,8 +143,8 @@ func (s *searchModel) getSuggestions(ctx context.Context) {
 		for i := range langs {
 			s.languages = append(s.languages, langs[i].Name)
 		}
-		s.inputs[language].ShowSuggestions = true
-		s.inputs[language].SetSuggestions(s.languages)
+		s.inputs[language].TextInput().ShowSuggestions = true
+		s.inputs[language].TextInput().SetSuggestions(s.languages)
 	}
 }
 
@@ -168,7 +172,7 @@ func (s *searchModel) setEnabled(v bool) {
 	s.idx = name
 	for i := range s.inputs {
 		s.inputs[i].Blur()
-		s.inputs[i].Reset()
+		s.inputs[i].TextInput().Reset()
 	}
 	s.inputs[limit].SetValue(fmt.Sprintf("%d", browser.DefLimit))
 	if !v {
@@ -263,9 +267,9 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case key.Matches(msg, s.keymap.nextInput):
-			if msg.String() == "tab" && strings.TrimSpace(s.inputs[s.idx].Value()) != "" && s.inputs[s.idx].ShowSuggestions {
-				s.inputs[s.idx].SetValue(s.inputs[s.idx].CurrentSuggestion())
-				s.inputs[s.idx].CursorEnd()
+			if msg.String() == "tab" && strings.TrimSpace(s.inputs[s.idx].Value()) != "" && s.inputs[s.idx].TextInput().ShowSuggestions {
+				s.inputs[s.idx].SetValue(s.inputs[s.idx].TextInput().CurrentSuggestion())
+				s.inputs[s.idx].TextInput().CursorEnd()
 			}
 			s.idx++
 			s.idx = s.idx % inputIdx(len(s.inputs))
@@ -281,7 +285,8 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	for i := range s.inputs {
 		var cmd tea.Cmd
-		s.inputs[i], cmd = s.inputs[i].Update(msg)
+		fEl, cmd := s.inputs[i].Update(msg)
+		s.inputs[i] = *fEl
 		cmds = append(cmds, cmd)
 	}
 
