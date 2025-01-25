@@ -43,6 +43,7 @@ func run() {
 	if cfg.Debug {
 		logFile := fmt.Sprintf("sonicradio-%d.log", time.Now().UnixMilli())
 		lp := filepath.Join(cfg.LogPath, logFile)
+		lp = "__debug.log" // dev only
 		f, err := os.Create(lp)
 		if err != nil {
 			panic("could not create log file " + lp)

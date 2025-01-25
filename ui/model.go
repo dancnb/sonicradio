@@ -382,8 +382,6 @@ func (m *Model) Quit() {
 	}
 
 	// save config
-	st := m.tabs[settingsTabIx].(*settingsTab)
-	st.saveConfig()
 	m.cfg.IsRunning = false
 	autoplayFound := false
 	for _, v := range m.cfg.Favorites {
@@ -395,10 +393,8 @@ func (m *Model) Quit() {
 	if !autoplayFound {
 		m.cfg.AutoplayFavorite = ""
 	}
-	err = m.cfg.Save()
-	if err != nil {
-		log.Error("config save", "error", err.Error())
-	}
+	st := m.tabs[settingsTabIx].(*settingsTab)
+	st.saveConfig()
 	log.Debug("config saved")
 }
 
