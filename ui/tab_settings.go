@@ -65,13 +65,6 @@ func newSettingsTab(ctx context.Context, cfg *config.Value, s *styles.Style, cha
 	}
 }
 
-func changeTheme(cfg *config.Value, s *styles.Style) func(int) {
-	return func(idx int) {
-		s.SetThemeIdx(idx)
-		cfg.Theme = idx
-	}
-}
-
 func (s *settingsTab) Init(m *Model) tea.Cmd {
 	s.setSize(m.width, m.totHeight-m.headerHeight)
 
@@ -113,7 +106,7 @@ func (s *settingsTab) saveConfig() {
 	} else {
 		s.cfg.HistorySaveMax = &intVal
 	}
-	// .... other fields
+	// TODO: other fields
 	err = s.cfg.Save()
 	if err != nil {
 		log.Debug(fmt.Sprintf("config save err: %v", err))
