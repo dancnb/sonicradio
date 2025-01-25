@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
+	"github.com/dancnb/sonicradio/ui/components"
 	"github.com/dancnb/sonicradio/ui/styles"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -26,6 +28,7 @@ type historyTab struct {
 	cfg     *config.Value
 	style   *styles.Style
 	viewMsg string
+	jump    components.JumpInfo
 	list    list.Model
 	keymap  historyKeymap
 }
@@ -70,6 +73,22 @@ func newHistoryTab(ctx context.Context, cfg *config.Value, s *styles.Style) *his
 			search: key.NewBinding(
 				key.WithKeys("s"),
 				key.WithHelp("s", "search"),
+			),
+			digits: []key.Binding{
+				key.NewBinding(key.WithKeys("1")),
+				key.NewBinding(key.WithKeys("2")),
+				key.NewBinding(key.WithKeys("3")),
+				key.NewBinding(key.WithKeys("4")),
+				key.NewBinding(key.WithKeys("5")),
+				key.NewBinding(key.WithKeys("6")),
+				key.NewBinding(key.WithKeys("7")),
+				key.NewBinding(key.WithKeys("8")),
+				key.NewBinding(key.WithKeys("9")),
+				key.NewBinding(key.WithKeys("0")),
+			},
+			digitHelp: key.NewBinding(
+				key.WithKeys("#"),
+				key.WithHelp("1..", "go to number #"),
 			),
 		},
 	}
@@ -166,6 +185,7 @@ func (t *historyTab) createList(width int, height int) {
 	l.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
 			t.keymap.search,
+			t.keymap.digitHelp,
 			t.keymap.prevTab,
 			t.keymap.nextTab,
 			t.keymap.favoritesTab,
@@ -215,6 +235,8 @@ func (t *historyTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, t.keymap.search):
 			m.toBrowseTab()
 			return m.tabs[browseTabIx].Update(m, msg)
+		case key.Matches(msg, t.keymap.digits...):
+			t.doJump(msg)
 
 		case key.Matches(msg, t.keymap.nextTab, t.keymap.settingsTab):
 			return m, m.toSettingsTab()
@@ -232,6 +254,14 @@ func (t *historyTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
+}
+
+func (t *historyTab) doJump(msg tea.KeyMsg) {
+	digit, _ := strconv.Atoi(msg.String())
+	jumpIdx := t.jump.NewPosition(digit)
+	if jumpIdx > 0 && jumpIdx <= len(t.list.Items()) {
+		t.list.Select(jumpIdx - 1)
+	}
 }
 
 func (t *historyTab) IsFiltering() bool {
@@ -338,4 +368,6 @@ type historyKeymap struct {
 	settingsTab  key.Binding
 	browseTab    key.Binding
 	search       key.Binding
+	digits       []key.Binding
+	digitHelp    key.Binding
 }
