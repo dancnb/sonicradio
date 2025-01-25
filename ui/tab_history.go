@@ -132,8 +132,14 @@ func (t *historyTab) setEntries(entries []config.HistoryEntry) tea.Cmd {
 
 func (t *historyTab) deleteOneCmd() tea.Cmd {
 	return func() tea.Msg {
+		if t.list.SelectedItem() == nil {
+			return nil
+		}
+		e, ok := t.list.SelectedItem().(config.HistoryEntry)
+		if !ok {
+			return nil
+		}
 		idx := t.list.Index()
-		e, _ := t.list.SelectedItem().(config.HistoryEntry)
 
 		t.cfg.DeleteHistoryEntry(e)
 
