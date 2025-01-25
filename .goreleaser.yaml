@@ -18,10 +18,16 @@ before:
 builds:
   - env:
       - CGO_ENABLED=0
+    id: "linux"
     goos:
       - linux
       # - windows
       - darwin
+  - env:
+      - CGO_ENABLED=0
+    id: "windows"
+    goos:
+      - windows
 
 archives:
   - format: tar.gz
