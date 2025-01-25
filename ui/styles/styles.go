@@ -120,7 +120,7 @@ func (s *Style) setTheme(t Theme) {
 	// general
 	s.StatusBarStyle = lipgloss.NewStyle().Background(s.baseSecondaryColor).Foreground(s.invertedPrimaryColor)
 	s.ViewStyle = s.SecondaryColorStyle.PaddingLeft(HeaderPadDist)
-	s.NoItemsStyle = s.SecondaryColorStyle.PaddingLeft(3)
+	s.NoItemsStyle = s.SecondaryColorStyle.PaddingLeft(HeaderPadDist * 2)
 
 	// station delegate
 	s.PrefixStyle = s.PrimaryColorStyle.PaddingLeft(1)

@@ -20,7 +20,6 @@ import (
 )
 
 const (
-	emptyHistoryMsg          = "  No playback history available. \n"
 	historyFilterPlaceholder = "station name or song"
 )
 
@@ -146,6 +145,10 @@ func (t *historyTab) deleteOneCmd() tea.Cmd {
 		t.list.RemoveItem(idx)
 		if idx >= len(t.list.Items()) {
 			t.list.Select(len(t.list.Items()) - 1)
+		}
+		t.viewMsg = ""
+		if len(t.list.Items()) == 0 {
+			t.viewMsg = emptyHistoryMsg
 		}
 		return nil
 	}

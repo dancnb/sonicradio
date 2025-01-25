@@ -27,10 +27,11 @@ import (
 )
 
 const (
-	// view messages
-	loadingMsg          = "  Fetching stations... \n"
-	noFavoritesAddedMsg = "  No favorite stations added.\n"
-	noStationsFound     = "  No stations found. \n"
+	// view messages, nweline is important to sync with list no items view
+	loadingMsg          = "\n  Fetching stations... \n"
+	noFavoritesAddedMsg = "\n  No favorite stations added.\n"
+	noStationsFound     = "\n  No stations found. \n"
+	emptyHistoryMsg     = "\n  No playback history available. \n"
 
 	// header status
 	noPlayingMsg     = "Nothing playing"
@@ -577,6 +578,7 @@ func (m *Model) changeTheme(themeIdx int) {
 			m.style.TextInputSyle(&t.Stations().list.FilterInput, stationsFilterPrompt, stationsFilterPlaceholder)
 			t.Stations().list.Help.Styles = helpStyle
 			t.Stations().list.Styles.HelpStyle = m.style.HelpStyle
+			t.Stations().list.Styles.NoItems = m.style.NoItemsStyle
 
 			if browse, ok := t.(*browseTab); ok {
 				for iIdx := range browse.searchModel.inputs {
@@ -591,6 +593,7 @@ func (m *Model) changeTheme(themeIdx int) {
 			m.style.TextInputSyle(&ht.list.FilterInput, stationsFilterPrompt, historyFilterPlaceholder)
 			ht.list.Help.Styles = helpStyle
 			ht.list.Styles.HelpStyle = m.style.HelpStyle
+			ht.list.Styles.NoItems = m.style.NoItemsStyle
 
 		} else if st, ok := m.tabs[i].(*settingsTab); ok {
 			for iIdx := range st.inputs {
