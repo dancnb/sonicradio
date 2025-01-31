@@ -285,9 +285,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				selStation, ok := activeTab.Stations().list.SelectedItem().(browser.Station)
 				if ok {
-					m.updateStatus(fmt.Sprintf("Connecting to %s...", selStation.Name))
-					cmds := []tea.Cmd{m.initSpinner(), d.playCmd(selStation)}
-					return m, tea.Batch(cmds...)
+					// m.updateStatus(fmt.Sprintf("Connecting to %s...", selStation.Name))
+					// cmds := []tea.Cmd{m.initSpinner(), d.playCmd(selStation)}
+					// return m, tea.Batch(cmds...)
+					return m, m.playStationCmd(selStation)
 				}
 			}
 		}
