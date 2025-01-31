@@ -42,8 +42,6 @@ const (
 
 	// metadata
 	volumeFmt          = "%3d%%%s"
-	volumeStep         = 5
-	seekStepSec        = 10
 	playerPollInterval = 500 * time.Millisecond
 )
 
@@ -261,13 +259,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.activeTabIdx == settingsTabIx {
 				return m.tabs[settingsTabIx].Update(m, msg)
 			}
-			return m, m.seekCmd(-seekStepSec)
+			return m, m.seekCmd(-config.SeekStepSec)
 		}
 		if key.Matches(msg, d.keymap.seekFw) {
 			if m.activeTabIdx == settingsTabIx {
 				return m.tabs[settingsTabIx].Update(m, msg)
 			}
-			return m, m.seekCmd(seekStepSec)
+			return m, m.seekCmd(config.SeekStepSec)
 		}
 
 		if key.Matches(msg, d.keymap.pause) {

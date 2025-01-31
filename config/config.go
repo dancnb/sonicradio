@@ -17,7 +17,9 @@ import (
 var debug = flag.Bool("debug", false, "use -debug arg to log to a file")
 
 const (
-	ReqTimeout = 10 * time.Second
+	ReqTimeout  = 10 * time.Second
+	VolumeStep  = 5
+	SeekStepSec = 10
 
 	defVersion  = "0.5.8"
 	cfgSubDir   = "sonicRadio"
@@ -37,6 +39,8 @@ type Value struct {
 	Volume    *int     `json:"volume,omitempty"`
 	Theme     int      `json:"theme"`
 
+	Player PlayerType `json:"playerType"`
+
 	historyMtx     *sync.Mutex         `json:"-"`
 	History        []HistoryEntry      `json:"history,omitempty"`
 	HistorySaveMax *int                `json:"historySaveMax,omitempty"`
@@ -48,6 +52,13 @@ type Value struct {
 
 	saveMtx *sync.Mutex
 }
+
+type PlayerType uint8
+
+const (
+	Mpv PlayerType = iota
+	FFPlay
+)
 
 func (v *Value) GetVolume() int {
 	if v.Volume != nil {

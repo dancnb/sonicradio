@@ -106,7 +106,7 @@ func (s *settingsTab) saveConfig() {
 	} else {
 		s.cfg.HistorySaveMax = &intVal
 	}
-	// TODO: other fields
+
 	err = s.cfg.Save()
 	if err != nil {
 		log.Debug(fmt.Sprintf("config save err: %v", err))

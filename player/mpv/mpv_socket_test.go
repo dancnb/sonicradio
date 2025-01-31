@@ -1,4 +1,4 @@
-package player
+package mpv
 
 import (
 	"context"
@@ -17,11 +17,14 @@ func TestMpvSocket_Play(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
+
 	url := "http://stream-uk1.radioparadise.com/aac-320"
+
 	err = p.Play(url)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	m := p.Metadata()
 	if m.Err != nil {
 		t.Fatal(m.Err)
@@ -34,6 +37,7 @@ func TestMpvSocket_Play(t *testing.T) {
 	if m.Err != nil {
 		t.Fatal(err)
 	}
+
 	err = p.Pause(true)
 	if err != nil {
 		t.Fatal(err)
@@ -46,6 +50,7 @@ func TestMpvSocket_Play(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	err = p.Stop()
 	if err != nil {
 		t.Fatal(err)

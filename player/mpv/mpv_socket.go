@@ -1,4 +1,4 @@
-package player
+package mpv
 
 import (
 	"bufio"
@@ -14,6 +14,9 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/dancnb/sonicradio/config"
+	"github.com/dancnb/sonicradio/player/model"
 )
 
 var (
@@ -120,6 +123,10 @@ func mpvCmd(sockFile string) (*exec.Cmd, error) {
 	return cmd, nil
 }
 
+func (mpv *MpvSocket) GetType() config.PlayerType {
+	return config.Mpv
+}
+
 func (mpv *MpvSocket) Pause(value bool) error {
 	log := slog.With("method", "MpvSocket.Pause")
 	log.Info("pause", "value", value)
@@ -146,7 +153,7 @@ func (mpv *MpvSocket) Play(url string) error {
 	return err
 }
 
-func (mpv *MpvSocket) Metadata() *Metadata {
+func (mpv *MpvSocket) Metadata() *model.Metadata {
 	m := mpv.getMetadata()
 	// TODO? alternate title
 	// if m.Err != nil || len(m.Title) == 0 {
@@ -166,11 +173,11 @@ func (mpv *MpvSocket) Metadata() *Metadata {
 	return &m
 }
 
-func (mpv *MpvSocket) Seek(amtSec int) *Metadata {
+func (mpv *MpvSocket) Seek(amtSec int) *model.Metadata {
 	cmd := fmt.Sprintf(ipcCmds[seek], amtSec)
 	_, err := mpv.ipcRequest(cmd)
 	if err != nil {
-		return &Metadata{Err: err}
+		return &model.Metadata{Err: err}
 	}
 	return mpv.Metadata()
 }
@@ -188,45 +195,40 @@ type icyMetadata struct {
 	Title       string `json:"icy-title"`
 }
 
-func (mpv *MpvSocket) getMetadata() Metadata {
+func (mpv *MpvSocket) getMetadata() model.Metadata {
 	cmd := ipcCmds[metadata]
 	res, err := mpv.ipcRequest(cmd)
 	if err != nil {
-		return Metadata{Err: err}
+		return model.Metadata{Err: err}
 	}
 	resS, ok := res.(string)
 	if !ok {
-		return Metadata{Err: ErrNoMetadata}
+		return model.Metadata{Err: ErrNoMetadata}
 	}
 	if len(resS) == 0 {
-		return Metadata{Err: ErrNoMetadata}
+		return model.Metadata{Err: ErrNoMetadata}
 	}
 	var m icyMetadata
 	err = json.Unmarshal([]byte(resS), &m)
 	if err != nil {
-		return Metadata{Err: fmt.Errorf("metadata unmarhsal err: %v", err.Error())}
+		return model.Metadata{Err: fmt.Errorf("metadata unmarhsal err: %v", err.Error())}
 	}
-	return Metadata{Title: strings.TrimSpace(m.Title)}
+	return model.Metadata{Title: strings.TrimSpace(m.Title)}
 }
 
-func (mpv *MpvSocket) getMediaTitle() Metadata {
+func (mpv *MpvSocket) getMediaTitle() model.Metadata {
 	cmd := ipcCmds[mediaTitle]
 	res, err := mpv.ipcRequest(cmd)
 	if err != nil {
-		return Metadata{Err: err}
+		return model.Metadata{Err: err}
 	}
-	return Metadata{
+	return model.Metadata{
 		Title: strings.TrimSpace(res.(string)),
 	}
 }
 
 func (mpv *MpvSocket) SetVolume(value int) (int, error) {
 	log := slog.With("method", "MpvSocket.SetVolume")
-	if value < 0 {
-		value = 0
-	} else if value > 100 {
-		value = 100
-	}
 	log.Info("volume", "value", value)
 	cmd := fmt.Sprintf(ipcCmds[volume], value)
 	_, err := mpv.ipcRequest(cmd)

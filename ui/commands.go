@@ -45,9 +45,9 @@ func (m *Model) topStationsCmd() tea.Msg {
 func (m *Model) volumeCmd(up bool) tea.Cmd {
 	return func() tea.Msg {
 		currVol := m.cfg.GetVolume()
-		newVol := currVol + volumeStep
+		newVol := currVol + config.VolumeStep
 		if !up {
-			newVol = currVol - volumeStep
+			newVol = currVol - config.VolumeStep
 		}
 		setVol, err := m.player.SetVolume(newVol)
 		if err != nil {

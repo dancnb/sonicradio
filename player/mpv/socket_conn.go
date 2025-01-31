@@ -1,6 +1,6 @@
 //go:build !windows
 
-package player
+package mpv
 
 import (
 	"context"

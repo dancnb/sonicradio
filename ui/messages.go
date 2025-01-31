@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/dancnb/sonicradio/browser"
-	"github.com/dancnb/sonicradio/player"
+	"github.com/dancnb/sonicradio/player/model"
 )
 
 // tea.Msg
@@ -78,7 +78,7 @@ type (
 	}
 )
 
-func getMetadataMsg(s browser.Station, m player.Metadata) metadataMsg {
+func getMetadataMsg(s browser.Station, m model.Metadata) metadataMsg {
 	msg := metadataMsg{
 		stationUuid: s.Stationuuid,
 		stationName: s.Name,
