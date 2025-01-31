@@ -110,10 +110,10 @@ func (f *FFPlay) Metadata() *model.Metadata {
 	log := slog.With("method", "FFPlay.Metadata")
 
 	output := f.playing.Stderr.(*bytes.Buffer).String()
-	log.Debug("FFPlay", "output", output)
 
 	errIx := strings.Index(output, errOut)
 	if errIx >= 0 {
+		log.Debug("FFPlay", "output", output)
 		errMsg := output[errIx:]
 		nlIx := strings.Index(errMsg, "\n")
 		if nlIx >= 0 {
@@ -133,6 +133,7 @@ func (f *FFPlay) Metadata() *model.Metadata {
 		}
 		titleParts := strings.Split(title, ":")
 		if len(titleParts) != 2 {
+			log.Debug("FFPlay", "output", output)
 			return &model.Metadata{Err: fmt.Errorf("invalid title message %s", title)}
 		}
 		title = strings.TrimSpace(titleParts[1])
