@@ -53,7 +53,8 @@ func newSettingsTab(ctx context.Context, cfg *config.Value, s *styles.Style, cha
 	themeList := components.NewOptionList("Theme", themeOpts, cfg.Theme, s)
 	themeList.PartialCallbackFn = changeThemeFn
 	themeList.DoneCallbackFn = changeThemeFn
-	return &settingsTab{
+
+	st := &settingsTab{
 		cfg:   cfg,
 		style: s,
 		inputs: []*components.FormElement{
@@ -63,6 +64,13 @@ func newSettingsTab(ctx context.Context, cfg *config.Value, s *styles.Style, cha
 		keymap: newSettingsKeymap(),
 		help:   h,
 	}
+
+	st.loadConfig()
+	return st
+}
+
+func (s *settingsTab) loadConfig() {
+	s.inputs[historySaveMaxIdx].SetValue(fmt.Sprintf("%d", *s.cfg.HistorySaveMax))
 }
 
 func (s *settingsTab) Init(m *Model) tea.Cmd {
@@ -83,10 +91,6 @@ func (s *settingsTab) onEnter() tea.Cmd {
 	s.loadConfig()
 
 	return s.inputs[historySaveMaxIdx].Focus()
-}
-
-func (s *settingsTab) loadConfig() {
-	s.inputs[historySaveMaxIdx].SetValue(fmt.Sprintf("%d", *s.cfg.HistorySaveMax))
 }
 
 func (s *settingsTab) onExit() {
