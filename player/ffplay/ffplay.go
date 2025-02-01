@@ -84,6 +84,8 @@ func (f *FFPlay) Play(url string) error {
 }
 
 func (f *FFPlay) Pause(value bool) error {
+	log := slog.With("method", "FFPlay.Pause")
+	log.Info("pause", "value", value)
 	if value {
 		return f.Stop()
 	} else if f.url != "" {

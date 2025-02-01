@@ -505,7 +505,9 @@ func (m *Model) metadataView(width int) string {
 		}
 		var line strings.Builder
 		line.WriteString(m.spinner.View())
-		line.WriteString(m.style.PrimaryColorStyle.MaxWidth(maxW - 1).Render(" " + m.delegate.currPlaying.Name))
+		line.WriteString(
+			m.style.PrimaryColorStyle.MaxWidth(maxW - 1).Render(
+				" " + m.delegate.currPlaying.Name))
 		fill := max(0, maxW-lipgloss.Width(line.String()))
 		line.WriteString(m.style.PrimaryColorStyle.Render(strings.Repeat(" ", fill)))
 		songView.WriteString(line.String())
