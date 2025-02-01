@@ -141,28 +141,30 @@ func (d *stationDelegate) shouldPaste(m *list.Model) bool {
 }
 
 func (d *stationDelegate) pauseCmd() tea.Cmd {
+	log := slog.With("method", "ui.stationDelegate.pauseCmd")
+	if d.currPlaying == nil {
+		return nil
+	}
+	d.prevPlaying = d.currPlaying
+	d.currPlaying = nil
+
 	return func() tea.Msg {
-		if d.currPlaying == nil {
-			return nil
-		}
-		log := slog.With("method", "ui.stationDelegate.pauseCmd")
 		err := d.player.Pause(true)
 		if err != nil {
 			log.Error(fmt.Sprintf("player pause: %v", err))
 			return pauseRespMsg{fmt.Sprintf("Could not pause station %s (%s)!", d.currPlaying.Name, d.currPlaying.URL)}
 		}
-		d.prevPlaying = d.currPlaying
-		d.currPlaying = nil
 		return pauseRespMsg{}
 	}
 }
 
 func (d *stationDelegate) resumeCmd() tea.Cmd {
+	log := slog.With("method", "ui.stationDelegate.resumeCmd")
+	if d.prevPlaying == nil {
+		return nil
+	}
+
 	return func() tea.Msg {
-		if d.prevPlaying == nil {
-			return nil
-		}
-		log := slog.With("method", "ui.stationDelegate.resumeCmd")
 		err := d.player.Pause(false)
 		if err != nil {
 			log.Error(fmt.Sprintf("player resume: %v", err))

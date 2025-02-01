@@ -514,7 +514,9 @@ func (m *Model) metadataView(width int) string {
 	} else if m.delegate.prevPlaying != nil {
 		var line strings.Builder
 		line.WriteString(m.style.SongTitleStyle.Render(styles.PauseChar))
-		line.WriteString(m.style.PrimaryColorStyle.MaxWidth(maxW - 1).Render(" " + m.delegate.prevPlaying.Name))
+		line.WriteString(
+			m.style.PrimaryColorStyle.MaxWidth(maxW - 1).Render(
+				" " + m.delegate.prevPlaying.Name))
 		fill := max(0, maxW-lipgloss.Width(line.String()))
 		line.WriteString(m.style.PrimaryColorStyle.Render(strings.Repeat(" ", fill)))
 		songView.WriteString(line.String())
@@ -534,13 +536,17 @@ func (m *Model) metadataView(width int) string {
 		songView.WriteString(line.String())
 	} else if m.delegate.currPlaying != nil {
 		var line strings.Builder
-		line.WriteString(m.style.SongTitleStyle.MaxWidth(maxW).Render("  " + m.delegate.currPlaying.Homepage))
+		line.WriteString(
+			m.style.SongTitleStyle.MaxWidth(maxW).Render(
+				"  " + m.delegate.currPlaying.Homepage))
 		fill := max(0, maxW-lipgloss.Width(line.String()))
 		line.WriteString(m.style.PrimaryColorStyle.Render(strings.Repeat(" ", fill)))
 		songView.WriteString(line.String())
 	} else if m.delegate.prevPlaying != nil {
 		var line strings.Builder
-		line.WriteString(m.style.SongTitleStyle.MaxWidth(maxW).Render("  " + m.delegate.prevPlaying.Homepage))
+		line.WriteString(
+			m.style.SongTitleStyle.MaxWidth(maxW).Render(
+				"  " + m.delegate.prevPlaying.Homepage))
 		fill := max(0, maxW-lipgloss.Width(line.String()))
 		line.WriteString(m.style.PrimaryColorStyle.Render(strings.Repeat(" ", fill)))
 		songView.WriteString(line.String())
