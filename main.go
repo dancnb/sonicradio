@@ -39,6 +39,15 @@ func run() {
 			fmt.Printf("error saving config: %v\n", err)
 		}
 	}()
+	defer func() {
+		if r := recover(); r != nil {
+			cfg.IsRunning = false
+			err = cfg.Save()
+			if err != nil {
+				fmt.Printf("error saving config: %v\n", err)
+			}
+		}
+	}()
 
 	var logW io.Writer
 	if cfg.Debug {
@@ -79,6 +88,11 @@ func run() {
 
 	if _, err := m.Progr.Run(); err != nil {
 		slog.Info(fmt.Sprintf("Error running program: %s", err.Error()))
+		cfg.IsRunning = false
+		err = cfg.Save()
+		if err != nil {
+			fmt.Printf("error saving config: %v\n", err)
+		}
 		os.Exit(1)
 	}
 }
