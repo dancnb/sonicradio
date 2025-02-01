@@ -20,7 +20,11 @@ const (
 	titleMsg = "Metadata update for StreamTitle:"
 )
 
-var errs = []string{"File Not Found", "Failed to resolve"}
+var errs = []string{
+	"File Not Found",
+	"Failed to resolve",
+	"Invalid data found when processing input",
+}
 
 var (
 	baseArgs = []string{"-hide_banner", "-nodisp", "-loglevel", "verbose", "-autoexit", "-volume"}
