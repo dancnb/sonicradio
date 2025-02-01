@@ -15,11 +15,12 @@ import (
 )
 
 const (
-	errOut = "Failed to"
 
 	// titleMsg = "icy-title:"
-	titleMsg = "StreamTitle"
+	titleMsg = "Metadata update for StreamTitle:"
 )
+
+var errs = []string{"File Not Found", "Failed to resolve"}
 
 var (
 	baseArgs = []string{"-hide_banner", "-nodisp", "-loglevel", "verbose", "-autoexit", "-volume"}
@@ -111,9 +112,12 @@ func (f *FFPlay) Metadata() *model.Metadata {
 
 	output := f.playing.Stderr.(*bytes.Buffer).String()
 
-	errIx := strings.Index(output, errOut)
-	if errIx >= 0 {
-		log.Debug("FFPlay", "output", output)
+	for _, err := range errs {
+		errIx := strings.Index(output, err)
+		if errIx == -1 {
+			continue
+		}
+		log.Debug("FFPlay", "output", output, "errorMsg", err)
 		errMsg := output[errIx:]
 		nlIx := strings.Index(errMsg, "\n")
 		if nlIx >= 0 {
@@ -126,17 +130,12 @@ func (f *FFPlay) Metadata() *model.Metadata {
 	title := ""
 	titleIx := strings.LastIndex(output, titleMsg)
 	if titleIx >= 0 {
-		title = output[titleIx+10:]
+		title = output[titleIx+len(titleMsg):]
 		nlIx := strings.Index(title, "\n")
 		if nlIx >= 0 {
 			title = title[:nlIx]
 		}
-		titleParts := strings.Split(title, ":")
-		if len(titleParts) != 2 {
-			log.Debug("FFPlay", "output", output)
-			return &model.Metadata{Err: fmt.Errorf("invalid title message %s", title)}
-		}
-		title = strings.TrimSpace(titleParts[1])
+		title = strings.TrimSpace(title)
 	}
 
 	return &model.Metadata{Title: title}
