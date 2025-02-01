@@ -29,7 +29,8 @@ func run() {
 		fmt.Println(err.Error())
 	}
 	if cfg.IsRunning {
-		panic("application is already running")
+		fmt.Println("application is already running")
+		os.Exit(1)
 	}
 	go func() {
 		cfg.IsRunning = true

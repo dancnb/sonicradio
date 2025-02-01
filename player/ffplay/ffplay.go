@@ -106,7 +106,6 @@ func (f *FFPlay) SetVolume(value int) (int, error) {
 	return f.volume, nil
 }
 
-// TODO: error msg
 // TODO: playback time
 func (f *FFPlay) Metadata() *model.Metadata {
 	if f.playing == nil || f.playing.Stderr == nil {
