@@ -27,8 +27,15 @@ var errs = []string{
 }
 
 var (
-	baseArgs = []string{"-hide_banner", "-nodisp", "-loglevel", "verbose", "-autoexit", "-volume"}
-	volArg   = "%d"
+	baseArgs = []string{
+		"-hide_banner",
+		"-nodisp",
+		"-loglevel",
+		"verbose",
+		"-autoexit",
+		"-volume",
+	}
+	volArg = "%d"
 )
 
 type FFPlay struct {
