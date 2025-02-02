@@ -105,20 +105,27 @@ func updatePlayerMetadata(ctx context.Context, progr *tea.Program, m *Model) {
 		case <-ctx.Done():
 			return
 		case <-tick.C:
-			if m.delegate.currPlaying == nil {
-				continue
-			}
-			metadata := m.player.Metadata()
-			if metadata == nil {
-				continue
-			} else if metadata.Err != nil {
-				log.Error("", "metadata", metadata.Err)
-				continue
-			}
-			msg := getMetadataMsg(*m.delegate.currPlaying, *metadata)
-			progr.Send(msg)
+			pollMetadata(m, log, progr)
 		}
 	}
+}
+
+func pollMetadata(m *Model, log *slog.Logger, progr *tea.Program) {
+	m.delegate.playingMtx.RLock()
+	defer m.delegate.playingMtx.RUnlock()
+
+	if m.delegate.currPlaying == nil {
+		return
+	}
+	metadata := m.player.Metadata()
+	if metadata == nil {
+		return
+	} else if metadata.Err != nil {
+		log.Error("", "metadata", metadata.Err)
+		return
+	}
+	msg := getMetadataMsg(*m.delegate.currPlaying, *metadata)
+	progr.Send(msg)
 }
 
 type Model struct {
@@ -273,23 +280,16 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m.tabs[settingsTabIx].Update(m, msg)
 			}
 
-			if d.currPlaying != nil {
-				return m, d.pauseCmd()
-			} else if d.prevPlaying != nil {
-				cmds := []tea.Cmd{m.initSpinner(), d.resumeCmd()}
-				return m, tea.Batch(cmds...)
-			} else {
-				activeTab, ok := activeTab.(stationTab)
-				if !ok {
-					break
-				}
-				selStation, ok := activeTab.Stations().list.SelectedItem().(browser.Station)
-				if ok {
-					// m.updateStatus(fmt.Sprintf("Connecting to %s...", selStation.Name))
-					// cmds := []tea.Cmd{m.initSpinner(), d.playCmd(selStation)}
-					// return m, tea.Batch(cmds...)
-					return m, m.playStationCmd(selStation)
-				}
+			if resM, resCmd := m.handlePauseKey(); resM != nil {
+				return resM, resCmd
+			}
+			activeTab, ok := activeTab.(stationTab)
+			if !ok {
+				break
+			}
+			selStation, ok := activeTab.Stations().list.SelectedItem().(browser.Station)
+			if ok {
+				return m, m.playStationCmd(selStation)
 			}
 		}
 
@@ -318,6 +318,19 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	//
 	model, cmd := activeTab.Update(m, msg)
 	return model, cmd
+}
+
+func (m *Model) handlePauseKey() (*Model, tea.Cmd) {
+	m.delegate.playingMtx.RLock()
+	defer m.delegate.playingMtx.RUnlock()
+
+	if m.delegate.currPlaying != nil {
+		return m, m.delegate.pauseCmd()
+	} else if m.delegate.prevPlaying != nil {
+		cmds := []tea.Cmd{m.initSpinner(), m.delegate.resumeCmd()}
+		return m, tea.Batch(cmds...)
+	}
+	return nil, nil
 }
 
 func (m *Model) statusHandler(ctx context.Context) {
@@ -499,6 +512,10 @@ func (m *Model) metadataView(width int) string {
 	maxW := max(0, width-playTimeW-volumeW-2*styles.HeaderPadDist)
 
 	var songView strings.Builder
+
+	m.delegate.playingMtx.RLock()
+	defer m.delegate.playingMtx.RUnlock()
+
 	if m.delegate.currPlaying != nil {
 		if m.spinner == nil {
 			m.spinner = m.newSpinner()

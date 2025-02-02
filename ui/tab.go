@@ -108,6 +108,9 @@ func (t *stationsTabBase) IsFiltering() bool {
 }
 
 func (t *stationsTabBase) toNowPlaying(m *Model) {
+	m.delegate.playingMtx.RLock()
+	defer m.delegate.playingMtx.RUnlock()
+
 	uuid := ""
 	if m.delegate.currPlaying != nil {
 		uuid = m.delegate.currPlaying.Stationuuid

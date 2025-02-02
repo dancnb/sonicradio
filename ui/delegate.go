@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"strings"
+	"sync"
 	"unicode/utf8"
 
 	"github.com/dancnb/sonicradio/ui/styles"
@@ -42,9 +43,11 @@ type stationDelegate struct {
 	cfg    *config.Value
 	style  *styles.Style
 
+	playingMtx  sync.RWMutex
 	prevPlaying *browser.Station
 	currPlaying *browser.Station
-	deleted     *browser.Station
+
+	deleted *browser.Station
 
 	keymap *delegateKeyMap
 
@@ -141,30 +144,34 @@ func (d *stationDelegate) shouldPaste(m *list.Model) bool {
 }
 
 func (d *stationDelegate) pauseCmd() tea.Cmd {
-	log := slog.With("method", "ui.stationDelegate.pauseCmd")
-	if d.currPlaying == nil {
-		return nil
-	}
-	d.prevPlaying = d.currPlaying
-	d.currPlaying = nil
-
 	return func() tea.Msg {
+		d.playingMtx.Lock()
+		defer d.playingMtx.Unlock()
+
+		log := slog.With("method", "ui.stationDelegate.pauseCmd")
+		if d.currPlaying == nil {
+			return nil
+		}
 		err := d.player.Pause(true)
 		if err != nil {
 			log.Error(fmt.Sprintf("player pause: %v", err))
 			return pauseRespMsg{fmt.Sprintf("Could not pause station %s (%s)!", d.currPlaying.Name, d.currPlaying.URL)}
 		}
+		d.prevPlaying = d.currPlaying
+		d.currPlaying = nil
 		return pauseRespMsg{}
 	}
 }
 
 func (d *stationDelegate) resumeCmd() tea.Cmd {
-	log := slog.With("method", "ui.stationDelegate.resumeCmd")
-	if d.prevPlaying == nil {
-		return nil
-	}
-
 	return func() tea.Msg {
+		d.playingMtx.Lock()
+		defer d.playingMtx.Unlock()
+
+		log := slog.With("method", "ui.stationDelegate.resumeCmd")
+		if d.prevPlaying == nil {
+			return nil
+		}
 		err := d.player.Pause(false)
 		if err != nil {
 			log.Error(fmt.Sprintf("player resume: %v", err))
@@ -178,6 +185,9 @@ func (d *stationDelegate) resumeCmd() tea.Cmd {
 
 func (d *stationDelegate) playCmd(s browser.Station) tea.Cmd {
 	return func() tea.Msg {
+		d.playingMtx.Lock()
+		defer d.playingMtx.Unlock()
+
 		log := slog.With("method", "ui.stationDelegate.playStation")
 		log.Debug("playing", "id", s.Stationuuid)
 		ctx, cancel := context.WithTimeout(context.Background(), config.ReqTimeout)
@@ -214,6 +224,10 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 	}
 
 	isSel := index == m.Index()
+
+	d.playingMtx.RLock()
+	defer d.playingMtx.RUnlock()
+
 	isCurr := d.currPlaying != nil && d.currPlaying.Stationuuid == s.Stationuuid
 	isPrev := d.currPlaying == nil && d.prevPlaying != nil && d.prevPlaying.Stationuuid == s.Stationuuid
 	var res strings.Builder
