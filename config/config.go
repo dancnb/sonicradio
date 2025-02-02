@@ -17,9 +17,11 @@ import (
 var debug = flag.Bool("debug", false, "use -debug arg to log to a file")
 
 const (
-	ApiReqTimeout = 10 * time.Second
-	VolumeStep    = 5
-	SeekStepSec   = 10
+	ApiReqTimeout     = 10 * time.Second
+	MpvIpcConnTimeout = 10 * time.Second
+
+	VolumeStep  = 5
+	SeekStepSec = 10
 
 	defVersion  = "0.5.8"
 	cfgSubDir   = "sonicRadio"

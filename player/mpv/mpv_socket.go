@@ -70,7 +70,7 @@ func NewMPVSocket(ctx context.Context) (*MpvSocket, error) {
 		sockFile: fmt.Sprintf(sockFile, os.Getpid()),
 	}
 
-	cmd, err := mpvCmd(mpv.sockFile)
+	cmd, err := mpvCmd(ctx, mpv.sockFile)
 	if err != nil {
 		return nil, err
 	}
@@ -103,11 +103,11 @@ loop:
 	return mpv, nil
 }
 
-func mpvCmd(sockFile string) (*exec.Cmd, error) {
+func mpvCmd(ctx context.Context, sockFile string) (*exec.Cmd, error) {
 	log := slog.With("method", "mpvCmd")
 	args := slices.Clone(baseSockArgs)
 	args = append(args, fmt.Sprintf(ipcArg, sockFile))
-	cmd := exec.Command(baseCmd, args...)
+	cmd := exec.CommandContext(ctx, baseCmd, args...)
 	if errors.Is(cmd.Err, exec.ErrDot) {
 		cmd.Err = nil
 	} else if cmd.Err != nil {
@@ -278,25 +278,33 @@ func (mpv *MpvSocket) ipcRequest(command string) (any, error) {
 	id := rand.IntN(999) + 1
 	cmd := fmt.Sprintf("{ \"command\": %s, \"request_id\": %d }\n", command, id)
 	log.Info("ipc", "cmd", cmd)
+
+	mpv.conn.SetDeadline(time.Now().Add(config.MpvIpcConnTimeout))
 	_, err := mpv.conn.Write([]byte(cmd))
 	if err != nil {
 		return nil, fmt.Errorf("ipc write err: %w", err)
 	}
+
+	mpv.conn.SetDeadline(time.Now().Add(config.MpvIpcConnTimeout))
 	scanner := bufio.NewScanner(mpv.conn)
+
 	for scanner.Scan() {
 		l := scanner.Bytes()
 		log.Info(fmt.Sprintf("ipc resp=%s", l))
 		var res ipcResp
 		err := json.Unmarshal(l, &res)
 		if err != nil {
+			mpv.conn.SetDeadline(time.Now().Add(config.MpvIpcConnTimeout))
 			continue
 		} else if res.Id != id {
+			mpv.conn.SetDeadline(time.Now().Add(config.MpvIpcConnTimeout))
 			continue
 		} else if res.Error != iprRespSuccess {
 			return nil, fmt.Errorf("ipc response error: %s", res.Error)
 		}
 		return res.Data, nil
 	}
+
 	if err := scanner.Err(); err != nil {
 		return nil, fmt.Errorf("scanner error: %w", err)
 	}
