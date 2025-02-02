@@ -254,7 +254,7 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				params.Order = s.oIdx.toSearchOrder()
 				params.Reverse = s.reverse
 
-				ctx, cancel := context.WithTimeout(context.Background(), config.ReqTimeout)
+				ctx, cancel := context.WithTimeout(context.Background(), config.ApiReqTimeout)
 				defer cancel()
 				stations, err := s.browser.Search(ctx, params)
 				res := searchRespMsg{stations: stations}

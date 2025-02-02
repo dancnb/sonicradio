@@ -17,9 +17,9 @@ import (
 var debug = flag.Bool("debug", false, "use -debug arg to log to a file")
 
 const (
-	ReqTimeout  = 10 * time.Second
-	VolumeStep  = 5
-	SeekStepSec = 10
+	ApiReqTimeout = 10 * time.Second
+	VolumeStep    = 5
+	SeekStepSec   = 10
 
 	defVersion  = "0.5.8"
 	cfgSubDir   = "sonicRadio"
@@ -29,6 +29,7 @@ const (
 var (
 	defVolume         = 100
 	defHistorySaveMax = 100
+
 )
 
 type Value struct {

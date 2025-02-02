@@ -17,7 +17,7 @@ func (m *Model) favoritesReqCmd() tea.Msg {
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), config.ReqTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), config.ApiReqTimeout)
 	defer cancel()
 	stations, err := m.browser.GetStations(ctx, m.cfg.Favorites)
 	res := favoritesStationRespMsg{stations: stations}
@@ -30,7 +30,7 @@ func (m *Model) favoritesReqCmd() tea.Msg {
 }
 
 func (m *Model) topStationsCmd() tea.Msg {
-	ctx, cancel := context.WithTimeout(context.Background(), config.ReqTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), config.ApiReqTimeout)
 	defer cancel()
 	stations, err := m.browser.TopStations(ctx)
 	res := topStationsRespMsg{stations: stations}
@@ -94,7 +94,7 @@ func (m *Model) playStationCmd(selStation browser.Station) tea.Cmd {
 
 func (m *Model) playUuidCmd(uuid string) tea.Cmd {
 	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), config.ReqTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), config.ApiReqTimeout)
 		defer cancel()
 		stations, err := m.browser.GetStations(ctx, []string{uuid})
 		res := playUuidRespMsg{stations: stations}
