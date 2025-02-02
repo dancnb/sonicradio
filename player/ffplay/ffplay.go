@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"slices"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/dancnb/sonicradio/config"
 	"github.com/dancnb/sonicradio/player/model"
@@ -42,6 +44,10 @@ type FFPlay struct {
 	url     string
 	playing *exec.Cmd
 
+	playTimeMtx   sync.Mutex
+	playedTime    *time.Duration
+	playStartTime time.Time
+
 	volume int
 }
 
@@ -54,9 +60,60 @@ func (f *FFPlay) GetType() config.PlayerType {
 }
 
 func (f *FFPlay) Play(url string) error {
+	err := f.play(url)
+	if err == nil {
+		f.resetPlayTime()
+	}
+	return err
+}
+
+func (f *FFPlay) resetPlayTime() {
+	f.playTimeMtx.Lock()
+	defer f.playTimeMtx.Unlock()
+
+	f.playedTime = nil
+	f.playStartTime = time.Now()
+}
+
+func (f *FFPlay) pausePlayTime() {
+	f.playTimeMtx.Lock()
+	defer f.playTimeMtx.Unlock()
+
+	d := time.Since(f.playStartTime)
+	if f.playedTime == nil {
+		f.playedTime = &d
+	} else {
+		*f.playedTime += d
+	}
+	f.playStartTime = time.Time{}
+}
+
+func (f *FFPlay) resumePlayTime() {
+	f.playTimeMtx.Lock()
+	defer f.playTimeMtx.Unlock()
+
+	f.playStartTime = time.Now()
+}
+
+func (f *FFPlay) getPlayTime() *int64 {
+	f.playTimeMtx.Lock()
+	defer f.playTimeMtx.Unlock()
+
+	var d time.Duration
+	if f.playedTime != nil {
+		d += *f.playedTime
+	}
+	if !f.playStartTime.IsZero() {
+		d += time.Since(f.playStartTime)
+	}
+	intD := int64(d.Seconds())
+	return &intD
+}
+
+func (f *FFPlay) play(url string) error {
 	log := slog.With("method", "FFPlay.Play")
 	log.Info("playing url=" + url)
-	if err := f.Stop(); err != nil {
+	if err := f.stop(); err != nil {
 		return err
 	}
 
@@ -87,14 +144,26 @@ func (f *FFPlay) Pause(value bool) error {
 	log := slog.With("method", "FFPlay.Pause")
 	log.Info("pause", "value", value)
 	if value {
-		return f.Stop()
+		err := f.stop()
+		if err == nil {
+			f.pausePlayTime()
+		}
+		return err
 	} else if f.url != "" {
-		return f.Play(f.url)
+		err := f.play(f.url)
+		if err == nil {
+			f.resumePlayTime()
+		}
+		return err
 	}
 	return nil
 }
 
 func (f *FFPlay) Stop() error {
+	return f.stop()
+}
+
+func (f *FFPlay) stop() error {
 	log := slog.With("method", "FFPlay.Stop")
 	if f.playing == nil {
 		log.Debug("no current station playing")
@@ -115,7 +184,6 @@ func (f *FFPlay) SetVolume(value int) (int, error) {
 	return f.volume, nil
 }
 
-// TODO: playback time
 func (f *FFPlay) Metadata() *model.Metadata {
 	if f.playing == nil || f.playing.Stderr == nil {
 		return nil
@@ -136,7 +204,7 @@ func (f *FFPlay) Metadata() *model.Metadata {
 			errMsg = errMsg[:nlIx]
 		}
 		errMsg = strings.TrimSpace(errMsg)
-		return &model.Metadata{Err: errors.New(errMsg)}
+		return &model.Metadata{Err: errors.New(errMsg), PlaybackTimeSec: f.getPlayTime()}
 	}
 
 	title := ""
@@ -150,7 +218,7 @@ func (f *FFPlay) Metadata() *model.Metadata {
 		title = strings.TrimSpace(title)
 	}
 
-	return &model.Metadata{Title: title}
+	return &model.Metadata{Title: title, PlaybackTimeSec: f.getPlayTime()}
 }
 
 func (f *FFPlay) Seek(amtSec int) *model.Metadata {
