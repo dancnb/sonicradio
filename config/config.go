@@ -32,6 +32,7 @@ var (
 	defVolume         = 100
 	defHistorySaveMax = 100
 
+	Players = [2]PlayerType{Mpv, FFPlay}
 )
 
 type Value struct {

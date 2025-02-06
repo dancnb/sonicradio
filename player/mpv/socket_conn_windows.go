@@ -18,3 +18,7 @@ func getConn(ctx context.Context, addr string) (net.Conn, error) {
 	conn, err := npipe.DialTimeout(addr, dialTimeout)
 	return conn, err
 }
+
+func GetBaseCmd() string {
+	return baseCmd
+}

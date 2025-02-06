@@ -2,6 +2,9 @@ package player
 
 import (
 	"context"
+	"errors"
+	"log/slog"
+	"os/exec"
 
 	"github.com/dancnb/sonicradio/config"
 	"github.com/dancnb/sonicradio/player/ffplay"
@@ -10,8 +13,8 @@ import (
 )
 
 type Player struct {
-	delegate   backendPlayer
-	playerType config.PlayerType
+	delegate  backendPlayer
+	available map[config.PlayerType]struct{}
 }
 
 type backendPlayer interface {
@@ -26,29 +29,75 @@ type backendPlayer interface {
 }
 
 func NewPlayer(ctx context.Context, cfg *config.Value) (*Player, error) {
-	var delegate backendPlayer
+	p := new(Player)
+	err := p.checkPlayerType(cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	switch cfg.Player {
 	case config.Mpv:
 		mpvPlayer, err := mpv.NewMPVSocket(ctx)
 		if err != nil {
 			return nil, err
 		}
-		delegate = mpvPlayer
+		p.delegate = mpvPlayer
 	case config.FFPlay:
 		ffplayPlayer, err := ffplay.NewFFPlay(ctx)
 		if err != nil {
 			return nil, err
 		}
-		delegate = ffplayPlayer
+		p.delegate = ffplayPlayer
 	}
 
 	vol := cfg.GetVolume()
-	_, err := delegate.SetVolume(clampVolume(vol))
+	_, err = p.delegate.SetVolume(clampVolume(vol))
 	if err != nil {
 		return nil, err
 	}
 
-	return &Player{delegate: delegate, playerType: config.Mpv}, nil
+	return p, nil
+}
+
+var errNoPlayerAvailable = errors.New("No available player found. Must have at least one of the following in PATH: mpv, ffplay.")
+
+func (p *Player) checkPlayerType(cfg *config.Value) error {
+	p.available = make(map[config.PlayerType]struct{}, len(config.Players))
+	var firstAvailable *config.PlayerType
+	for _, v := range config.Players {
+		if ok := checkAvailablePlayer(v); ok {
+			if firstAvailable == nil {
+				firstAvailable = &v
+			}
+			p.available[v] = struct{}{}
+		}
+	}
+	if len(p.available) == 0 {
+		return errNoPlayerAvailable
+	}
+	if _, ok := p.available[cfg.Player]; !ok {
+		cfg.Player = *firstAvailable
+	}
+	slog.Debug("Player.checkPlayerType", "value", cfg.Player)
+	return nil
+}
+
+var baseCmds = map[config.PlayerType]func() string{
+	config.Mpv:    mpv.GetBaseCmd,
+	config.FFPlay: ffplay.GetBaseCmd,
+}
+
+func checkAvailablePlayer(p config.PlayerType) bool {
+	baseCmd, ok := baseCmds[p]
+	if !ok {
+		return false
+	}
+	path, err := exec.LookPath(baseCmd())
+	slog.Debug("checkAvailablePlayer", "path", path, "err", err)
+	if err != nil && !errors.Is(err, exec.ErrDot) {
+		return false
+	}
+	return true
 }
 
 func (p *Player) Play(url string) error {

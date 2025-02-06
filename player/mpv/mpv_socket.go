@@ -107,7 +107,7 @@ func mpvCmd(ctx context.Context, sockFile string) (*exec.Cmd, error) {
 	log := slog.With("method", "mpvCmd")
 	args := slices.Clone(baseSockArgs)
 	args = append(args, fmt.Sprintf(ipcArg, sockFile))
-	cmd := exec.CommandContext(ctx, baseCmd, args...)
+	cmd := exec.CommandContext(ctx, GetBaseCmd(), args...)
 	if errors.Is(cmd.Err, exec.ErrDot) {
 		cmd.Err = nil
 	} else if cmd.Err != nil {

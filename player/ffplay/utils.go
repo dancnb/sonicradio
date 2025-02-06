@@ -9,10 +9,6 @@ import (
 
 const baseCmd = "ffplay"
 
-func getBaseCmd() string {
-	return baseCmd
-}
-
 func killProcess(p *os.Process, l *slog.Logger) error {
 	if p == nil {
 		return nil
@@ -28,4 +24,8 @@ func killProcess(p *os.Process, l *slog.Logger) error {
 
 	l.Debug("killed process group", "pgid", pid)
 	return nil
+}
+
+func GetBaseCmd() string {
+	return baseCmd
 }

@@ -120,7 +120,7 @@ func (f *FFPlay) play(url string) error {
 	args := slices.Clone(baseArgs)
 	args = append(args, fmt.Sprintf(volArg, f.volume))
 	args = append(args, url)
-	cmd := exec.Command(getBaseCmd(), args...)
+	cmd := exec.Command(GetBaseCmd(), args...)
 	if errors.Is(cmd.Err, exec.ErrDot) {
 		cmd.Err = nil
 	} else if cmd.Err != nil {
