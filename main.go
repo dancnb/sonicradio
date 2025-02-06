@@ -32,15 +32,10 @@ func run() {
 		fmt.Println("application is already running")
 		os.Exit(1)
 	}
-	go func() {
-		cfg.IsRunning = true
-		err = cfg.Save()
-		if err != nil {
-			fmt.Printf("error saving config: %v\n", err)
-		}
-	}()
+	cfg.IsRunning = true
 	defer func() {
 		if r := recover(); r != nil {
+			fmt.Println(r)
 			cfg.IsRunning = false
 			err = cfg.Save()
 			if err != nil {
@@ -76,7 +71,6 @@ func run() {
 	if err != nil {
 		panic(err)
 	}
-
 	p, err := player.NewPlayer(ctx, cfg)
 	if err != nil {
 		panic(err)
@@ -85,6 +79,11 @@ func run() {
 	defer func() {
 		m.Quit()
 	}()
+
+	err = cfg.Save()
+	if err != nil {
+		fmt.Printf("error saving config: %v\n", err)
+	}
 
 	if _, err := m.Progr.Run(); err != nil {
 		slog.Info(fmt.Sprintf("Error running program: %s", err.Error()))
