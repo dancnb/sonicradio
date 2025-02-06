@@ -65,12 +65,13 @@ func (p *Player) checkPlayerType(cfg *config.Value) error {
 	p.available = make(map[config.PlayerType]struct{}, len(config.Players))
 	var firstAvailable *config.PlayerType
 	for _, v := range config.Players {
-		if ok := checkAvailablePlayer(v); ok {
-			if firstAvailable == nil {
-				firstAvailable = &v
-			}
-			p.available[v] = struct{}{}
+		if ok := checkAvailablePlayer(v); !ok {
+			continue
 		}
+		if firstAvailable == nil {
+			firstAvailable = &v
+		}
+		p.available[v] = struct{}{}
 	}
 	if len(p.available) == 0 {
 		return errNoPlayerAvailable
@@ -93,11 +94,21 @@ func checkAvailablePlayer(p config.PlayerType) bool {
 		return false
 	}
 	path, err := exec.LookPath(baseCmd())
-	slog.Debug("checkAvailablePlayer", "path", path, "err", err)
+	slog.Debug("checkAvailablePlayer", "cmd", baseCmd, "path", path, "err", err)
 	if err != nil && !errors.Is(err, exec.ErrDot) {
 		return false
 	}
 	return true
+}
+
+func (p *Player) PlayerTypes() []config.PlayerType {
+	var res []config.PlayerType
+	for _, v := range config.Players {
+		if _, ok := p.available[v]; ok {
+			res = append(res, v)
+		}
+	}
+	return res
 }
 
 func (p *Player) Play(url string) error {

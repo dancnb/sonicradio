@@ -31,8 +31,6 @@ const (
 var (
 	defVolume         = 100
 	defHistorySaveMax = 100
-
-	Players = [2]PlayerType{Mpv, FFPlay}
 )
 
 type Value struct {
@@ -63,6 +61,17 @@ const (
 	Mpv PlayerType = iota
 	FFPlay
 )
+
+var Players = [2]PlayerType{Mpv, FFPlay}
+
+var playerNames = map[PlayerType]string{
+	Mpv:    "Mpv",
+	FFPlay: "FFPlay",
+}
+
+func (p PlayerType) String() string {
+	return playerNames[p]
+}
 
 func (v *Value) GetVolume() int {
 	if v.Volume != nil {

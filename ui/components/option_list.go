@@ -36,8 +36,8 @@ type OptionList struct {
 }
 
 type OptionValue struct {
-	Idx  int
-	Name string
+	IdxView  int
+	NameView string
 }
 
 func NewOptionList(prompt string, options []OptionValue, startIdx int, s *styles.Style) OptionList {
@@ -118,7 +118,7 @@ type jumpPositionMgs int
 
 func (o *OptionList) jumpPos2Idx(pos int) int {
 	for i := 0; i < len(o.options); i++ {
-		if o.options[i].Idx == pos {
+		if o.options[i].IdxView == pos {
 			return i
 		}
 	}
@@ -222,9 +222,9 @@ func (o *OptionList) View() string {
 		b.WriteString(o.style.PromptStyle.Render(styles.PadFieldName(prefix, padAmt)))
 
 		var optS strings.Builder
-		optIdx := styles.IndexString(o.options[idx].Idx)
+		optIdx := styles.IndexString(o.options[idx].IdxView)
 		optS.WriteString(optStyle.Render(optIdx))
-		optName := o.options[idx].Name
+		optName := o.options[idx].NameView
 		if isPreview {
 			optName = previewOptStyle.Render(optName)
 		} else {
@@ -236,7 +236,9 @@ func (o *OptionList) View() string {
 			optName = o.style.SelectedBorderStyle.Render(optName)
 		}
 		b.WriteString(optName)
-		b.WriteRune('\n')
+		if idx < len(o.options)-1 {
+			b.WriteRune('\n')
+		}
 	}
 
 	return b.String()

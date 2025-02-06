@@ -39,20 +39,47 @@ const (
 	themesIdx
 )
 
-func newSettingsTab(ctx context.Context, cfg *config.Value, s *styles.Style, changeThemeFn func(int)) *settingsTab {
+func newSettingsTab(
+	ctx context.Context,
+	cfg *config.Value,
+	s *styles.Style,
+	playerTypes []config.PlayerType,
+	changeThemeFn func(int),
+) *settingsTab {
 	h := help.New()
 	h.ShowAll = false
 	h.ShortSeparator = "   "
 	h.Styles = s.HelpStyles()
 
+	// history max entries
 	historySaveMax := s.NewInputModel("History max entries", "---", nil, nil, nil, styles.NrInputValidator)
+
+	// themes
 	themeOpts := make([]components.OptionValue, len(styles.Themes))
 	for i := range styles.Themes {
-		themeOpts[i] = components.OptionValue{Idx: i + 1, Name: styles.Themes[i].Name}
+		themeOpts[i] = components.OptionValue{IdxView: i + 1, NameView: styles.Themes[i].Name}
 	}
 	themeList := components.NewOptionList("Theme", themeOpts, cfg.Theme, s)
+	// TODO: false if more than 10 themes
+	themeList.SetQuick(true)
 	themeList.PartialCallbackFn = changeThemeFn
 	themeList.DoneCallbackFn = changeThemeFn
+
+	// player
+	playerOpts := make([]components.OptionValue, len(playerTypes))
+	var startIdx int
+	for i := range playerTypes {
+		playerOpts[i] = components.OptionValue{IdxView: i + 1, NameView: playerTypes[i].String()}
+		if playerTypes[i] == cfg.Player {
+			startIdx = i
+		}
+	}
+	playerList := components.NewOptionList("Player (requires restart)", playerOpts, startIdx, s)
+	playerList.SetQuick(true)
+	playerList.DoneCallbackFn = func(i int) {
+		cfg.Player = playerTypes[i]
+		slog.Debug("change player type", "i", i, "new type", cfg.Player.String())
+	}
 
 	st := &settingsTab{
 		cfg:   cfg,
@@ -60,6 +87,7 @@ func newSettingsTab(ctx context.Context, cfg *config.Value, s *styles.Style, cha
 		inputs: []*components.FormElement{
 			components.NewFormElement(components.WithTextInput(&historySaveMax)),
 			components.NewFormElement(components.WithOptionList(&themeList)),
+			components.NewFormElement(components.WithOptionList(&playerList)),
 		},
 		keymap: newSettingsKeymap(),
 		help:   h,

@@ -190,9 +190,7 @@ func (d *stationDelegate) playCmd(s browser.Station) tea.Cmd {
 
 		log := slog.With("method", "ui.stationDelegate.playStation")
 		log.Debug("playing", "id", s.Stationuuid)
-		ctx, cancel := context.WithTimeout(context.Background(), config.ApiReqTimeout)
-		defer cancel()
-		go d.increaseCounter(ctx, s)
+		go d.increaseCounter(s)
 
 		err := d.player.Play(s.URL)
 		if err != nil {
@@ -206,7 +204,9 @@ func (d *stationDelegate) playCmd(s browser.Station) tea.Cmd {
 	}
 }
 
-func (d *stationDelegate) increaseCounter(ctx context.Context, station browser.Station) {
+func (d *stationDelegate) increaseCounter(station browser.Station) {
+	ctx, cancel := context.WithTimeout(context.Background(), config.ApiReqTimeout)
+	defer cancel()
 	d.b.StationCounter(ctx, station.Stationuuid)
 }
 

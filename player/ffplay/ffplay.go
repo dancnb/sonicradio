@@ -127,6 +127,7 @@ func (f *FFPlay) play(url string) error {
 		log.Error("ffplay cmd error", "error", cmd.Err.Error())
 		return cmd.Err
 	}
+	log.Debug("cmd", "args", cmd.Args)
 	cmd.Stderr = &bytes.Buffer{}
 	err := cmd.Start()
 	if err != nil {

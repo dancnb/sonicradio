@@ -84,16 +84,16 @@ var searchOrder = map[orderIx]browser.OrderBy{
 }
 
 var orderView = []components.OptionValue{
-	{Idx: 1, Name: "Votes            "},
-	{Idx: 2, Name: "Clicks           "},
-	{Idx: 3, Name: "Recent trends    "},
-	{Idx: 4, Name: "Bitrate          "},
-	{Idx: 5, Name: "Name             "},
-	{Idx: 6, Name: "Tags             "},
-	{Idx: 7, Name: "Country          "},
-	{Idx: 8, Name: "Language         "},
-	{Idx: 9, Name: "Codecs           "},
-	{Idx: 0, Name: "Random           "},
+	{IdxView: 1, NameView: "Votes            "},
+	{IdxView: 2, NameView: "Clicks           "},
+	{IdxView: 3, NameView: "Recent trends    "},
+	{IdxView: 4, NameView: "Bitrate          "},
+	{IdxView: 5, NameView: "Name             "},
+	{IdxView: 6, NameView: "Tags             "},
+	{IdxView: 7, NameView: "Country          "},
+	{IdxView: 8, NameView: "Language         "},
+	{IdxView: 9, NameView: "Codecs           "},
+	{IdxView: 0, NameView: "Random           "},
 }
 
 func newSearchModel(ctx context.Context, browser *browser.Api, s *styles.Style) *searchModel {
@@ -311,9 +311,9 @@ func (s *searchModel) View() string {
 		b.WriteRune('\n')
 	}
 	b.WriteRune('\n')
-	b.WriteRune('\n')
 
 	b.WriteString(s.orderOptions.View())
+	b.WriteRune('\n')
 	b.WriteRune('\n')
 
 	b.WriteString(s.style.PromptStyle.Render(styles.PadFieldName("Reverse       ", nil)))
