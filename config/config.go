@@ -43,7 +43,7 @@ type Value struct {
 
 	Player PlayerType `json:"playerType"`
 
-	historyMtx     *sync.Mutex         `json:"-"`
+	historyMtx     sync.Mutex          `json:"-"`
 	History        []HistoryEntry      `json:"history,omitempty"`
 	HistorySaveMax *int                `json:"historySaveMax,omitempty"`
 	HistoryChan    chan []HistoryEntry `json:"-"`
@@ -52,7 +52,7 @@ type Value struct {
 
 	IsRunning bool `json:"isRunning"`
 
-	saveMtx *sync.Mutex
+	saveMtx sync.Mutex
 }
 
 type PlayerType uint8
@@ -146,10 +146,8 @@ func Load() (cfg *Value, err error) {
 		Debug:          *debug,
 		LogPath:        os.TempDir(),
 		Volume:         &defVolume,
-		historyMtx:     &sync.Mutex{},
 		HistorySaveMax: &defHistorySaveMax,
 		HistoryChan:    make(chan []HistoryEntry),
-		saveMtx:        &sync.Mutex{},
 	}
 
 	dir, err := os.UserConfigDir()
