@@ -26,7 +26,7 @@ const (
 	voteTimeout       = 10 * time.Minute
 )
 
-var ServerErrMsg = errors.New("Server response not available")
+var ErrServerMsg = errors.New("Server response not available")
 
 func NewApi(ctx context.Context, cfg *config.Value) (*Api, error) {
 	api := Api{
@@ -38,7 +38,7 @@ func NewApi(ctx context.Context, cfg *config.Value) (*Api, error) {
 	if err != nil {
 		msg := fmt.Errorf("could not perform DNS lookup for %q: %w", HOST, err)
 		slog.Error(msg.Error())
-		res, err = api.getServerMirrors(ctx)
+		res, err = api.getServerMirrors()
 		if err != nil {
 			msg := fmt.Errorf("could not retrieve %s servers: %w", HOST, err)
 			slog.Error(msg.Error())
@@ -48,7 +48,7 @@ func NewApi(ctx context.Context, cfg *config.Value) (*Api, error) {
 	api.servers = append(api.servers, res...)
 
 	if len(api.servers) == 0 {
-		return nil, ServerErrMsg
+		return nil, ErrServerMsg
 	}
 	return &api, nil
 }
@@ -65,13 +65,13 @@ type Api struct {
 	stationVotes map[string]time.Time
 }
 
-func (a *Api) GetLanguages(ctx context.Context) ([]Language, error) {
+func (a *Api) GetLanguages() ([]Language, error) {
 	if len(a.langs) > 0 {
 		return a.langs, nil
 	}
 	log := slog.With("method", "Api.GetLanguages")
 	for i := 0; i < serverMaxRetry; i++ {
-		res, err := a.doServerRequest(ctx, http.MethodGet, urlLangs, nil)
+		res, err := a.doServerRequest(http.MethodGet, urlLangs, nil)
 		if err != nil {
 			log.Error("", "request error", err)
 			time.Sleep(serverRetryMillis * time.Millisecond)
@@ -90,16 +90,16 @@ func (a *Api) GetLanguages(ctx context.Context) ([]Language, error) {
 		return languages, nil
 	}
 	log.Warn("exceeded max retries")
-	return nil, ServerErrMsg
+	return nil, ErrServerMsg
 }
 
-func (a *Api) GetCountries(ctx context.Context) ([]Country, error) {
+func (a *Api) GetCountries() ([]Country, error) {
 	if len(a.countries) > 0 {
 		return a.countries, nil
 	}
 	log := slog.With("method", "Api.GetCountries")
 	for i := 0; i < serverMaxRetry; i++ {
-		res, err := a.doServerRequest(ctx, http.MethodGet, urlCountries, nil)
+		res, err := a.doServerRequest(http.MethodGet, urlCountries, nil)
 		if err != nil {
 			log.Error("", "request error", err)
 			time.Sleep(serverRetryMillis * time.Millisecond)
@@ -118,19 +118,19 @@ func (a *Api) GetCountries(ctx context.Context) ([]Country, error) {
 		return countries, nil
 	}
 	log.Warn("exceeded max retries")
-	return nil, ServerErrMsg
+	return nil, ErrServerMsg
 }
 
-func (a *Api) Search(ctx context.Context, s SearchParams) ([]Station, error) {
-	return a.stationSearch(ctx, s)
+func (a *Api) Search(s SearchParams) ([]Station, error) {
+	return a.stationSearch(s)
 }
 
-func (a *Api) TopStations(ctx context.Context) ([]Station, error) {
+func (a *Api) TopStations() ([]Station, error) {
 	s := DefaultSearchParams()
-	return a.stationSearch(ctx, s)
+	return a.stationSearch(s)
 }
 
-func (a *Api) stationSearch(ctx context.Context, s SearchParams) ([]Station, error) {
+func (a *Api) stationSearch(s SearchParams) ([]Station, error) {
 	body := s.toFormData()
 	log := slog.With("method", "Api.stationSearch")
 	log.Debug("", "request", body)
@@ -147,7 +147,7 @@ func (a *Api) stationSearch(ctx context.Context, s SearchParams) ([]Station, err
 	var err error
 	for i := 0; i < serverMaxRetry; i++ {
 		var res []byte
-		res, err = a.doServerRequest(ctx, http.MethodPost, urlStations, []byte(body))
+		res, err = a.doServerRequest(http.MethodPost, urlStations, []byte(body))
 		if err != nil {
 			log.Error("", "request error", err)
 			time.Sleep(serverRetryMillis * time.Millisecond)
@@ -171,10 +171,10 @@ func (a *Api) stationSearch(ctx context.Context, s SearchParams) ([]Station, err
 		return stations, nil
 	}
 	log.Warn("exceeded max retries")
-	return nil, ServerErrMsg
+	return nil, ErrServerMsg
 }
 
-func (a *Api) GetStations(ctx context.Context, uuids []string) ([]Station, error) {
+func (a *Api) GetStations(uuids []string) ([]Station, error) {
 	if len(uuids) == 0 {
 		return nil, nil
 	}
@@ -189,7 +189,7 @@ func (a *Api) GetStations(ctx context.Context, uuids []string) ([]Station, error
 	}
 	x := reqBody.String()
 	for i := 0; i < serverMaxRetry; i++ {
-		res, err := a.doServerRequest(ctx, http.MethodPost, urlStationsByUUID, []byte(x))
+		res, err := a.doServerRequest(http.MethodPost, urlStationsByUUID, []byte(x))
 		if err != nil {
 			log.Error("", "request error", err)
 			time.Sleep(serverRetryMillis * time.Millisecond)
@@ -208,13 +208,13 @@ func (a *Api) GetStations(ctx context.Context, uuids []string) ([]Station, error
 	}
 
 	log.Warn("exceeded max retries")
-	return nil, ServerErrMsg
+	return nil, ErrServerMsg
 }
 
-func (a *Api) StationCounter(ctx context.Context, uuid string) error {
+func (a *Api) StationCounter(uuid string) error {
 	log := slog.With("method", "Api.StationCounter")
 	url := urlClickCount + uuid
-	res, err := a.doServerRequest(ctx, http.MethodPost, url, nil)
+	res, err := a.doServerRequest(http.MethodPost, url, nil)
 	if err != nil {
 		log.Error("", "request error", err)
 		return err
@@ -223,11 +223,13 @@ func (a *Api) StationCounter(ctx context.Context, uuid string) error {
 	return nil
 }
 
-var errVoteTimeout = errors.New("Station was voted recently")
-var errVoteReq = errors.New("Vote request error")
-var errVoteOften = errors.New("You are voting for the same station too often")
+var (
+	errVoteTimeout = errors.New("Station was voted recently")
+	errVoteReq     = errors.New("Vote request error")
+	errVoteOften   = errors.New("You are voting for the same station too often")
+)
 
-func (a *Api) StationVote(ctx context.Context, uuid string) error {
+func (a *Api) StationVote(uuid string) error {
 	log := slog.With("method", "Api.StationVote")
 
 	if voteTime, ok := a.stationVotes[uuid]; ok && time.Now().Before(voteTime.Add(voteTimeout)) {
@@ -237,7 +239,7 @@ func (a *Api) StationVote(ctx context.Context, uuid string) error {
 	a.stationVotes[uuid] = time.Now()
 
 	url := urlVote + uuid
-	res, err := a.doServerRequest(ctx, http.MethodPost, url, nil)
+	res, err := a.doServerRequest(http.MethodPost, url, nil)
 	if err != nil {
 		log.Error("", "request error", err)
 		return errVoteReq
@@ -256,11 +258,11 @@ func (a *Api) StationVote(ctx context.Context, uuid string) error {
 	return nil
 }
 
-func (a *Api) doServerRequest(ctx context.Context, method string, path string, body []byte) ([]byte, error) {
+func (a *Api) doServerRequest(method string, path string, body []byte) ([]byte, error) {
 	ix := rand.IntN(len(a.servers))
 	ip := a.servers[ix]
 	url := fmt.Sprintf("http://%s%s", ip, path)
-	return a.doRequest(ctx, method, url, body)
+	return a.doRequest(method, url, body)
 }
 
 func (a *Api) getServersDNSLookup(ctx context.Context, host string) ([]string, error) {
@@ -275,8 +277,8 @@ func (a *Api) getServersDNSLookup(ctx context.Context, host string) ([]string, e
 	return res, nil
 }
 
-func (a *Api) getServerMirrors(ctx context.Context) ([]string, error) {
-	res, err := a.doRequest(ctx, http.MethodGet, backup_server, nil)
+func (a *Api) getServerMirrors() ([]string, error) {
+	res, err := a.doRequest(http.MethodGet, backup_server, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -296,8 +298,11 @@ func (a *Api) getServerMirrors(ctx context.Context) ([]string, error) {
 	return ips, err
 }
 
-func (a *Api) doRequest(ctx context.Context, method string, url string, body []byte) ([]byte, error) {
+func (a *Api) doRequest(method string, url string, body []byte) ([]byte, error) {
 	log := slog.With("method", "Api.doRequest")
+
+	ctx, cancel := context.WithTimeout(context.Background(), config.ApiReqTimeout)
+	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(body))
 	if err != nil {

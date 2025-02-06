@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -10,7 +9,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dancnb/sonicradio/browser"
-	"github.com/dancnb/sonicradio/config"
 	"github.com/dancnb/sonicradio/ui/styles"
 )
 
@@ -79,9 +77,7 @@ func (i *infoModel) Update(msg tea.Msg) (*infoModel, tea.Cmd) {
 		switch {
 		case key.Matches(msg, i.keymap.vote):
 			return i, func() tea.Msg {
-				ctx, cancel := context.WithTimeout(context.Background(), config.ApiReqTimeout)
-				defer cancel()
-				err := i.b.StationVote(ctx, i.station.Stationuuid)
+				err := i.b.StationVote(i.station.Stationuuid)
 				if err != nil {
 					return statusMsg(err.Error())
 				}

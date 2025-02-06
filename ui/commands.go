@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 
@@ -17,9 +16,7 @@ func (m *Model) favoritesReqCmd() tea.Msg {
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), config.ApiReqTimeout)
-	defer cancel()
-	stations, err := m.browser.GetStations(ctx, m.cfg.Favorites)
+	stations, err := m.browser.GetStations(m.cfg.Favorites)
 	res := favoritesStationRespMsg{stations: stations}
 	if err != nil {
 		res.statusMsg = statusMsg(err.Error())
@@ -30,9 +27,7 @@ func (m *Model) favoritesReqCmd() tea.Msg {
 }
 
 func (m *Model) topStationsCmd() tea.Msg {
-	ctx, cancel := context.WithTimeout(context.Background(), config.ApiReqTimeout)
-	defer cancel()
-	stations, err := m.browser.TopStations(ctx)
+	stations, err := m.browser.TopStations()
 	res := topStationsRespMsg{stations: stations}
 	if err != nil {
 		res.statusMsg = statusMsg(err.Error())
@@ -94,9 +89,7 @@ func (m *Model) playStationCmd(selStation browser.Station) tea.Cmd {
 
 func (m *Model) playUuidCmd(uuid string) tea.Cmd {
 	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), config.ApiReqTimeout)
-		defer cancel()
-		stations, err := m.browser.GetStations(ctx, []string{uuid})
+		stations, err := m.browser.GetStations([]string{uuid})
 		res := playUuidRespMsg{stations: stations}
 		if err != nil {
 			res.statusMsg = statusMsg(err.Error())

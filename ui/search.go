@@ -15,7 +15,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dancnb/sonicradio/browser"
-	"github.com/dancnb/sonicradio/config"
 )
 
 type searchModel struct {
@@ -124,12 +123,12 @@ func newSearchModel(ctx context.Context, browser *browser.Api, s *styles.Style) 
 		orderOptions: orderOpts,
 		style:        s,
 	}
-	go sm.getSuggestions(ctx)
+	go sm.getSuggestions()
 	return sm
 }
 
-func (s *searchModel) getSuggestions(ctx context.Context) {
-	countries, err := s.browser.GetCountries(ctx)
+func (s *searchModel) getSuggestions() {
+	countries, err := s.browser.GetCountries()
 	if err == nil && len(countries) > 0 {
 		for i := range countries {
 			s.countries = append(s.countries, countries[i].Name)
@@ -138,7 +137,7 @@ func (s *searchModel) getSuggestions(ctx context.Context) {
 		s.inputs[country].TextInput().SetSuggestions(s.countries)
 	}
 
-	langs, err := s.browser.GetLanguages(ctx)
+	langs, err := s.browser.GetLanguages()
 	if err == nil && len(langs) > 0 {
 		for i := range langs {
 			s.languages = append(s.languages, langs[i].Name)
@@ -254,9 +253,7 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				params.Order = s.oIdx.toSearchOrder()
 				params.Reverse = s.reverse
 
-				ctx, cancel := context.WithTimeout(context.Background(), config.ApiReqTimeout)
-				defer cancel()
-				stations, err := s.browser.Search(ctx, params)
+				stations, err := s.browser.Search(params)
 				res := searchRespMsg{stations: stations}
 				if err != nil {
 					res.statusMsg = statusMsg(err.Error())

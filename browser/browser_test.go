@@ -26,7 +26,7 @@ func Test_topStations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := a.TopStations(ctx)
+	res, err := a.TopStations()
 	if err != nil {
 		t.Error(err)
 	}
@@ -48,7 +48,7 @@ func Test_getStation(t *testing.T) {
 		"a06ed3d2-ba59-4969-825d-4e9b3f336b93",
 		"96133c49-0601-11e8-ae97-52543be04c81",
 	}
-	res, err := a.GetStations(ctx, uuid)
+	res, err := a.GetStations(uuid)
 	if err != nil {
 		t.Error(err)
 	}
@@ -73,7 +73,7 @@ func Test_searchStations(t *testing.T) {
 	params.Country = strings.TrimSpace("")
 	params.State = strings.TrimSpace("")
 	params.Language = strings.TrimSpace("")
-	res, err := a.Search(ctx, params)
+	res, err := a.Search(params)
 	if err != nil {
 		t.Error(err)
 	}
@@ -91,7 +91,7 @@ func Test_getCountries(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := a.GetCountries(ctx)
+	res, err := a.GetCountries()
 	if err != nil {
 		t.Error(err)
 	}
@@ -105,7 +105,7 @@ func TestApi_StationCounter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = a.StationCounter(ctx, "748d830c-d934-41e8-bd14-870add931e1d")
+	err = a.StationCounter("748d830c-d934-41e8-bd14-870add931e1d")
 	if err != nil {
 		t.Error(err)
 	}
@@ -118,12 +118,12 @@ func TestApi_StationVote(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = a.StationVote(ctx, "748d830c-d934-41e8-bd14-870add931e1d")
+	err = a.StationVote("748d830c-d934-41e8-bd14-870add931e1d")
 	if err != nil {
 		t.Error(err)
 	}
 	time.Sleep(300 * time.Millisecond)
-	err = a.StationVote(ctx, "748d830c-d934-41e8-bd14-870add931e1d")
+	err = a.StationVote("748d830c-d934-41e8-bd14-870add931e1d")
 	if err != errVoteTimeout {
 		t.Error(err)
 	}

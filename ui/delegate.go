@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"log/slog"
@@ -205,9 +204,7 @@ func (d *stationDelegate) playCmd(s browser.Station) tea.Cmd {
 }
 
 func (d *stationDelegate) increaseCounter(station browser.Station) {
-	ctx, cancel := context.WithTimeout(context.Background(), config.ApiReqTimeout)
-	defer cancel()
-	d.b.StationCounter(ctx, station.Stationuuid)
+	d.b.StationCounter(station.Stationuuid)
 }
 
 func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
