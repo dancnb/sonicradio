@@ -143,10 +143,9 @@ func (s *settingsTab) onExit() {
 	slog.Debug("settingsTab.onExit")
 	s.inputs[themesIdx].Blur()
 	s.keymap.setEnable(false, false)
-	go s.saveConfig()
 }
 
-// saveConfig: writes values to config file on tab exit
+// saveConfig: writes values to config file on quit
 func (s *settingsTab) saveConfig() {
 	log := slog.With("method", "settingsTab.onExit")
 	historySaveMaxval := s.inputs[historySaveMaxIdx].Value()

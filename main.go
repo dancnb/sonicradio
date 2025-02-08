@@ -35,7 +35,7 @@ func run() {
 	cfg.IsRunning = true
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Println(r)
+			fmt.Println("encountered panic: ", r)
 			cfg.IsRunning = false
 			err = cfg.Save()
 			if err != nil {
@@ -82,7 +82,8 @@ func run() {
 
 	err = cfg.Save()
 	if err != nil {
-		fmt.Printf("error saving config: %v\n", err)
+		fmt.Printf("error updating config: %v\n", err)
+		os.Exit(1)
 	}
 
 	if _, err := m.Progr.Run(); err != nil {
