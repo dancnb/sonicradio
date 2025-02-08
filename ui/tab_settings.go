@@ -283,7 +283,7 @@ func (s *settingsTab) View() string {
 
 	// description
 	desc := s.style.SettingDescription.Width(s.width).Render(currInput.Description()) + "\n"
-	availHeight -= lipgloss.Height(desc)
+	availHeight -= lipgloss.Height(desc) - 2
 
 	// help
 	var elemKeymap help.KeyMap

@@ -23,7 +23,7 @@ const (
 	VolumeStep  = 5
 	SeekStepSec = 10
 
-	defVersion  = "0.6.3"
+	defVersion  = "0.6.4"
 	cfgSubDir   = "sonicRadio"
 	cfgFilename = "config.json"
 )
