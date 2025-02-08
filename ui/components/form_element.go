@@ -11,9 +11,17 @@ type FormElement struct {
 	inputLastVal string
 
 	optionList *OptionList
+
+	description string
 }
 
 type FormElementOpt func(f *FormElement)
+
+func WithDescription(desc string) FormElementOpt {
+	return func(f *FormElement) {
+		f.description = desc
+	}
+}
 
 func WithTextInput(i *textinput.Model) FormElementOpt {
 	return func(f *FormElement) {
@@ -144,4 +152,8 @@ func (e *FormElement) Keymap() help.KeyMap {
 		return &e.optionList.Keymap
 	}
 	return nil
+}
+
+func (e *FormElement) Description() string {
+	return e.description
 }

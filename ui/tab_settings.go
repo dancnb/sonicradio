@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -16,8 +17,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dancnb/sonicradio/config"
 )
-
-const configView = "config tab"
 
 type settingsTab struct {
 	cfg *config.Value
@@ -37,6 +36,15 @@ type settingsInputIdx byte
 const (
 	historySaveMaxIdx settingsInputIdx = iota
 	themesIdx
+)
+
+var (
+	descriptions = []string{
+		`Maximum number of entries displayed in "History" tab.`,
+		`Preview and select a theme.`,
+		`Choose one of the available backend players (only those found in PATH are displayed): Mpv, FFplay. The choice will take effect after a restart.`,
+	}
+	ffplayDesc = "\nFFplay does not allow changing the volume during playback or seeking backward/forward."
 )
 
 func newSettingsTab(
@@ -81,13 +89,23 @@ func newSettingsTab(
 		slog.Debug("change player type", "i", i, "new type", cfg.Player.String())
 	}
 
+	playerDesc := descriptions[2]
+	if slices.Contains(playerTypes, config.FFPlay) {
+		playerDesc += ffplayDesc
+	}
 	st := &settingsTab{
 		cfg:   cfg,
 		style: s,
 		inputs: []*components.FormElement{
-			components.NewFormElement(components.WithTextInput(&historySaveMax)),
-			components.NewFormElement(components.WithOptionList(&themeList)),
-			components.NewFormElement(components.WithOptionList(&playerList)),
+			components.NewFormElement(
+				components.WithTextInput(&historySaveMax),
+				components.WithDescription(descriptions[0])),
+			components.NewFormElement(
+				components.WithOptionList(&themeList),
+				components.WithDescription(descriptions[1])),
+			components.NewFormElement(
+				components.WithOptionList(&playerList),
+				components.WithDescription(playerDesc)),
 		},
 		keymap: newSettingsKeymap(),
 		help:   h,
@@ -251,9 +269,14 @@ func (s *settingsTab) View() string {
 		b.WriteRune('\n')
 	}
 
-	// help
 	currInput := s.inputs[s.idx]
 	availHeight := s.height
+
+	// description
+	desc := s.style.SettingDescription.Width(s.width).Render(currInput.Description()) + "\n"
+	availHeight -= lipgloss.Height(desc)
+
+	// help
 	var elemKeymap help.KeyMap
 	var help string
 	if currInput.Keymap() != nil && currInput.IsActive() {
@@ -269,7 +292,7 @@ func (s *settingsTab) View() string {
 	for i := 0; i < availHeight-inputsHeight; i++ {
 		b.WriteString("\n")
 	}
-	return b.String() + help
+	return b.String() + desc + help
 }
 
 type settingsKeymap struct {

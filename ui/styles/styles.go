@@ -80,6 +80,9 @@ type Style struct {
 	HistoryDescStyle    lipgloss.Style
 	HistorySelItemStyle lipgloss.Style
 	HistorySelDescStyle lipgloss.Style
+
+	// settings
+	SettingDescription lipgloss.Style
 }
 
 func NewStyle(themeIdx int) *Style {
@@ -187,6 +190,11 @@ func (s *Style) setTheme(t Theme) {
 	s.HistoryDescStyle = s.PrimaryColorStyle.Bold(true)
 	s.HistorySelItemStyle = s.SelDescStyle
 	s.HistorySelDescStyle = s.SelItemStyle.Bold(true)
+
+	// settings
+	s.SettingDescription = s.SecondaryColorStyle.
+		Padding(0, 1, 1, 1).
+		Border(lipgloss.NormalBorder(), true, false, false).BorderForeground(s.basePrimaryColor)
 }
 
 func (s *Style) GetSecondColor() string {

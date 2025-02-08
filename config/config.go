@@ -66,7 +66,7 @@ var Players = [2]PlayerType{Mpv, FFPlay}
 
 var playerNames = map[PlayerType]string{
 	Mpv:    "Mpv",
-	FFPlay: "FFPlay",
+	FFPlay: "FFplay",
 }
 
 func (p PlayerType) String() string {
