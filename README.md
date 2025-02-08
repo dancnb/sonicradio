@@ -2,18 +2,23 @@
 
 A stylish TUI radio player making use of [Radio Browser API](https://www.radio-browser.info/) and [Bubbletea](https://github.com/charmbracelet/bubbletea).
 
-- Go : <https://go.dev/doc/install>
-- MPV : <https://mpv.io/>
 
 ## Installation
 
+
+### Prerequisites
+
+One of the following tools must be installed and available in the PATH:
+- Mpv : <https://mpv.io/>
+- FFplay : <https://ffmpeg.org/ffplay.html>, comes bundled with ffmpeg
+
+Use one of the following methods:
 - Download one of the available binaries from [Releases](https://github.com/dancnb/sonicradio/releases) page.
 - Install using go:
 
   ```
     go install github.com/dancnb/sonicradio@latest
   ```
-
 - Clone this repository and build from source.
 
 ## Usage
