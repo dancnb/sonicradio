@@ -40,6 +40,8 @@ type OptionValue struct {
 	NameView string
 }
 
+var padOptName = 17
+
 func NewOptionList(prompt string, options []OptionValue, startIdx int, s *styles.Style) OptionList {
 	k := optionsKeymap{
 		acceptKey: key.NewBinding(
@@ -224,7 +226,7 @@ func (o *OptionList) View() string {
 		var optS strings.Builder
 		optIdx := styles.IndexString(o.options[idx].IdxView)
 		optS.WriteString(optStyle.Render(optIdx))
-		optName := o.options[idx].NameView
+		optName := styles.PadFieldName(o.options[idx].NameView, &padOptName)
 		if isPreview {
 			optName = previewOptStyle.Render(optName)
 		} else {

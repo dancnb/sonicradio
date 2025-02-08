@@ -15,23 +15,28 @@ type Theme struct {
 
 var Themes = []Theme{
 	{
+		Name:  "Duo 1",
+		Dark:  ColorProfile{primaryColor: "#E1E15B", secondaryColor: "#D58610", invertedPrimaryColor: "#2D2D0B", invertedSecondaryColor: "#827545"},
+		Light: ColorProfile{primaryColor: "#2D2D0B", secondaryColor: "#827545", invertedPrimaryColor: "#E1E15B", invertedSecondaryColor: "#D58610"},
+	},
+	{
+		Name:  "Duo 2",
+		Dark:  ColorProfile{primaryColor: "#E6E6E6", secondaryColor: "#DE5145", invertedPrimaryColor: "#351D10", invertedSecondaryColor: "#8C4D2B"},
+		Light: ColorProfile{primaryColor: "#351D10", secondaryColor: "#8C4D2B", invertedPrimaryColor: "#E6E6E6", invertedSecondaryColor: "#DE5145"},
+	},
+	{
 		Name:  "MonoYellow",
 		Dark:  ColorProfile{primaryColor: "#ffb641", secondaryColor: "#bd862d", invertedPrimaryColor: "#12100d", invertedSecondaryColor: "#4a4133"},
-		Light: ColorProfile{primaryColor: "#342609", secondaryColor: "#9C6902", invertedPrimaryColor: "#FDCD6D", invertedSecondaryColor: "#FEF3DC"},
+		Light: ColorProfile{primaryColor: "#12100d", secondaryColor: "#4a4133", invertedPrimaryColor: "#ffb641", invertedSecondaryColor: "#bd862d"},
 	},
 	{
 		Name:  "MonoGreen",
 		Dark:  ColorProfile{primaryColor: "#98c379", secondaryColor: "#6b9e47", invertedPrimaryColor: "#243518", invertedSecondaryColor: "#3c5828"},
-		Light: ColorProfile{primaryColor: "#1B3409", secondaryColor: "#375F1B", invertedPrimaryColor: "#9BD770", invertedSecondaryColor: "#EBF7E3"},
+		Light: ColorProfile{primaryColor: "#243518", secondaryColor: "#3c5828", invertedPrimaryColor: "#98c379", invertedSecondaryColor: "#6b9e47"},
 	},
 	{
 		Name:  "MonoBlue",
 		Dark:  ColorProfile{primaryColor: "#abc8ed", secondaryColor: "#6d9edf", invertedPrimaryColor: "#1c467d", invertedSecondaryColor: "#2969bc"},
-		Light: ColorProfile{primaryColor: "#091D34", secondaryColor: "#133863", invertedPrimaryColor: "#abc8ed", invertedSecondaryColor: "#E1ECF9"},
-	},
-	{
-		Name:  "Analog 1",
-		Dark:  ColorProfile{primaryColor: "#E1E15B", secondaryColor: "#D58610", invertedPrimaryColor: "#2D2D0B", invertedSecondaryColor: "#827545"},
-		Light: ColorProfile{primaryColor: "#2D2D0B", secondaryColor: "#091D34", invertedPrimaryColor: "#D58610", invertedSecondaryColor: "#EDD8B5"},
+		Light: ColorProfile{primaryColor: "#1c467d", secondaryColor: "#2969bc", invertedPrimaryColor: "#abc8ed", invertedSecondaryColor: "#6d9edf"},
 	},
 }

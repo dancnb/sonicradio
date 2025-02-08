@@ -603,6 +603,7 @@ func (m *Model) changeTheme(themeIdx int) {
 			t.Stations().list.Help.Styles = helpStyle
 			t.Stations().list.Styles.HelpStyle = m.style.HelpStyle
 			t.Stations().list.Styles.NoItems = m.style.NoItemsStyle
+			t.Stations().infoModel.help.Styles = helpStyle
 
 			if browse, ok := t.(*browseTab); ok {
 				for iIdx := range browse.searchModel.inputs {
