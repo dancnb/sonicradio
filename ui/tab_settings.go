@@ -140,14 +140,8 @@ func (s *settingsTab) onEnter() tea.Cmd {
 }
 
 func (s *settingsTab) onExit() {
-	slog.Debug("settingsTab.onExit")
-	s.inputs[themesIdx].Blur()
-	s.keymap.setEnable(false, false)
-}
-
-// saveConfig: writes values to config file on quit
-func (s *settingsTab) saveConfig() {
 	log := slog.With("method", "settingsTab.onExit")
+
 	historySaveMaxval := s.inputs[historySaveMaxIdx].Value()
 	intVal, err := strconv.Atoi(historySaveMaxval)
 	if err != nil {
@@ -156,7 +150,15 @@ func (s *settingsTab) saveConfig() {
 		s.cfg.HistorySaveMax = &intVal
 	}
 
-	err = s.cfg.Save()
+	s.inputs[themesIdx].Blur()
+
+	s.keymap.setEnable(false, false)
+}
+
+// saveConfig: writes values to config file on quit
+func (s *settingsTab) saveConfig() {
+	log := slog.With("method", "settingsTab.saveConfig")
+	err := s.cfg.Save()
 	if err != nil {
 		log.Debug(fmt.Sprintf("config save err: %v", err))
 	}
