@@ -28,9 +28,9 @@ const (
 	cfgFilename = "config.json"
 )
 
-var (
-	defVolume         = 100
-	defHistorySaveMax = 100
+const (
+	DefVolume         = 100
+	DefHistorySaveMax = 100
 )
 
 type Value struct {
@@ -77,7 +77,7 @@ func (v *Value) GetVolume() int {
 	if v.Volume != nil {
 		return *v.Volume
 	}
-	return defVolume
+	return DefVolume
 }
 
 func (v *Value) SetVolume(value int) {
@@ -141,6 +141,8 @@ func Load() (cfg *Value, err error) {
 		versionVal = defVersion
 	}
 
+	defVolume := DefVolume
+	defHistorySaveMax := DefHistorySaveMax
 	cfg = &Value{
 		Version:        versionVal,
 		Debug:          *debug,

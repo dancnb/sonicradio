@@ -19,7 +19,8 @@ import (
 )
 
 type settingsTab struct {
-	cfg *config.Value
+	cfg           *config.Value
+	changeThemeFn func(int)
 
 	style  *styles.Style
 	keymap settingsKeymap
@@ -94,8 +95,9 @@ func newSettingsTab(
 		playerDesc += ffplayDesc
 	}
 	st := &settingsTab{
-		cfg:   cfg,
-		style: s,
+		cfg:           cfg,
+		changeThemeFn: changeThemeFn,
+		style:         s,
 		inputs: []*components.FormElement{
 			components.NewFormElement(
 				components.WithTextInput(&historySaveMax),
@@ -140,27 +142,20 @@ func (s *settingsTab) onEnter() tea.Cmd {
 }
 
 func (s *settingsTab) onExit() {
-	log := slog.With("method", "settingsTab.onExit")
+	s.inputs[themesIdx].Blur()
+	s.keymap.setEnable(false, false)
 
+	s.updateConfig()
+}
+
+func (s *settingsTab) updateConfig() {
+	log := slog.With("method", "settingsTab.saveConfig")
 	historySaveMaxval := s.inputs[historySaveMaxIdx].Value()
 	intVal, err := strconv.Atoi(historySaveMaxval)
 	if err != nil {
 		log.Debug(fmt.Sprintf("invalid HistorySaveMax input value: %v", err))
 	} else {
 		s.cfg.HistorySaveMax = &intVal
-	}
-
-	s.inputs[themesIdx].Blur()
-
-	s.keymap.setEnable(false, false)
-}
-
-// saveConfig: writes values to config file on quit
-func (s *settingsTab) saveConfig() {
-	log := slog.With("method", "settingsTab.saveConfig")
-	err := s.cfg.Save()
-	if err != nil {
-		log.Debug(fmt.Sprintf("config save err: %v", err))
 	}
 }
 
@@ -240,6 +235,9 @@ func (s *settingsTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			s.keymap.setEnable(s.inputs[s.idx].Keymap() == nil, s.help.ShowAll)
 			s.inputs[s.idx].SetActive()
 			return m, tea.Batch(cmds...)
+		case key.Matches(msg, s.keymap.reset):
+			s.resetSettings()
+			return m, tea.Batch(cmds...)
 		}
 	}
 
@@ -248,6 +246,16 @@ func (s *settingsTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
+}
+
+func (s *settingsTab) resetSettings() {
+	defHistorySaveMax := config.DefHistorySaveMax
+	s.cfg.HistorySaveMax = &defHistorySaveMax
+	val := strconv.Itoa(defHistorySaveMax)
+	s.inputs[historySaveMaxIdx].SetValue(val)
+
+	s.changeThemeFn(0)
+	s.inputs[themesIdx].SetValue(0)
 }
 
 func (s *settingsTab) changeInput(cmds []tea.Cmd) []tea.Cmd {
@@ -300,6 +308,7 @@ type settingsKeymap struct {
 	nextInput     key.Binding
 	prevInput     key.Binding
 	enterInput    key.Binding
+	reset         key.Binding
 	nextTab       key.Binding
 	prevTab       key.Binding
 	favoritesTab  key.Binding
@@ -323,6 +332,10 @@ func newSettingsKeymap() settingsKeymap {
 		enterInput: key.NewBinding(
 			key.WithKeys("enter", " "),
 			key.WithHelp("space/enter", "change setting"),
+		),
+		reset: key.NewBinding(
+			key.WithKeys("ctrl+r"),
+			key.WithHelp("ctrl+r", "reset settings"),
 		),
 		nextTab: key.NewBinding(
 			key.WithKeys("tab"),
@@ -363,6 +376,7 @@ func (k *settingsKeymap) setEnable(v bool, showAll bool) {
 	k.nextInput.SetEnabled(v)
 	k.prevInput.SetEnabled(v)
 	k.enterInput.SetEnabled(v)
+	k.reset.SetEnabled(v)
 	k.nextTab.SetEnabled(v)
 	k.prevTab.SetEnabled(v)
 	k.favoritesTab.SetEnabled(v)
@@ -384,7 +398,7 @@ func (k *settingsKeymap) ShortHelp() []key.Binding {
 
 func (k *settingsKeymap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.prevInput, k.nextInput, k.enterInput},
+		{k.prevInput, k.nextInput, k.enterInput, k.reset},
 		{k.prevTab, k.nextTab, k.favoritesTab, k.browseTab, k.historyTab},
 		{k.quit, k.closeFullHelp},
 	}

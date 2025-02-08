@@ -407,7 +407,11 @@ func (m *Model) Quit() {
 		m.cfg.AutoplayFavorite = ""
 	}
 	st := m.tabs[settingsTabIx].(*settingsTab)
-	st.saveConfig()
+	st.updateConfig()
+	err = m.cfg.Save()
+	if err != nil {
+		log.Debug(fmt.Sprintf("config save err: %v", err))
+	}
 	log.Debug("config saved")
 }
 
