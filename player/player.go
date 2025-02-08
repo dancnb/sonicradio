@@ -89,11 +89,12 @@ var baseCmds = map[config.PlayerType]func() string{
 }
 
 func checkAvailablePlayer(p config.PlayerType) bool {
-	baseCmd, ok := baseCmds[p]
+	baseCmdFn, ok := baseCmds[p]
 	if !ok {
 		return false
 	}
-	path, err := exec.LookPath(baseCmd())
+	baseCmd := baseCmdFn()
+	path, err := exec.LookPath(baseCmd)
 	slog.Debug("checkAvailablePlayer", "cmd", baseCmd, "path", path, "err", err)
 	if err != nil && !errors.Is(err, exec.ErrDot) {
 		return false
