@@ -34,12 +34,13 @@ const (
 )
 
 type Value struct {
-	Version   string   `json:"-"`
-	Debug     bool     `json:"-"`
-	LogPath   string   `json:"-"`
-	Favorites []string `json:"favorites,omitempty"` // Ordered station UUID's for user favorites
-	Volume    *int     `json:"volume,omitempty"`
-	Theme     int      `json:"theme"`
+	Version     string      `json:"-"`
+	Debug       bool        `json:"-"`
+	LogPath     string      `json:"-"`
+	Favorites   []string    `json:"favorites,omitempty"` // Ordered station UUID's for user favorites
+	Volume      *int        `json:"volume,omitempty"`
+	Theme       int         `json:"theme"`
+	StationView StationView `json:"stationView"`
 
 	Player PlayerType `json:"playerType"`
 
@@ -54,6 +55,14 @@ type Value struct {
 
 	saveMtx sync.Mutex
 }
+
+type StationView uint8
+
+const (
+	DefaultView StationView = iota
+	CompactView
+	MinimalView
+)
 
 type PlayerType uint8
 
