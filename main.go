@@ -28,6 +28,19 @@ func run() {
 	defer func() {
 		_ = logWC.Close()
 	}()
+
+	pidFile, err := config.CheckPidFile()
+	if err != nil {
+		fmt.Printf("check running instance: %v\n", err)
+		_ = logWC.Close()
+		os.Exit(1)
+	}
+	defer func() {
+		if err := os.Remove(pidFile.Name()); err != nil {
+			slog.Error(fmt.Sprintf("error removing pid file: %v", err))
+		}
+	}()
+
 	slog.Info("----------------------Starting----------------------")
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -40,22 +53,6 @@ func run() {
 	if cfg == nil {
 		panic("could not get config")
 	}
-
-	if cfg.IsRunning {
-		fmt.Println("application is already running")
-		os.Exit(1)
-	}
-	cfg.IsRunning = true
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println("encountered panic: ", r)
-			cfg.IsRunning = false
-			err = cfg.Save()
-			if err != nil {
-				fmt.Printf("error saving config: %v\n", err)
-			}
-		}
-	}()
 
 	slog.Debug("loaded", "config", cfg.String())
 
@@ -72,20 +69,8 @@ func run() {
 		m.Quit()
 	}()
 
-	err = cfg.Save()
-	if err != nil {
-		fmt.Printf("error updating config: %v\n", err)
-		os.Exit(1)
-	}
-
 	if _, err := m.Progr.Run(); err != nil {
 		slog.Info(fmt.Sprintf("Error running program: %s", err.Error()))
-		cfg.IsRunning = false
-		err = cfg.Save()
-		if err != nil {
-			fmt.Printf("error saving config: %v\n", err)
-		}
-		os.Exit(1)
 	}
 }
 

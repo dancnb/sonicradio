@@ -49,8 +49,6 @@ type Value struct {
 
 	AutoplayFavorite string `json:"autoplayFavorite"`
 
-	IsRunning bool `json:"isRunning"`
-
 	saveMtx sync.Mutex
 }
 
