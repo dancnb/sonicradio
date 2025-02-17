@@ -4,7 +4,6 @@ go 1.23.5
 
 require (
 	github.com/charmbracelet/bubbletea v1.2.0
-	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce
 )
 

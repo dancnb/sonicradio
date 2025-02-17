@@ -13,7 +13,7 @@ import (
 func Test_NewApi(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, err := NewApi(ctx, &config.Value{Version: "", Debug: true})
+	_, err := NewApi(ctx, &config.Value{Version: ""})
 	if err != nil {
 		t.Error(err)
 	}
@@ -22,7 +22,7 @@ func Test_NewApi(t *testing.T) {
 func Test_topStations(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	a, err := NewApi(ctx, &config.Value{Version: "", Debug: true})
+	a, err := NewApi(ctx, &config.Value{Version: ""})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func Test_topStations(t *testing.T) {
 func Test_getStation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	a, err := NewApi(ctx, &config.Value{Version: "", Debug: true})
+	a, err := NewApi(ctx, &config.Value{Version: ""})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func Test_getStation(t *testing.T) {
 func Test_searchStations(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	a, err := NewApi(ctx, &config.Value{Version: "", Debug: true})
+	a, err := NewApi(ctx, &config.Value{Version: ""})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func Test_searchStations(t *testing.T) {
 func Test_getCountries(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	a, err := NewApi(ctx, &config.Value{Version: "", Debug: true})
+	a, err := NewApi(ctx, &config.Value{Version: ""})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +101,7 @@ func Test_getCountries(t *testing.T) {
 func TestApi_StationCounter(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	a, err := NewApi(ctx, &config.Value{Version: "", Debug: true})
+	a, err := NewApi(ctx, &config.Value{Version: ""})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +114,7 @@ func TestApi_StationCounter(t *testing.T) {
 func TestApi_StationVote(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	a, err := NewApi(ctx, &config.Value{Version: "", Debug: true})
+	a, err := NewApi(ctx, &config.Value{Version: ""})
 	if err != nil {
 		t.Fatal(err)
 	}

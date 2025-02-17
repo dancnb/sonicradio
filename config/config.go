@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -23,7 +24,7 @@ const (
 	VolumeStep  = 5
 	SeekStepSec = 10
 
-	defVersion  = "0.6.4"
+	defVersion  = "0.6.5"
 	cfgSubDir   = "sonicRadio"
 	cfgFilename = "config.json"
 )
@@ -35,8 +36,6 @@ const (
 
 type Value struct {
 	Version   string   `json:"-"`
-	Debug     bool     `json:"-"`
-	LogPath   string   `json:"-"`
 	Favorites []string `json:"favorites,omitempty"` // Ordered station UUID's for user favorites
 	Volume    *int     `json:"volume,omitempty"`
 	Theme     int      `json:"theme"`
@@ -49,8 +48,6 @@ type Value struct {
 	HistoryChan    chan []HistoryEntry `json:"-"`
 
 	AutoplayFavorite string `json:"autoplayFavorite"`
-
-	IsRunning bool `json:"isRunning"`
 
 	saveMtx sync.Mutex
 }
@@ -125,8 +122,8 @@ func (v *Value) String() string {
 	if v.Volume != nil {
 		vol = *v.Volume
 	}
-	return fmt.Sprintf("{version:%q, debug: %v, logPath=%q, favorites=%d, volume=%d, history=%d, historySaveMax=%v}",
-		v.Version, v.Debug, v.LogPath, len(v.Favorites), vol, len(v.History), v.HistorySaveMax)
+	return fmt.Sprintf("{version:%q,   favorites=%d, volume=%d, history=%d, historySaveMax=%v}",
+		v.Version, len(v.Favorites), vol, len(v.History), v.HistorySaveMax)
 }
 
 // Load must return a non-nil config Value and an error specifying why it could not read the config file:
@@ -135,7 +132,6 @@ func (v *Value) String() string {
 //
 // - either the found config Value
 func Load() (cfg *Value, err error) {
-	flag.Parse()
 	versionVal := os.Getenv("SONIC_VERSION")
 	if versionVal == "" {
 		versionVal = defVersion
@@ -145,18 +141,16 @@ func Load() (cfg *Value, err error) {
 	defHistorySaveMax := DefHistorySaveMax
 	cfg = &Value{
 		Version:        versionVal,
-		Debug:          *debug,
-		LogPath:        os.TempDir(),
 		Volume:         &defVolume,
 		HistorySaveMax: &defHistorySaveMax,
 		HistoryChan:    make(chan []HistoryEntry),
 	}
 
-	dir, err := os.UserConfigDir()
+	fp, err := getOrCreateConfigDir()
 	if err != nil {
 		return
 	}
-	fp := filepath.Join(dir, cfgSubDir, cfgFilename)
+	fp = filepath.Join(fp, cfgFilename)
 	f, err := os.Open(fp)
 	if err != nil {
 		return
@@ -190,23 +184,10 @@ func (v *Value) Save() error {
 	v.saveMtx.Lock()
 	defer v.saveMtx.Unlock()
 
-	dir, err := os.UserConfigDir()
+	fp, err := getOrCreateConfigDir()
 	if err != nil {
 		return err
 	}
-	fp := filepath.Join(dir, cfgSubDir)
-	_, err = os.Stat(fp)
-	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			err = os.MkdirAll(fp, os.ModePerm)
-			if err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
-	}
-
 	fp = filepath.Join(fp, cfgFilename)
 	f, err := os.Create(fp)
 	if err != nil {
@@ -220,4 +201,35 @@ func (v *Value) Save() error {
 	}
 	err = f.Close()
 	return err
+}
+
+func getOrCreateConfigDir() (string, error) {
+	logger := slog.With("caller", "getOrCreateConfigDir")
+
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		return "", fmt.Errorf("get user config dir: %v", err)
+	}
+
+	fp := filepath.Join(dir, cfgSubDir)
+	_, err = os.Stat(fp)
+	if err == nil {
+		logger.Debug(fmt.Sprintf("found config dir at path %s", fp))
+		return fp, nil
+	}
+
+	if !errors.Is(err, fs.ErrNotExist) {
+		return "", fmt.Errorf("checking config dir at path %s", fp)
+	}
+
+	logger.Debug(fmt.Sprintf("creating config dir at path %s", fp))
+	if err = os.MkdirAll(fp, os.ModePerm); err != nil {
+		return "", fmt.Errorf("creating config dir at path %s: %v", fp, err)
+	}
+
+	return fp, nil
+}
+
+func Debug() bool {
+	return *debug
 }

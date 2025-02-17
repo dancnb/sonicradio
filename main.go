@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -21,50 +22,38 @@ func main() {
 }
 
 func run() {
+	flag.Parse()
+
+	logWC := createLogger()
+	defer func() {
+		_ = logWC.Close()
+	}()
+
+	pidFile, err := config.CheckPidFile()
+	if err != nil {
+		fmt.Printf("check running instance: %v\n", err)
+		_ = logWC.Close()
+		os.Exit(1)
+	}
+	defer func() {
+		if err := os.Remove(pidFile.Name()); err != nil {
+			slog.Error(fmt.Sprintf("error removing pid file: %v", err))
+		}
+	}()
+
+	slog.Info("----------------------Starting----------------------")
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	cfg, err := config.Load()
 	if err != nil {
-		fmt.Println(err.Error())
+		slog.Debug("load config", "error", err.Error())
 	}
-	if cfg.IsRunning {
-		fmt.Println("application is already running")
-		os.Exit(1)
+	if cfg == nil {
+		panic("could not get config")
 	}
-	cfg.IsRunning = true
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println("encountered panic: ", r)
-			cfg.IsRunning = false
-			err = cfg.Save()
-			if err != nil {
-				fmt.Printf("error saving config: %v\n", err)
-			}
-		}
-	}()
 
-	var logW io.Writer
-	if cfg.Debug {
-		logFile := fmt.Sprintf("sonicradio-%d.log", time.Now().UnixMilli())
-		lp := filepath.Join(cfg.LogPath, logFile)
-		f, err := os.Create(lp)
-		if err != nil {
-			panic("could not create log file " + lp)
-		}
-		defer f.Close()
-		logW = f
-	} else {
-		logW = io.Discard
-	}
-	opts := &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	}
-	handler := slog.NewTextHandler(logW, opts)
-	logger := slog.New(handler)
-	log.SetFlags(log.Flags() &^ (log.Ldate))
-	slog.SetDefault(logger)
-	slog.Info("----------------------Starting----------------------")
 	slog.Debug("loaded", "config", cfg.String())
 
 	b, err := browser.NewApi(ctx, cfg)
@@ -80,19 +69,37 @@ func run() {
 		m.Quit()
 	}()
 
-	err = cfg.Save()
-	if err != nil {
-		fmt.Printf("error updating config: %v\n", err)
-		os.Exit(1)
-	}
-
 	if _, err := m.Progr.Run(); err != nil {
 		slog.Info(fmt.Sprintf("Error running program: %s", err.Error()))
-		cfg.IsRunning = false
-		err = cfg.Save()
-		if err != nil {
-			fmt.Printf("error saving config: %v\n", err)
-		}
-		os.Exit(1)
 	}
+}
+
+type nopWriterCloser struct {
+	io.Writer
+}
+
+func (n nopWriterCloser) Close() error { return nil }
+
+func createLogger() io.WriteCloser {
+	var logW io.WriteCloser
+	if config.Debug() {
+		logFilePath := fmt.Sprintf("sonicradio-%d.log", time.Now().UnixMilli())
+		logFilePath = filepath.Join(os.TempDir(), logFilePath)
+		logFile, err := os.Create(logFilePath)
+		if err != nil {
+			panic("could not create log file " + logFilePath)
+		}
+		logW = logFile
+	} else {
+		logW = nopWriterCloser{io.Discard}
+	}
+	opts := &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}
+	handler := slog.NewTextHandler(logW, opts)
+	logger := slog.New(handler)
+	log.SetFlags(log.Flags() &^ (log.Ldate))
+	slog.SetDefault(logger)
+
+	return logW
 }
