@@ -144,10 +144,13 @@ func (d *stationDelegate) shouldPaste(m *list.Model) bool {
 
 func (d *stationDelegate) pauseCmd() tea.Cmd {
 	return func() tea.Msg {
+		log := slog.With("method", "ui.stationDelegate.pauseCmd")
+		log.Debug("begin")
+		defer log.Debug("end")
+
 		d.playingMtx.Lock()
 		defer d.playingMtx.Unlock()
 
-		log := slog.With("method", "ui.stationDelegate.pauseCmd")
 		if d.currPlaying == nil {
 			return nil
 		}
@@ -164,10 +167,13 @@ func (d *stationDelegate) pauseCmd() tea.Cmd {
 
 func (d *stationDelegate) resumeCmd() tea.Cmd {
 	return func() tea.Msg {
+		log := slog.With("method", "ui.stationDelegate.resumeCmd")
+		log.Debug("begin")
+		defer log.Debug("end")
+
 		d.playingMtx.Lock()
 		defer d.playingMtx.Unlock()
 
-		log := slog.With("method", "ui.stationDelegate.resumeCmd")
 		if d.prevPlaying == nil {
 			return nil
 		}
@@ -184,10 +190,13 @@ func (d *stationDelegate) resumeCmd() tea.Cmd {
 
 func (d *stationDelegate) playCmd(s browser.Station) tea.Cmd {
 	return func() tea.Msg {
+		log := slog.With("method", "ui.stationDelegate.playCmd")
+		log.Debug("begin")
+		defer log.Debug("end")
+
 		d.playingMtx.Lock()
 		defer d.playingMtx.Unlock()
 
-		log := slog.With("method", "ui.stationDelegate.playStation")
 		log.Debug("playing", "id", s.Stationuuid)
 		go d.increaseCounter(s)
 

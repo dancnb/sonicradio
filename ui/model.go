@@ -98,19 +98,22 @@ func getVolumeBar(secondColor string) progress.Model {
 }
 
 func updatePlayerMetadata(ctx context.Context, progr *tea.Program, m *Model) {
-	log := slog.With("func", "getPlayerMetadata")
 	tick := time.NewTicker(playerPollInterval)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-tick.C:
-			pollMetadata(m, log, progr)
+			pollMetadata(m, progr)
 		}
 	}
 }
 
-func pollMetadata(m *Model, log *slog.Logger, progr *tea.Program) {
+func pollMetadata(m *Model, progr *tea.Program) {
+	log := slog.With("caller", "pollMetadata")
+	log.Debug("begin")
+	defer log.Debug("end")
+
 	m.delegate.playingMtx.RLock()
 	defer m.delegate.playingMtx.RUnlock()
 
@@ -125,7 +128,8 @@ func pollMetadata(m *Model, log *slog.Logger, progr *tea.Program) {
 		return
 	}
 	msg := getMetadataMsg(*m.delegate.currPlaying, *metadata)
-	progr.Send(msg)
+	log.Debug("sending", "metadataMsg", msg)
+	go progr.Send(msg)
 }
 
 type Model struct {
@@ -321,6 +325,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) handlePauseKey() (*Model, tea.Cmd) {
+	log := slog.With("caller", "ui.Model.handlePauseKey")
+	log.Debug("begin")
+	defer log.Debug("end")
+
 	m.delegate.playingMtx.RLock()
 	defer m.delegate.playingMtx.RUnlock()
 
