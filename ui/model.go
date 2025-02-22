@@ -129,7 +129,7 @@ func pollMetadata(m *Model, progr *tea.Program) {
 	}
 	msg := getMetadataMsg(*m.delegate.currPlaying, *metadata)
 	log.Debug("sending", "metadataMsg", msg)
-	progr.Send(msg)
+	go progr.Send(msg)
 }
 
 type Model struct {
