@@ -108,6 +108,10 @@ func (t *stationsTabBase) IsFiltering() bool {
 }
 
 func (t *stationsTabBase) toNowPlaying(m *Model) {
+	log := slog.With("caller", "ui.stationsTabBase.toNowPlaying")
+	log.Debug("begin")
+	defer log.Debug("end")
+
 	m.delegate.playingMtx.RLock()
 	defer m.delegate.playingMtx.RUnlock()
 

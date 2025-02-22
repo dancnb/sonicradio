@@ -55,10 +55,13 @@ func (m *Model) volumeCmd(up bool) tea.Cmd {
 
 func (m *Model) seekCmd(amtSec int) tea.Cmd {
 	return func() tea.Msg {
+		log := slog.With("method", "ui.Model.seekCmd")
+		log.Debug("begin")
+		defer log.Debug("end")
+
 		m.delegate.playingMtx.RLock()
 		defer m.delegate.playingMtx.RUnlock()
 
-		log := slog.With("method", "model.seekCmd")
 		var s *browser.Station
 		if m.delegate.currPlaying != nil {
 			s = m.delegate.currPlaying
