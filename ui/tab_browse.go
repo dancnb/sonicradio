@@ -42,6 +42,7 @@ func (t *browseTab) createList(delegate *stationDelegate, width int, height int)
 			t.listKeymap.favoritesTab,
 			t.listKeymap.historyTab,
 			t.listKeymap.settingsTab,
+			t.listKeymap.stationView,
 		}
 	}
 
@@ -160,6 +161,9 @@ func (t *browseTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, t.listKeymap.settingsTab):
 			return m, m.toSettingsTab()
+
+		case key.Matches(msg, t.listKeymap.stationView):
+			m.changeStationView()
 
 		case key.Matches(msg, t.listKeymap.digits...):
 			t.doJump(msg)

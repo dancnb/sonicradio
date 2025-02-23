@@ -64,6 +64,7 @@ Available options:
 | esc         |     go to now playing |
 | shift+tab   |        go to prev tab |
 | tab         |        go to next tab |
+| v           |           change view |
 | ?           |           toggle help |
 | q           |                  quit |
 

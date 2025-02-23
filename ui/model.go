@@ -111,8 +111,6 @@ func updatePlayerMetadata(ctx context.Context, progr *tea.Program, m *Model) {
 
 func pollMetadata(m *Model, progr *tea.Program) {
 	log := slog.With("caller", "pollMetadata")
-	log.Debug("begin")
-	defer log.Debug("end")
 
 	m.delegate.playingMtx.RLock()
 	defer m.delegate.playingMtx.RUnlock()
@@ -136,7 +134,7 @@ type Model struct {
 	Progr *tea.Program
 
 	ready    bool
-	cfg      *config.Value // use cfg.volume
+	cfg      *config.Value
 	style    *styles.Style
 	browser  *browser.Api
 	player   *player.Player
@@ -597,6 +595,18 @@ func (m Model) View() string {
 	tabView := m.tabs[m.activeTabIdx].View()
 	doc.WriteString(tabView)
 	return m.style.DocStyle.Render(doc.String())
+}
+
+func (m *Model) changeStationView() {
+	log := slog.With("caller", "ui.Model.changeStationView")
+	m.cfg.StationView = (m.cfg.StationView + 1) % 3
+	log.Debug(fmt.Sprintf("new stationView=%s", m.cfg.StationView.String()))
+	m.delegate.setStationView(m.cfg.StationView)
+	for tIx := range m.tabs {
+		if st, ok := m.tabs[tIx].(stationTab); ok && st.Stations() != nil {
+			st.Stations().list.SetDelegate(m.delegate)
+		}
+	}
 }
 
 func (m *Model) changeTheme(themeIdx int) {

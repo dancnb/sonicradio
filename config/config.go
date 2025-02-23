@@ -24,7 +24,7 @@ const (
 	VolumeStep  = 5
 	SeekStepSec = 10
 
-	defVersion  = "0.6.6"
+	defVersion  = "0.6.7"
 	cfgSubDir   = "sonicRadio"
 	cfgFilename = "config.json"
 )
@@ -35,10 +35,11 @@ const (
 )
 
 type Value struct {
-	Version   string   `json:"-"`
-	Favorites []string `json:"favorites,omitempty"` // Ordered station UUID's for user favorites
-	Volume    *int     `json:"volume,omitempty"`
-	Theme     int      `json:"theme"`
+	Version     string      `json:"-"`
+	Favorites   []string    `json:"favorites,omitempty"` // Ordered station UUID's for user favorites
+	Volume      *int        `json:"volume,omitempty"`
+	Theme       int         `json:"theme"`
+	StationView StationView `json:"stationView"`
 
 	Player PlayerType `json:"playerType"`
 
