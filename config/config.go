@@ -20,6 +20,7 @@ var debug = flag.Bool("debug", false, "use -debug arg to log to a file")
 const (
 	ApiReqTimeout     = 10 * time.Second
 	MpvIpcConnTimeout = 10 * time.Second
+	VlcConnTimeout    = 10 * time.Second
 
 	VolumeStep  = 5
 	SeekStepSec = 10
@@ -58,13 +59,15 @@ type PlayerType uint8
 const (
 	Mpv PlayerType = iota
 	FFPlay
+	Vlc
 )
 
-var Players = [2]PlayerType{Mpv, FFPlay}
+var Players = [3]PlayerType{Mpv, FFPlay, Vlc}
 
 var playerNames = map[PlayerType]string{
 	Mpv:    "Mpv",
 	FFPlay: "FFplay",
+	Vlc:    "Vlc",
 }
 
 func (p PlayerType) String() string {
