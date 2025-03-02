@@ -17,6 +17,7 @@ import (
 
 	"github.com/dancnb/sonicradio/config"
 	"github.com/dancnb/sonicradio/player/model"
+	playerutils "github.com/dancnb/sonicradio/player/utils"
 )
 
 var (
@@ -248,13 +249,18 @@ func (mpv *MpvSocket) Close() (err error) {
 	log.Info("stopping")
 
 	defer func() {
-		if mpv.conn == nil {
-			return
+		if mpv.conn != nil {
+			closeErr := mpv.conn.Close()
+			if closeErr != nil && err == nil {
+				log.Error("mpv socket connection close", "err", closeErr)
+				err = closeErr
+			}
 		}
-		closeErr := mpv.conn.Close()
-		if closeErr != nil && err == nil {
-			log.Error("mpv socket connection close", "err", closeErr)
-			err = closeErr
+		if mpv.cmd != nil {
+			if killErr := playerutils.KillProcess(mpv.cmd.Process, log); killErr != nil {
+				log.Error("mpv cmd kill", "err", killErr)
+				err = killErr
+			}
 		}
 	}()
 
