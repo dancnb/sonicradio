@@ -85,6 +85,7 @@ func createLogger() io.WriteCloser {
 	if config.Debug() {
 		logFilePath := fmt.Sprintf("sonicradio-%d.log", time.Now().UnixMilli())
 		logFilePath = filepath.Join(os.TempDir(), logFilePath)
+		logFilePath = "__debug.log"
 		logFile, err := os.Create(logFilePath)
 		if err != nil {
 			panic("could not create log file " + logFilePath)

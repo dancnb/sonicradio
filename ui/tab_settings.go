@@ -43,9 +43,10 @@ var (
 	descriptions = []string{
 		`Maximum number of entries displayed in "History" tab.`,
 		`Preview and select a theme.`,
-		`Choose one of the available backend players (only those found in PATH are displayed): Mpv, FFplay. The choice will take effect after a restart.`,
+		`Choose one of the available backend players (only those found in PATH are displayed): Mpv, FFplay, Vlc. The choice will take effect after a restart.`,
 	}
 	ffplayDesc = "\nFFplay does not allow changing the volume during playback or seeking backward/forward."
+	vlcDesc    = "\nVlc does not allow seeking backward/forward."
 )
 
 func newSettingsTab(
@@ -93,6 +94,9 @@ func newSettingsTab(
 	playerDesc := descriptions[2]
 	if slices.Contains(playerTypes, config.FFPlay) {
 		playerDesc += ffplayDesc
+	}
+	if slices.Contains(playerTypes, config.Vlc) {
+		playerDesc += vlcDesc
 	}
 	st := &settingsTab{
 		cfg:           cfg,

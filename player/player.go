@@ -10,6 +10,7 @@ import (
 	"github.com/dancnb/sonicradio/player/ffplay"
 	"github.com/dancnb/sonicradio/player/model"
 	"github.com/dancnb/sonicradio/player/mpv"
+	"github.com/dancnb/sonicradio/player/vlc"
 )
 
 type Player struct {
@@ -48,6 +49,12 @@ func NewPlayer(ctx context.Context, cfg *config.Value) (*Player, error) {
 			return nil, err
 		}
 		p.delegate = ffplayPlayer
+	case config.Vlc:
+		vlcPlayer, err := vlc.NewVlc(ctx)
+		if err != nil {
+			return nil, err
+		}
+		p.delegate = vlcPlayer
 	}
 
 	vol := cfg.GetVolume()
@@ -59,7 +66,7 @@ func NewPlayer(ctx context.Context, cfg *config.Value) (*Player, error) {
 	return p, nil
 }
 
-var errNoPlayerAvailable = errors.New("No available player found. Must have at least one of the following in PATH: mpv, ffplay.")
+var errNoPlayerAvailable = errors.New("No available player found. Must have at least one of the following in PATH: mpv, ffplay, vlc.")
 
 func (p *Player) checkPlayerType(cfg *config.Value) error {
 	p.available = make(map[config.PlayerType]struct{}, len(config.Players))
@@ -86,6 +93,7 @@ func (p *Player) checkPlayerType(cfg *config.Value) error {
 var baseCmds = map[config.PlayerType]func() string{
 	config.Mpv:    mpv.GetBaseCmd,
 	config.FFPlay: ffplay.GetBaseCmd,
+	config.Vlc:    vlc.GetBaseCmd,
 }
 
 func checkAvailablePlayer(p config.PlayerType) bool {
