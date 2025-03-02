@@ -2,25 +2,6 @@
 
 package vlc
 
-import (
-	"errors"
-	"time"
-)
-
-var (
-	// baseArgs = []string{"-I", "oldrc", "--rc-fake-tty", "--volume-step", "12.8", "--gain", "1.0", "--no-video", "--rc-unix"}
-	// baseArgs = []string{"-I", "rc", "--rc-fake-tty", "--volume-step", "12.8", "--gain", "1.0", "--no-video", "--rc-unix"}
-	// connAddr = "/tmp/vlc%d.sock"
-	// connArg  = "--rc-unix"
-
-	socketTimeout    = time.Second * 2
-	socketSleepRetry = time.Millisecond * 10
-
-	ErrCtxCancel         = errors.New("context canceled")
-	ErrSocketFileTimeout = errors.New("vlc socket file timeout")
-	ErrNoMetadata        = errors.New("no metadata")
-)
-
 const baseCmd = "vlc"
 
 func GetBaseCmd() string {

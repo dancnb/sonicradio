@@ -20,7 +20,7 @@ var debug = flag.Bool("debug", false, "use -debug arg to log to a file")
 const (
 	ApiReqTimeout     = 10 * time.Second
 	MpvIpcConnTimeout = 10 * time.Second
-	VlcConnTimeout    = 10 * time.Second
+	VlcConnTimeout    = 20 * time.Millisecond
 
 	VolumeStep  = 5
 	SeekStepSec = 10

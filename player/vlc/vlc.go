@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"os"
 	"os/exec"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,7 +20,15 @@ import (
 
 // var baseArgs = []string{"-I rc", "--no-video", "--volume-step 12.8", "--gain 1.0"}
 // var baseArgs = []string{"-I", "rc", "--rc-fake-tty", "--volume-step", "12.8", "--gain", "1.0", "--no-video", "--rc-host"}
-var baseArgs = []string{"-I", "rc", "--volume-step", "12.8", "--gain", "1.0", "--no-video", "--rc-host"}
+var (
+	baseArgs         = []string{"-I", "rc", "--volume-step", "12.8", "--gain", "1.0", "--no-video", "--rc-host"}
+	socketTimeout    = time.Second * 2
+	socketSleepRetry = time.Millisecond * 10
+
+	ErrCtxCancel         = errors.New("context canceled")
+	ErrSocketFileTimeout = errors.New("vlc socket file timeout")
+	ErrNoMetadata        = errors.New("no metadata")
+)
 
 type Vlc struct {
 	conn net.Conn
@@ -31,27 +41,25 @@ const (
 	play
 	stop
 	pause
-	unpause
 	volume
-	metadata
+	info
 	mediaTitle
-	playbackTime
+	getTime
 	seek
 	quit
 	shutdown
 )
 
 var cmds = map[vlcRcCmd]string{
-	add:          "add %s\n",
-	play:         "play\n",
-	stop:         "stop\n",
-	pause:        "pause\n",
-	unpause:      "pause\n",
-	volume:       "volume %f\n",
-	metadata:     "info\n",
-	playbackTime: "get_time\n",
-	seek:         "seek %d\n",
-	// quit:         "quit\n", // not good
+	add:      "add %s\n",
+	play:     "play\n",
+	stop:     "stop\n",
+	pause:    "pause\n",
+	volume:   "volume %f\n",
+	info:     "info\n",
+	getTime:  "get_time\n",
+	seek:     "seek %d\n",
+	quit:     "quit\n", // not good
 	shutdown: "shutdown\n",
 }
 
@@ -67,7 +75,6 @@ func NewVlc(ctx context.Context) (*Vlc, error) {
 	if err != nil {
 		return nil, err
 	}
-	// mpv.cmd = cmd
 
 	start := time.Now()
 loop:
@@ -78,9 +85,10 @@ loop:
 		case <-time.After(socketTimeout):
 			return nil, ErrSocketFileTimeout
 		default:
-			conn, err := getConn(ctx, addr)
-			if err != nil {
+			conn, connErr := getConn(ctx, addr)
+			if connErr != nil {
 				time.Sleep(socketSleepRetry)
+				continue
 			}
 			p.conn = conn
 			break loop
@@ -141,37 +149,80 @@ func (v *Vlc) Play(url string) error {
 	if err != nil {
 		return err
 	}
-	// cmd = cmds[play]
-	// _, err = v.doRequest(cmd)
-	// if err != nil {
-	// 	return err
-	// }
 	return nil
 }
 
 func (v *Vlc) Pause(value bool) error {
+	cmd := cmds[pause]
+	_, err := v.doRequest(cmd)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 func (v *Vlc) Stop() error {
+	cmd := cmds[stop]
+	_, err := v.doRequest(cmd)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 func (v *Vlc) SetVolume(value int) (int, error) {
-	// v := float64(value) * 2.56
-	// f.cmd.Stderr
-	return value, nil
+	fVal := float64(value) * 2.56
+	cmd := fmt.Sprintf(cmds[volume], fVal)
+	_, err := v.doRequest(cmd)
+	return value, err
 }
 
+const nowPlayingText = "now_playing:"
+
 func (v *Vlc) Metadata() *model.Metadata {
-	return nil
+	cmd := cmds[info]
+	res, err := v.doRequest(cmd)
+	if err != nil {
+		return &model.Metadata{Err: err}
+	}
+	title := ""
+	sc := bufio.NewScanner(strings.NewReader(res))
+	for sc.Scan() {
+		l := sc.Text()
+		idx := strings.Index(l, nowPlayingText)
+		if idx == -1 {
+			continue
+		}
+		title = l[idx+len(nowPlayingText):]
+		title = strings.TrimSpace(title)
+		break
+	}
+	m := &model.Metadata{Title: title}
+
+	cmd = cmds[getTime]
+	res, err = v.doRequest(cmd)
+	if err != nil {
+		return m
+	}
+	sc = bufio.NewScanner(strings.NewReader(res))
+	for sc.Scan() {
+		l := sc.Text()
+		l = strings.TrimSpace(l)
+		intV, err := strconv.Atoi(l)
+		if err != nil {
+			continue
+		}
+		int64V := int64(intV)
+		m.PlaybackTimeSec = &int64V
+		break
+	}
+	return m
 }
 
 func (v *Vlc) Seek(amtSec int) *model.Metadata {
 	return nil
 }
 
-// TODO: also kill command?
 func (v *Vlc) Close() (err error) {
 	log := slog.With("method", "Vlc.Close")
 	log.Info("stopping")
@@ -202,18 +253,6 @@ func (v *Vlc) doRequest(cmd string) (string, error) {
 		return "", fmt.Errorf("vlc write err: %w", err)
 	}
 
-	// v.conn.SetDeadline(time.Now().Add(config.VlcConnTimeout))
-	// buff := make([]byte, 4096)
-	// _, err = v.conn.Read(buff)
-	// if err != nil {
-	// 	return "", fmt.Errorf("vlc read err: %w", err)
-	// }
-	// res := string(buff)
-	// log.Debug("vlc", "response", res)
-	// return res, nil
-
-	// scanner
-	//
 	scanner := bufio.NewScanner(v.conn)
 	v.conn.SetDeadline(time.Now().Add(config.VlcConnTimeout))
 	var res strings.Builder
@@ -227,9 +266,9 @@ func (v *Vlc) doRequest(cmd string) (string, error) {
 		}
 		v.conn.SetDeadline(time.Now().Add(config.VlcConnTimeout))
 	}
-	// if err := scanner.Err(); err != nil {
-	// 	return "", fmt.Errorf("scanner error: %w", err)
-	// }
+	if err := scanner.Err(); err != nil && !errors.Is(err, os.ErrDeadlineExceeded) {
+		return "", fmt.Errorf("scanner error: %w", err)
+	}
 	return res.String(), nil
 
 }
