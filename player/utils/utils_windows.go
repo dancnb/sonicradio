@@ -20,12 +20,12 @@ func KillProcess(p *os.Process, l *slog.Logger) error {
 	if errors.Is(cmd.Err, exec.ErrDot) {
 		cmd.Err = nil
 	} else if cmd.Err != nil {
-		l.Error("ffplay  kill cmd error", "error", cmd.Err.Error())
+		l.Error("taskkill cmd error", "error", cmd.Err.Error())
 		return cmd.Err
 	}
 	err := cmd.Run()
 	if err != nil {
-		l.Error("ffplay kill cmd", "error", err)
+		l.Error("taskkill cmd run", "error", err)
 		return err
 	}
 
