@@ -16,12 +16,12 @@ import (
 
 	"github.com/dancnb/sonicradio/config"
 	"github.com/dancnb/sonicradio/player/model"
+	playerutils "github.com/dancnb/sonicradio/player/utils"
 )
 
 // var baseArgs = []string{"-I rc", "--no-video", "--volume-step 12.8", "--gain 1.0"}
 // var baseArgs = []string{"-I", "rc", "--rc-fake-tty", "--volume-step", "12.8", "--gain", "1.0", "--no-video", "--rc-host"}
 var (
-	baseArgs         = []string{"-I", "rc", "--volume-step", "12.8", "--gain", "1.0", "--no-video", "--rc-host"}
 	socketTimeout    = time.Second * 2
 	socketSleepRetry = time.Millisecond * 10
 
@@ -32,6 +32,7 @@ var (
 
 type Vlc struct {
 	conn net.Conn
+	cmd  *exec.Cmd
 }
 
 type vlcRcCmd uint8
@@ -71,10 +72,11 @@ func NewVlc(ctx context.Context) (*Vlc, error) {
 		return nil, err
 	}
 	addr := fmt.Sprintf("localhost:%s", port)
-	_, err = p.vlcCmd(ctx, addr)
+	cmd, err := p.vlcCmd(ctx, addr)
 	if err != nil {
 		return nil, err
 	}
+	p.cmd = cmd
 
 	start := time.Now()
 loop:
@@ -86,7 +88,7 @@ loop:
 			return nil, ErrSocketFileTimeout
 		default:
 			conn, connErr := getConn(ctx, addr)
-			if connErr != nil {
+			if connErr != nil || conn == nil {
 				time.Sleep(socketSleepRetry)
 				continue
 			}
@@ -228,13 +230,18 @@ func (v *Vlc) Close() (err error) {
 	log.Info("stopping")
 
 	defer func() {
-		if v.conn == nil {
-			return
+		if v.conn != nil {
+			closeErr := v.conn.Close()
+			if closeErr != nil && err == nil {
+				log.Error("vlc connection close", "err", closeErr)
+				err = closeErr
+			}
 		}
-		closeErr := v.conn.Close()
-		if closeErr != nil && err == nil {
-			log.Error("vlc connection close", "err", closeErr)
-			err = closeErr
+		if v.cmd != nil {
+			if killErr := playerutils.KillProcess(v.cmd.Process, log); killErr != nil {
+				log.Error("vlc cmd kill", "err", killErr)
+				err = killErr
+			}
 		}
 	}()
 

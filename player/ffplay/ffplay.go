@@ -14,6 +14,7 @@ import (
 
 	"github.com/dancnb/sonicradio/config"
 	"github.com/dancnb/sonicradio/player/model"
+	playerutils "github.com/dancnb/sonicradio/player/utils"
 )
 
 const (
@@ -173,7 +174,7 @@ func (f *FFPlay) stop() error {
 	cmd := *f.playing
 	f.playing = nil
 	cmd.Stderr = nil
-	return killProcess(cmd.Process, log)
+	return playerutils.KillProcess(cmd.Process, log)
 }
 
 func (f *FFPlay) SetVolume(value int) (int, error) {

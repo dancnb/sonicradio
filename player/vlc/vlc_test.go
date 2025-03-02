@@ -46,6 +46,10 @@ func TestVlc(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	_, err = p.SetVolume(100)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	err = p.Stop()
 	if err != nil {
