@@ -19,8 +19,6 @@ import (
 	playerutils "github.com/dancnb/sonicradio/player/utils"
 )
 
-// var baseArgs = []string{"-I rc", "--no-video", "--volume-step 12.8", "--gain 1.0"}
-// var baseArgs = []string{"-I", "rc", "--rc-fake-tty", "--volume-step", "12.8", "--gain", "1.0", "--no-video", "--rc-host"}
 var (
 	socketTimeout    = time.Second * 2
 	socketSleepRetry = time.Millisecond * 10
