@@ -67,7 +67,7 @@ var Players = [3]PlayerType{Mpv, FFPlay, Vlc}
 var playerNames = map[PlayerType]string{
 	Mpv:    "Mpv",
 	FFPlay: "FFplay",
-	Vlc:    "Vlc",
+	Vlc:    "VLC",
 }
 
 func (p PlayerType) String() string {
