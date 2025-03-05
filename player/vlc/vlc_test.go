@@ -29,11 +29,11 @@ func TestVlc(t *testing.T) {
 	if m.Err != nil {
 		t.Fatal(m.Err)
 	}
-	// m = p.Seek(-5)
-	// if m.Err != nil {
-	// 	t.Fatal(err)
-	// }
-	//
+	m = p.Seek(-15)
+	if m.Err != nil {
+		t.Fatal(err)
+	}
+
 	err = p.Pause(true)
 	if err != nil {
 		t.Fatal(err)

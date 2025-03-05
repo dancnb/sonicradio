@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/dancnb/sonicradio/browser"
@@ -89,4 +90,13 @@ func getMetadataMsg(s browser.Station, m model.Metadata) metadataMsg {
 		msg.playbackTime = &t
 	}
 	return msg
+}
+
+func (m metadataMsg) String() string {
+	var pt time.Duration
+	if m.playbackTime != nil {
+		pt = *m.playbackTime
+	}
+	return fmt.Sprintf("{uuid=%s, name=%s, title=%s, playbackTime=%d}",
+		m.stationUuid, m.stationName, m.songTitle, int(pt.Seconds()))
 }

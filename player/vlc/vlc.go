@@ -220,7 +220,12 @@ func (v *Vlc) Metadata() *model.Metadata {
 }
 
 func (v *Vlc) Seek(amtSec int) *model.Metadata {
-	return nil
+	cmd := fmt.Sprintf(cmds[seek], amtSec)
+	_, err := v.doRequest(cmd)
+	if err != nil {
+		return &model.Metadata{Err: err}
+	}
+	return v.Metadata()
 }
 
 func (v *Vlc) Close() (err error) {

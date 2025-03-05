@@ -126,7 +126,6 @@ func pollMetadata(m *Model, progr *tea.Program) {
 		return
 	}
 	msg := getMetadataMsg(*m.delegate.currPlaying, *metadata)
-	log.Debug("sending", "metadataMsg", msg)
 	go progr.Send(msg)
 }
 
