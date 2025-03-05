@@ -25,7 +25,7 @@ const (
 	VolumeStep  = 5
 	SeekStepSec = 10
 
-	defVersion  = "0.6.9"
+	defVersion  = "0.6.11"
 	cfgSubDir   = "sonicRadio"
 	cfgFilename = "config.json"
 )
@@ -67,7 +67,7 @@ var Players = [3]PlayerType{Mpv, FFPlay, Vlc}
 var playerNames = map[PlayerType]string{
 	Mpv:    "Mpv",
 	FFPlay: "FFplay",
-	Vlc:    "Vlc",
+	Vlc:    "VLC",
 }
 
 func (p PlayerType) String() string {

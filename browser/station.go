@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-const separator = "|"
+const separator = "┃"
 
 type Station struct {
 	// A globally unique identifier for the change of the station information
