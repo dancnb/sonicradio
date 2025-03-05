@@ -362,7 +362,7 @@ func (d *stationDelegate) renderCompactView(
 	prefixRender := prefixStyle.Render(prefix)
 	res.WriteString(prefixRender)
 	maxWidth := max(listWidth-lipgloss.Width(prefixRender)-styles.HeaderPadDist-widthOffset, 0)
-	width1 := 41
+	width1 := 45
 	width2 := maxWidth - width1
 
 	for lipgloss.Width(itStyle.Render(name)) > width1 && len(name) > 0 {
@@ -373,7 +373,6 @@ func (d *stationDelegate) renderCompactView(
 	hFill := max(width1-lipgloss.Width(nameRender), 0)
 	res.WriteString(itStyle.Render(strings.Repeat(" ", hFill)))
 
-	// res.WriteString(descStyle.Render("| "))
 	for lipgloss.Width(descStyle.Render(desc)) > width2 && len(desc) > 0 {
 		desc = desc[:len(desc)-1]
 	}
