@@ -112,7 +112,7 @@ func (f *FFPlay) getPlayTime() *int64 {
 }
 
 func (f *FFPlay) play(url string) error {
-	log := slog.With("method", "FFPlay.Play")
+	log := slog.With("method", "FFPlay.play")
 	log.Info("playing url=" + url)
 	if err := f.stop(); err != nil {
 		return err
