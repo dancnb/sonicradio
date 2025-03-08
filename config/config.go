@@ -60,14 +60,16 @@ const (
 	Mpv PlayerType = iota
 	FFPlay
 	Vlc
+	MPlayer
 )
 
-var Players = [3]PlayerType{Mpv, FFPlay, Vlc}
+var Players = [4]PlayerType{Mpv, FFPlay, Vlc, MPlayer}
 
 var playerNames = map[PlayerType]string{
-	Mpv:    "Mpv",
-	FFPlay: "FFplay",
-	Vlc:    "VLC",
+	Mpv:     "Mpv",
+	FFPlay:  "FFplay",
+	Vlc:     "VLC",
+	MPlayer: "MPlayer",
 }
 
 func (p PlayerType) String() string {
