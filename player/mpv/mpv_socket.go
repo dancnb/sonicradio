@@ -250,10 +250,11 @@ func (mpv *MpvSocket) Close() (err error) {
 
 	defer func() {
 		if mpv.conn != nil {
-			closeErr := mpv.conn.Close()
-			if closeErr != nil && err == nil {
+			if closeErr := mpv.conn.Close(); closeErr != nil {
 				log.Error("mpv socket connection close", "err", closeErr)
-				err = closeErr
+				if err == nil {
+					err = closeErr
+				}
 			}
 		}
 		if mpv.cmd != nil {

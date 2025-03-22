@@ -45,8 +45,9 @@ var (
 		`Preview and select a theme.`,
 		`Choose one of the available backend players (only those found in PATH are displayed): Mpv, FFplay, VLC. The choice will take effect after a restart.`,
 	}
-	ffplayDesc = "\nFFplay does not allow changing the volume during playback or seeking backward/forward."
-	vlcDesc    = "\nFor VLC, pausing or seeking backward/forward may result in an invalid song title being displayed."
+	ffplayDesc  = "\nFFplay does not allow changing the volume during playback or seeking backward/forward."
+	vlcDesc     = "\nFor VLC, pausing or seeking backward/forward may result in an invalid song title being displayed."
+	mplayerDesc = "\nFor MPlayer, seeking backward/forward is not available."
 )
 
 func newSettingsTab(
@@ -97,6 +98,9 @@ func newSettingsTab(
 	}
 	if slices.Contains(playerTypes, config.Vlc) {
 		playerDesc += vlcDesc
+	}
+	if slices.Contains(playerTypes, config.MPlayer) {
+		playerDesc += mplayerDesc
 	}
 	st := &settingsTab{
 		cfg:           cfg,

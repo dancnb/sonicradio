@@ -9,6 +9,7 @@ import (
 	"github.com/dancnb/sonicradio/config"
 	"github.com/dancnb/sonicradio/player/ffplay"
 	"github.com/dancnb/sonicradio/player/model"
+	"github.com/dancnb/sonicradio/player/mplayer"
 	"github.com/dancnb/sonicradio/player/mpv"
 	"github.com/dancnb/sonicradio/player/vlc"
 )
@@ -55,6 +56,12 @@ func NewPlayer(ctx context.Context, cfg *config.Value) (*Player, error) {
 			return nil, err
 		}
 		p.delegate = vlcPlayer
+	case config.MPlayer:
+		mplayer, err := mplayer.New(ctx)
+		if err != nil {
+			return nil, err
+		}
+		p.delegate = mplayer
 	}
 
 	vol := cfg.GetVolume()
@@ -91,9 +98,10 @@ func (p *Player) checkPlayerType(cfg *config.Value) error {
 }
 
 var baseCmds = map[config.PlayerType]func() string{
-	config.Mpv:    mpv.GetBaseCmd,
-	config.FFPlay: ffplay.GetBaseCmd,
-	config.Vlc:    vlc.GetBaseCmd,
+	config.Mpv:     mpv.GetBaseCmd,
+	config.FFPlay:  ffplay.GetBaseCmd,
+	config.Vlc:     vlc.GetBaseCmd,
+	config.MPlayer: mplayer.GetBaseCmd,
 }
 
 func checkAvailablePlayer(p config.PlayerType) bool {

@@ -234,10 +234,11 @@ func (v *Vlc) Close() (err error) {
 
 	defer func() {
 		if v.conn != nil {
-			closeErr := v.conn.Close()
-			if closeErr != nil && err == nil {
+			if closeErr := v.conn.Close(); closeErr != nil {
 				log.Error("vlc connection close", "err", closeErr)
-				err = closeErr
+				if err == nil {
+					err = closeErr
+				}
 			}
 		}
 		if v.cmd != nil {
