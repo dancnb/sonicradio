@@ -18,10 +18,10 @@ func findProcess(pid int) bool {
 	log := slog.With("caller", "config.findProcess")
 	p, _ := os.FindProcess(pid)
 	if err := p.Signal(syscall.Signal(0)); !errors.Is(err, os.ErrProcessDone) {
-		log.Debug(fmt.Sprintf("existing pid %d running: %v", pid, err))
+		log.Info(fmt.Sprintf("existing pid %d running: %v", pid, err))
 		return true
 	} else {
-		log.Debug(fmt.Sprintf("existing pid=%v is not running anymore", pid))
+		log.Info(fmt.Sprintf("existing pid=%v is not running anymore", pid))
 		return false
 	}
 }

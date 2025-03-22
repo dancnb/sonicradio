@@ -13,13 +13,13 @@ func KillProcess(p *os.Process, l *slog.Logger) error {
 	}
 
 	pid := p.Pid
-	l.Debug("killing process", "pid", pid)
+	l.Info("killing process", "pid", pid)
 
 	err := p.Kill()
 	if err != nil {
 		return err
 	}
 
-	l.Debug("killed process group", "pgid", pid)
+	l.Info("killed process group", "pgid", pid)
 	return nil
 }

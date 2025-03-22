@@ -88,7 +88,7 @@ func newSettingsTab(
 	playerList.SetQuick(true)
 	playerList.DoneCallbackFn = func(i int) {
 		cfg.Player = playerTypes[i]
-		slog.Debug("change player type", "i", i, "new type", cfg.Player.String())
+		slog.Info("change player type", "i", i, "new type", cfg.Player.String())
 	}
 
 	playerDesc := descriptions[2]
@@ -136,7 +136,7 @@ func (s *settingsTab) Init(m *Model) tea.Cmd {
 
 // onEnter: reads values from config file on tab enter
 func (s *settingsTab) onEnter() tea.Cmd {
-	slog.Debug("settingsTab.onEnter")
+	slog.Info("settingsTab.onEnter")
 	s.idx = 0
 	s.keymap.setEnable(true, s.help.ShowAll)
 
@@ -157,7 +157,7 @@ func (s *settingsTab) updateConfig() {
 	historySaveMaxval := s.inputs[historySaveMaxIdx].Value()
 	intVal, err := strconv.Atoi(historySaveMaxval)
 	if err != nil {
-		log.Debug(fmt.Sprintf("invalid HistorySaveMax input value: %v", err))
+		log.Info(fmt.Sprintf("invalid HistorySaveMax input value: %v", err))
 	} else {
 		s.cfg.HistorySaveMax = &intVal
 	}

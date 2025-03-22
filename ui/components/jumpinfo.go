@@ -22,14 +22,14 @@ func (j *JumpInfo) isActive() bool {
 
 func (j *JumpInfo) NewPosition(digit int) int {
 	log := slog.With("method", "components.JumpInfo.getJumpIdx")
-	log.Debug("", "digit", digit, "oldPos", j.position)
+	log.Info("", "digit", digit, "oldPos", j.position)
 	if j.isActive() {
 		j.position = j.position*10 + digit
 	} else {
 		j.position = digit
 	}
 	j.last = time.Now()
-	log.Debug("", "newPos", j.position)
+	log.Info("", "newPos", j.position)
 	return j.position
 }
 

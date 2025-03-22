@@ -54,7 +54,7 @@ func (v *Value) saveHistory() []HistoryEntry {
 	startIx := max(0, len(v.History)-*v.HistorySaveMax)
 	entries := v.History[startIx:len(v.History)]
 	v.History = entries
-	log.Debug("saved entries", "len", len(entries), "startIdx", startIx)
+	log.Info("saved entries", "len", len(entries), "startIdx", startIx)
 	return entries
 }
 
@@ -63,7 +63,7 @@ func (v *Value) AddHistoryEntry(timestamp time.Time, uuid string, station string
 	defer v.historyMtx.Unlock()
 
 	log := slog.With("method", "config.Value.AddHistory")
-	log.Debug("", "uuid", uuid, "stationName", station, "song", song)
+	log.Info("", "uuid", uuid, "stationName", station, "song", song)
 
 	if ok := v.upsertHistory(timestamp, uuid, station, song); ok {
 		entries := v.saveHistory()

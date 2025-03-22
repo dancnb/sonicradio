@@ -17,7 +17,7 @@ var ErrInstanceRunning = errors.New("application is already running")
 func CheckPidFile() (*os.File, error) {
 	log := slog.With("caller", "config.CheckPidFile")
 	pid := os.Getpid()
-	log.Debug(fmt.Sprintf("current pid=%v", pid))
+	log.Info(fmt.Sprintf("current pid=%v", pid))
 
 	cfgDir, err := getOrCreateConfigDir()
 	if err != nil {
@@ -28,12 +28,12 @@ func CheckPidFile() (*os.File, error) {
 	_, err = os.Stat(fp)
 
 	if err == nil {
-		log.Debug("found existing pid file, checking pid")
+		log.Info("found existing pid file, checking pid")
 		b, err := os.ReadFile(fp)
 		if err != nil {
 			return nil, fmt.Errorf("read existing pid file %q error: %v", fp, err)
 		}
-		log.Debug(fmt.Sprintf("found existing pid=%s", b))
+		log.Info(fmt.Sprintf("found existing pid=%s", b))
 		exPid, err := strconv.Atoi(string(b))
 		if err != nil {
 			return nil, fmt.Errorf("parse existing pid file %q, content: %q, error: %v", fp, b, err)
@@ -49,13 +49,13 @@ func CheckPidFile() (*os.File, error) {
 		return nil, fmt.Errorf("error stat pid file: %v", err)
 	}
 
-	log.Debug("no existing pid file")
+	log.Info("no existing pid file")
 	return createPidFile(fp, pid)
 }
 
 func createPidFile(fp string, pid int) (*os.File, error) {
 	log := slog.With("caller", "config.createPidFile")
-	log.Debug("pid file not found, creating", "pid", pid)
+	log.Info("pid file not found, creating", "pid", pid)
 	f, err := os.Create(fp)
 	if err != nil {
 		return nil, err

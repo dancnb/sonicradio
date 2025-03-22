@@ -218,7 +218,7 @@ func getOrCreateConfigDir() (string, error) {
 	fp := filepath.Join(dir, cfgSubDir)
 	_, err = os.Stat(fp)
 	if err == nil {
-		logger.Debug(fmt.Sprintf("found config dir at path %s", fp))
+		logger.Info(fmt.Sprintf("found config dir at path %s", fp))
 		return fp, nil
 	}
 
@@ -226,7 +226,7 @@ func getOrCreateConfigDir() (string, error) {
 		return "", fmt.Errorf("checking config dir at path %s", fp)
 	}
 
-	logger.Debug(fmt.Sprintf("creating config dir at path %s", fp))
+	logger.Info(fmt.Sprintf("creating config dir at path %s", fp))
 	if err = os.MkdirAll(fp, os.ModePerm); err != nil {
 		return "", fmt.Errorf("creating config dir at path %s: %v", fp, err)
 	}

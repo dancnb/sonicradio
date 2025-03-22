@@ -56,8 +56,8 @@ func (m *Model) volumeCmd(up bool) tea.Cmd {
 func (m *Model) seekCmd(amtSec int) tea.Cmd {
 	return func() tea.Msg {
 		log := slog.With("method", "ui.Model.seekCmd")
-		log.Debug("begin")
-		defer log.Debug("end")
+		log.Info("begin")
+		defer log.Info("end")
 
 		m.delegate.playingMtx.RLock()
 		defer m.delegate.playingMtx.RUnlock()

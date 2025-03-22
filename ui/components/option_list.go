@@ -287,6 +287,6 @@ func logTeaMsg(msg tea.Msg, tag string) {
 	case cursor.BlinkMsg, spinner.TickMsg:
 		break
 	default:
-		log.Debug("tea.Msg", "type", fmt.Sprintf("%T", msg), "value", msg, "#", fmt.Sprintf("%#v", msg))
+		log.Info("tea.Msg", "type", fmt.Sprintf("%T", msg), "value", msg, "#", fmt.Sprintf("%#v", msg))
 	}
 }

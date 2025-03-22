@@ -48,13 +48,13 @@ func run() {
 
 	cfg, err := config.Load()
 	if err != nil {
-		slog.Debug("load config", "error", err.Error())
+		slog.Info("load config", "error", err.Error())
 	}
 	if cfg == nil {
 		panic("could not get config")
 	}
 
-	slog.Debug("loaded", "config", cfg.String())
+	slog.Info("loaded", "config", cfg.String())
 
 	b, err := browser.NewApi(ctx, cfg)
 	if err != nil {

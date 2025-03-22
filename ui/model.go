@@ -323,8 +323,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *Model) handlePauseKey() (*Model, tea.Cmd) {
 	log := slog.With("caller", "ui.Model.handlePauseKey")
-	log.Debug("begin")
-	defer log.Debug("end")
+	log.Info("begin")
+	defer log.Info("end")
 
 	m.delegate.playingMtx.RLock()
 	defer m.delegate.playingMtx.RUnlock()
@@ -378,7 +378,7 @@ func (m *Model) toSettingsTab() tea.Cmd {
 }
 
 func (m *Model) updateStatus(msg string) {
-	slog.Debug("updateStatus", "old", m.statusMsg, "new", msg)
+	slog.Info("updateStatus", "old", m.statusMsg, "new", msg)
 	m.statusMsg = msg
 	go func() {
 		m.statusUpdate <- struct{}{}
@@ -415,9 +415,9 @@ func (m *Model) Quit() {
 
 	err = m.cfg.Save()
 	if err != nil {
-		log.Debug(fmt.Sprintf("config save err: %v", err))
+		log.Info(fmt.Sprintf("config save err: %v", err))
 	}
-	log.Debug("config saved")
+	log.Info("config saved")
 }
 
 func (m *Model) newSpinner() *spinner.Model {
@@ -599,7 +599,7 @@ func (m Model) View() string {
 func (m *Model) changeStationView() {
 	log := slog.With("caller", "ui.Model.changeStationView")
 	m.cfg.StationView = (m.cfg.StationView + 1) % 3
-	log.Debug(fmt.Sprintf("new stationView=%s", m.cfg.StationView.String()))
+	log.Info(fmt.Sprintf("new stationView=%s", m.cfg.StationView.String()))
 	m.delegate.setStationView(m.cfg.StationView)
 	for tIx := range m.tabs {
 		if st, ok := m.tabs[tIx].(stationTab); ok && st.Stations() != nil {
@@ -661,7 +661,7 @@ func trapSignal(p *tea.Program) {
 
 	go func() {
 		osCall := <-signals
-		slog.Debug(fmt.Sprintf("received OS signal %+v", osCall))
+		slog.Info(fmt.Sprintf("received OS signal %+v", osCall))
 		p.Send(quitMsg{})
 	}()
 }
@@ -670,10 +670,10 @@ func logTeaMsg(msg tea.Msg, tag string) {
 	log := slog.With("method", tag)
 	switch msg.(type) {
 	case favoritesStationRespMsg, topStationsRespMsg, searchRespMsg, toggleInfoMsg:
-		log.Debug("tea.Msg", "type", fmt.Sprintf("%T", msg))
+		log.Info("tea.Msg", "type", fmt.Sprintf("%T", msg))
 	case cursor.BlinkMsg, spinner.TickMsg, list.FilterMatchesMsg:
 		break
 	default:
-		log.Debug("tea.Msg", "type", fmt.Sprintf("%T", msg), "value", msg, "#", fmt.Sprintf("%#v", msg))
+		log.Info("tea.Msg", "type", fmt.Sprintf("%T", msg), "value", msg, "#", fmt.Sprintf("%#v", msg))
 	}
 }

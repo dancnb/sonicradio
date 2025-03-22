@@ -86,7 +86,7 @@ func (p *Player) checkPlayerType(cfg *config.Value) error {
 	if _, ok := p.available[cfg.Player]; !ok {
 		cfg.Player = *firstAvailable
 	}
-	slog.Debug("Player.checkPlayerType", "value", cfg.Player)
+	slog.Info("Player.checkPlayerType", "value", cfg.Player)
 	return nil
 }
 
@@ -103,7 +103,7 @@ func checkAvailablePlayer(p config.PlayerType) bool {
 	}
 	baseCmd := baseCmdFn()
 	path, err := exec.LookPath(baseCmd)
-	slog.Debug("checkAvailablePlayer", "cmd", baseCmd, "path", path, "err", err)
+	slog.Info("checkAvailablePlayer", "cmd", baseCmd, "path", path, "err", err)
 	if err != nil && !errors.Is(err, exec.ErrDot) {
 		return false
 	}

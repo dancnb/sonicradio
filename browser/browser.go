@@ -44,7 +44,7 @@ func NewApi(ctx context.Context, cfg *config.Value) (*Api, error) {
 			slog.Error(msg.Error())
 		}
 	}
-	slog.Debug("browser servers: " + strings.Join(res, "; "))
+	slog.Info("browser servers: " + strings.Join(res, "; "))
 	api.servers = append(api.servers, res...)
 
 	if len(api.servers) == 0 {
@@ -85,7 +85,7 @@ func (a *Api) GetLanguages() ([]Language, error) {
 			time.Sleep(serverRetryMillis * time.Millisecond)
 			continue
 		}
-		log.Debug("", "length", len(languages))
+		log.Info("", "length", len(languages))
 		a.langs = languages
 		return languages, nil
 	}
@@ -113,7 +113,7 @@ func (a *Api) GetCountries() ([]Country, error) {
 			time.Sleep(serverRetryMillis * time.Millisecond)
 			continue
 		}
-		log.Debug("", "length", len(countries))
+		log.Info("", "length", len(countries))
 		a.countries = countries
 		return countries, nil
 	}
@@ -133,16 +133,16 @@ func (a *Api) TopStations() ([]Station, error) {
 func (a *Api) stationSearch(s SearchParams) ([]Station, error) {
 	body := s.toFormData()
 	log := slog.With("method", "Api.stationSearch")
-	log.Debug("", "request", body)
+	log.Info("", "request", body)
 
 	a.stationsMtx.Lock()
 	if v, ok := a.stationsCache[body]; ok && len(v) > 0 {
 		a.stationsMtx.Unlock()
-		log.Debug("stations cache hit", "len", len(v))
+		log.Info("stations cache hit", "len", len(v))
 		return v, nil
 	}
 	a.stationsMtx.Unlock()
-	log.Debug("stations cache miss")
+	log.Info("stations cache miss")
 
 	var err error
 	for i := 0; i < serverMaxRetry; i++ {
@@ -161,12 +161,12 @@ func (a *Api) stationSearch(s SearchParams) ([]Station, error) {
 			time.Sleep(serverRetryMillis * time.Millisecond)
 			continue
 		}
-		log.Debug("", "length", len(stations))
+		log.Info("", "length", len(stations))
 		if len(stations) > 0 {
 			a.stationsMtx.Lock()
 			a.stationsCache[body] = stations
 			a.stationsMtx.Unlock()
-			log.Debug("stations cache set")
+			log.Info("stations cache set")
 		}
 		return stations, nil
 	}
@@ -203,7 +203,7 @@ func (a *Api) GetStations(uuids []string) ([]Station, error) {
 			time.Sleep(serverRetryMillis * time.Millisecond)
 			continue
 		}
-		log.Debug("", "length", len(stations))
+		log.Info("", "length", len(stations))
 		return stations, nil
 	}
 
@@ -219,7 +219,7 @@ func (a *Api) StationCounter(uuid string) error {
 		log.Error("", "request error", err)
 		return err
 	}
-	log.Debug(string(res))
+	log.Info(string(res))
 	return nil
 }
 
@@ -233,7 +233,7 @@ func (a *Api) StationVote(uuid string) error {
 	log := slog.With("method", "Api.StationVote")
 
 	if voteTime, ok := a.stationVotes[uuid]; ok && time.Now().Before(voteTime.Add(voteTimeout)) {
-		log.Debug(fmt.Sprintf("already voted %s at %v", uuid, voteTime))
+		log.Info(fmt.Sprintf("already voted %s at %v", uuid, voteTime))
 		return errVoteTimeout
 	}
 	a.stationVotes[uuid] = time.Now()
@@ -244,7 +244,7 @@ func (a *Api) StationVote(uuid string) error {
 		log.Error("", "request error", err)
 		return errVoteReq
 	}
-	log.Debug(string(res))
+	log.Info(string(res))
 	var voteRes struct {
 		Ok      bool
 		Message string

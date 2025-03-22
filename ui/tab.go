@@ -109,8 +109,8 @@ func (t *stationsTabBase) IsFiltering() bool {
 
 func (t *stationsTabBase) toNowPlaying(m *Model) {
 	log := slog.With("caller", "ui.stationsTabBase.toNowPlaying")
-	log.Debug("begin")
-	defer log.Debug("end")
+	log.Info("begin")
+	defer log.Info("end")
 
 	m.delegate.playingMtx.RLock()
 	defer m.delegate.playingMtx.RUnlock()
@@ -131,7 +131,7 @@ func (t *stationsTabBase) toNowPlaying(m *Model) {
 			break
 		}
 	}
-	slog.Debug("method", "ui.baseTab.toNowPlaying", "selIndex", selIndex)
+	slog.Info("method", "ui.baseTab.toNowPlaying", "selIndex", selIndex)
 	if selIndex > -1 {
 		t.list.Select(selIndex)
 	}

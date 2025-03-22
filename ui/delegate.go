@@ -165,8 +165,8 @@ func (d *stationDelegate) shouldPaste(m *list.Model) bool {
 func (d *stationDelegate) pauseCmd() tea.Cmd {
 	return func() tea.Msg {
 		log := slog.With("method", "ui.stationDelegate.pauseCmd")
-		log.Debug("begin")
-		defer log.Debug("end")
+		log.Info("begin")
+		defer log.Info("end")
 
 		d.playingMtx.Lock()
 		defer d.playingMtx.Unlock()
@@ -188,8 +188,8 @@ func (d *stationDelegate) pauseCmd() tea.Cmd {
 func (d *stationDelegate) resumeCmd() tea.Cmd {
 	return func() tea.Msg {
 		log := slog.With("method", "ui.stationDelegate.resumeCmd")
-		log.Debug("begin")
-		defer log.Debug("end")
+		log.Info("begin")
+		defer log.Info("end")
 
 		d.playingMtx.Lock()
 		defer d.playingMtx.Unlock()
@@ -211,13 +211,13 @@ func (d *stationDelegate) resumeCmd() tea.Cmd {
 func (d *stationDelegate) playCmd(s browser.Station) tea.Cmd {
 	return func() tea.Msg {
 		log := slog.With("method", "ui.stationDelegate.playCmd")
-		log.Debug("begin")
-		defer log.Debug("end")
+		log.Info("begin")
+		defer log.Info("end")
 
 		d.playingMtx.Lock()
 		defer d.playingMtx.Unlock()
 
-		log.Debug("playing", "id", s.Stationuuid)
+		log.Info("playing", "id", s.Stationuuid)
 		go d.increaseCounter(s)
 
 		err := d.player.Play(s.URL)

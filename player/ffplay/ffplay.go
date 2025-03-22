@@ -128,7 +128,7 @@ func (f *FFPlay) play(url string) error {
 		log.Error("ffplay cmd error", "error", cmd.Err.Error())
 		return cmd.Err
 	}
-	log.Debug("cmd", "args", cmd.Args)
+	log.Info("cmd", "args", cmd.Args)
 	cmd.Stderr = &bytes.Buffer{}
 	err := cmd.Start()
 	if err != nil {
@@ -137,7 +137,7 @@ func (f *FFPlay) play(url string) error {
 	}
 	f.playing = cmd
 	f.url = url
-	log.Debug("ffplay cmd started", "pid", f.playing.Process.Pid)
+	log.Info("ffplay cmd started", "pid", f.playing.Process.Pid)
 
 	return nil
 }
@@ -168,7 +168,7 @@ func (f *FFPlay) Stop() error {
 func (f *FFPlay) stop() error {
 	log := slog.With("method", "FFPlay.Stop")
 	if f.playing == nil {
-		log.Debug("no current station playing")
+		log.Info("no current station playing")
 		return nil
 	}
 	cmd := *f.playing
@@ -199,7 +199,7 @@ func (f *FFPlay) Metadata() *model.Metadata {
 		if errIx == -1 {
 			continue
 		}
-		log.Debug("FFPlay", "output", output, "errorMsg", err)
+		log.Info("FFPlay", "output", output, "errorMsg", err)
 		errMsg := output[errIx:]
 		nlIx := strings.Index(errMsg, "\n")
 		if nlIx >= 0 {

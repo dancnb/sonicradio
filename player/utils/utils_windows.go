@@ -14,7 +14,7 @@ func KillProcess(p *os.Process, l *slog.Logger) error {
 	}
 
 	pid := p.Pid
-	l.Debug("killing process", "pid", pid)
+	l.Info("killing process", "pid", pid)
 
 	cmd := exec.Command("taskkill", []string{"/F", "/T", "/PID", fmt.Sprintf("%d", pid)}...)
 	if errors.Is(cmd.Err, exec.ErrDot) {
@@ -29,6 +29,6 @@ func KillProcess(p *os.Process, l *slog.Logger) error {
 		return err
 	}
 
-	l.Debug("killed process group", "pgid", pid)
+	l.Info("killed process group", "pgid", pid)
 	return nil
 }
