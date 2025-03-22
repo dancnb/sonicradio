@@ -19,6 +19,7 @@ func TestMplayer(t *testing.T) {
 	}()
 
 	url := "http://stream-uk1.radioparadise.com/aac-320"
+	url = "http://89.238.227.6:8006/;"
 
 	err = p.Play(url)
 	if err != nil {
@@ -35,10 +36,10 @@ func TestMplayer(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// err = p.Pause(false)
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
+	err = p.Pause(false)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_, err = p.SetVolume(50)
 	if err != nil {

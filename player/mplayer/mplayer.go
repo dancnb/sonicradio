@@ -7,10 +7,8 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"os"
 	"os/exec"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/dancnb/sonicradio/config"
@@ -34,34 +32,33 @@ const (
 	pause
 	stop
 	quit
-	getTime
-	seek
+	// getTime
+	// seek
 	volume // set volume abs percentage
 )
 
 var cmds = map[command]string{
-	play:    "loadfile %s",
-	pause:   "pause",
-	stop:    "stop",
-	quit:    "quit",
-	getTime: "get_time", //alt "get_time_pos"
-	seek:    "seek %d",
-	volume:  "volume %d 1",
+	play:  "loadfile %s",
+	pause: "pause",
+	stop:  "pausing_keep_force stop",
+	quit:  "quit",
+	// getTime: "pausing_keep_force get_time", //alt "get_time_pos"
+	// seek:    "seek %d",
+	volume: "pausing_keep_force volume %d 1",
 }
 
 type Mplayer struct {
-	cmd  *exec.Cmd
-	done chan struct{}
-	wc   io.WriteCloser
-	rc   io.ReadCloser
+	cmd *exec.Cmd
+	wc  io.WriteCloser
+	rc  io.ReadCloser
 
 	title *string
-	time  *int64
+	pt    *playerutils.PlaybackTime
 }
 
 func New(ctx context.Context) (*Mplayer, error) {
 	p := &Mplayer{
-		done: make(chan struct{}),
+		pt: &playerutils.PlaybackTime{},
 	}
 	err := p.getCmd(ctx)
 	if err != nil {
@@ -85,7 +82,6 @@ func (m *Mplayer) getCmd(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	// rc, err := cmd.StderrPipe()
 	rc, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
@@ -123,41 +119,10 @@ func (m *Mplayer) readOutput(ctx context.Context) {
 		logger.Info("scanner error", "", err)
 	}
 
-	// for {
-	// 	select {
-	// 	case <-ctx.Done():
-	// 		//drain output
-	// 		for sc.Scan() {
-	// 			l := sc.Text()
-	// 			m.parseOutputLine(logger, l)
-	// 		}
-	// 		logger.Info("after drain scanner finished")
-	// 		if err := sc.Err(); err != nil {
-	// 			logger.Info("after drain scanner error", "", err)
-	// 		}
-
-	// 		return
-	// 		// m.done <- struct{}{}
-	// 	default:
-	// 		if sc.Scan() {
-	// 			l := sc.Text()
-	// 			m.parseOutputLine(logger, l)
-	// 		} else {
-	// 			logger.Info("loop scanner finished")
-	// 			if err := sc.Err(); err != nil {
-	// 				logger.Info("loop scanner error", "", err)
-	// 			}
-	// 			return
-	// 		}
-	// 	}
-	// }
 }
 
 func (m *Mplayer) parseOutputLine(logger *slog.Logger, output string) {
-	logger.Info(output)
-	if strings.TrimSpace(output) == "" {
-		logger.Info(">>>>>><<<<<<<<")
-	}
+	logger.Info("<<<<<<<<<< " + output)
 
 	startIdx := strings.Index(output, titleMsg)
 	if startIdx != -1 {
@@ -168,18 +133,6 @@ func (m *Mplayer) parseOutputLine(logger *slog.Logger, output string) {
 			m.title = &titleS
 		}
 	}
-
-	startIdx = strings.Index(output, timeMsg)
-	if startIdx != -1 {
-		timeS := output[startIdx+len(timeMsg):]
-		t, err := strconv.ParseFloat(timeS, 64)
-		if err != nil {
-			logger.Error("parse time value", "err", err)
-		} else {
-			intT := int64(t)
-			m.time = &intT
-		}
-	}
 }
 
 func (m *Mplayer) GetType() config.PlayerType {
@@ -188,6 +141,13 @@ func (m *Mplayer) GetType() config.PlayerType {
 
 func (m *Mplayer) Pause(value bool) error {
 	_, err := m.doCommand(cmds[pause])
+	if err == nil {
+		if value {
+			m.pt.PausePlayTime()
+		} else {
+			m.pt.ResumePlayTime()
+		}
+	}
 	return err
 }
 
@@ -198,15 +158,11 @@ func (m *Mplayer) SetVolume(value int) (int, error) {
 }
 
 func (m *Mplayer) Metadata() *model.Metadata {
-	if m.title == nil {
-		return nil
+	metadata := &model.Metadata{PlaybackTimeSec: m.pt.GetPlayTime()}
+	if m.title != nil {
+		metadata.Title = *m.title
 	}
-	cmd := cmds[getTime]
-	_, err := m.doCommand(cmd)
-	if err != nil {
-		return nil
-	}
-	return &model.Metadata{Title: *m.title, PlaybackTimeSec: m.time}
+	return metadata
 }
 
 func (m *Mplayer) Seek(amtSec int) *model.Metadata {
@@ -215,7 +171,6 @@ func (m *Mplayer) Seek(amtSec int) *model.Metadata {
 
 func (m *Mplayer) Play(url string) error {
 	m.title = nil
-	m.time = nil
 
 	if err := m.Stop(); err != nil {
 		return err
@@ -223,6 +178,10 @@ func (m *Mplayer) Play(url string) error {
 
 	cmd := fmt.Sprintf(cmds[play], url)
 	_, err := m.doCommand(cmd)
+	if err == nil {
+		m.pt.ResetPlayTime()
+	}
+
 	return err
 }
 
@@ -257,7 +216,6 @@ func (m *Mplayer) Close() (err error) {
 	if err != nil {
 		return err
 	}
-	// <-m.done
 
 	if m.cmd != nil {
 		if waitErr := m.cmd.Wait(); waitErr != nil {
@@ -273,16 +231,16 @@ func (m *Mplayer) Close() (err error) {
 
 func (m *Mplayer) doCommand(cmd string) (string, error) {
 	logger := slog.With("method", "Mplayer.doCommand")
-	logger.Info(cmd)
+	logger.Info(">>>>>>>>>>> " + cmd)
 	cmd = cmd + "\n"
 	_, err := io.WriteString(m.wc, cmd)
 	if err != nil {
 		logger.Error("write", "err", err)
 		return "", err
 	}
-	if err := m.wc.(*os.File).Sync(); err != nil {
-		logger.Error("sync", "err", err)
-	}
+	// if err := m.wc.(*os.File).Sync(); err != nil {
+	// 	logger.Error("sync", "err", err)
+	// }
 
 	return "", nil
 }

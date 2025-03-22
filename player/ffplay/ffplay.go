@@ -9,8 +9,6 @@ import (
 	"os/exec"
 	"slices"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/dancnb/sonicradio/config"
 	"github.com/dancnb/sonicradio/player/model"
@@ -45,15 +43,14 @@ type FFPlay struct {
 	url     string
 	playing *exec.Cmd
 
-	playTimeMtx   sync.Mutex
-	playedTime    *time.Duration
-	playStartTime time.Time
-
+	pt     *playerutils.PlaybackTime
 	volume int
 }
 
 func NewFFPlay(ctx context.Context) (*FFPlay, error) {
-	return &FFPlay{}, nil
+	return &FFPlay{
+		pt: &playerutils.PlaybackTime{},
+	}, nil
 }
 
 func (f *FFPlay) GetType() config.PlayerType {
@@ -63,52 +60,9 @@ func (f *FFPlay) GetType() config.PlayerType {
 func (f *FFPlay) Play(url string) error {
 	err := f.play(url)
 	if err == nil {
-		f.resetPlayTime()
+		f.pt.ResetPlayTime()
 	}
 	return err
-}
-
-func (f *FFPlay) resetPlayTime() {
-	f.playTimeMtx.Lock()
-	defer f.playTimeMtx.Unlock()
-
-	f.playedTime = nil
-	f.playStartTime = time.Now()
-}
-
-func (f *FFPlay) pausePlayTime() {
-	f.playTimeMtx.Lock()
-	defer f.playTimeMtx.Unlock()
-
-	d := time.Since(f.playStartTime)
-	if f.playedTime == nil {
-		f.playedTime = &d
-	} else {
-		*f.playedTime += d
-	}
-	f.playStartTime = time.Time{}
-}
-
-func (f *FFPlay) resumePlayTime() {
-	f.playTimeMtx.Lock()
-	defer f.playTimeMtx.Unlock()
-
-	f.playStartTime = time.Now()
-}
-
-func (f *FFPlay) getPlayTime() *int64 {
-	f.playTimeMtx.Lock()
-	defer f.playTimeMtx.Unlock()
-
-	var d time.Duration
-	if f.playedTime != nil {
-		d += *f.playedTime
-	}
-	if !f.playStartTime.IsZero() {
-		d += time.Since(f.playStartTime)
-	}
-	intD := int64(d.Seconds())
-	return &intD
 }
 
 func (f *FFPlay) play(url string) error {
@@ -148,13 +102,13 @@ func (f *FFPlay) Pause(value bool) error {
 	if value {
 		err := f.stop()
 		if err == nil {
-			f.pausePlayTime()
+			f.pt.PausePlayTime()
 		}
 		return err
 	} else if f.url != "" {
 		err := f.play(f.url)
 		if err == nil {
-			f.resumePlayTime()
+			f.pt.ResumePlayTime()
 		}
 		return err
 	}
@@ -206,7 +160,7 @@ func (f *FFPlay) Metadata() *model.Metadata {
 			errMsg = errMsg[:nlIx]
 		}
 		errMsg = strings.TrimSpace(errMsg)
-		return &model.Metadata{Err: errors.New(errMsg), PlaybackTimeSec: f.getPlayTime()}
+		return &model.Metadata{Err: errors.New(errMsg), PlaybackTimeSec: f.pt.GetPlayTime()}
 	}
 
 	title := ""
@@ -220,7 +174,7 @@ func (f *FFPlay) Metadata() *model.Metadata {
 		title = strings.TrimSpace(title)
 	}
 
-	return &model.Metadata{Title: title, PlaybackTimeSec: f.getPlayTime()}
+	return &model.Metadata{Title: title, PlaybackTimeSec: f.pt.GetPlayTime()}
 }
 
 func (f *FFPlay) Seek(amtSec int) *model.Metadata {
