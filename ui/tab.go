@@ -108,7 +108,7 @@ func (t *stationsTabBase) IsFiltering() bool {
 }
 
 func (t *stationsTabBase) toNowPlaying(m *Model) {
-	log := slog.With("caller", "ui.stationsTabBase.toNowPlaying")
+	log := slog.With("method", "ui.stationsTabBase.toNowPlaying")
 	log.Info("begin")
 	defer log.Info("end")
 

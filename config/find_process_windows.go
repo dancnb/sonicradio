@@ -10,7 +10,7 @@ import (
 //
 // On Windows, it returns a non-nil os.Porcess if it is runnning, otherwise a nil os.Process and an error
 func findProcess(pid int) bool {
-	log := slog.With("caller", "config.findProcess")
+	log := slog.With("method", "config.findProcess")
 	if p, err := os.FindProcess(pid); err == nil && p != nil {
 		log.Info(fmt.Sprintf("existing pid %d running: %v", pid, err))
 		return true

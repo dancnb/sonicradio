@@ -208,7 +208,7 @@ func (v *Value) Save() error {
 }
 
 func getOrCreateConfigDir() (string, error) {
-	logger := slog.With("caller", "getOrCreateConfigDir")
+	logger := slog.With("method", "getOrCreateConfigDir")
 
 	dir, err := os.UserConfigDir()
 	if err != nil {

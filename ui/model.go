@@ -110,7 +110,7 @@ func updatePlayerMetadata(ctx context.Context, progr *tea.Program, m *Model) {
 }
 
 func pollMetadata(m *Model, progr *tea.Program) {
-	log := slog.With("caller", "pollMetadata")
+	log := slog.With("method", "pollMetadata")
 
 	m.delegate.playingMtx.RLock()
 	defer m.delegate.playingMtx.RUnlock()
@@ -322,7 +322,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) handlePauseKey() (*Model, tea.Cmd) {
-	log := slog.With("caller", "ui.Model.handlePauseKey")
+	log := slog.With("method", "ui.Model.handlePauseKey")
 	log.Info("begin")
 	defer log.Info("end")
 
@@ -597,7 +597,7 @@ func (m Model) View() string {
 }
 
 func (m *Model) changeStationView() {
-	log := slog.With("caller", "ui.Model.changeStationView")
+	log := slog.With("method", "ui.Model.changeStationView")
 	m.cfg.StationView = (m.cfg.StationView + 1) % 3
 	log.Info(fmt.Sprintf("new stationView=%s", m.cfg.StationView.String()))
 	m.delegate.setStationView(m.cfg.StationView)

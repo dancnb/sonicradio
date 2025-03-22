@@ -15,7 +15,7 @@ const pidFileName = "sonicradio.pid"
 var ErrInstanceRunning = errors.New("application is already running")
 
 func CheckPidFile() (*os.File, error) {
-	log := slog.With("caller", "config.CheckPidFile")
+	log := slog.With("method", "config.CheckPidFile")
 	pid := os.Getpid()
 	log.Info(fmt.Sprintf("current pid=%v", pid))
 
@@ -54,7 +54,7 @@ func CheckPidFile() (*os.File, error) {
 }
 
 func createPidFile(fp string, pid int) (*os.File, error) {
-	log := slog.With("caller", "config.createPidFile")
+	log := slog.With("method", "config.createPidFile")
 	log.Info("pid file not found, creating", "pid", pid)
 	f, err := os.Create(fp)
 	if err != nil {
