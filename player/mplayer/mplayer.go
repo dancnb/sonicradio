@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/dancnb/sonicradio/config"
 	"github.com/dancnb/sonicradio/player/model"
@@ -125,7 +124,7 @@ func (m *Mplayer) readOutput(ctx context.Context) {
 }
 
 func (m *Mplayer) parseOutputLine(logger *slog.Logger, output string) {
-	logger.Info("<<<<<<<<<< " + output)
+	logger.Info("<<<< " + output)
 
 	startIdx := strings.Index(output, titleMsg)
 	if startIdx != -1 {
@@ -221,13 +220,10 @@ func (m *Mplayer) Close() (err error) {
 	}
 
 	if m.cmd != nil {
-		start := time.Now()
-		slog.Debug("--------BEFORE -------------")
 		if waitErr := m.cmd.Wait(); waitErr != nil {
 			log.Error("Mplayer cmd wait", "err", waitErr)
 			err = waitErr
 		}
-		slog.Debug("--------AFTER -------------", "", time.Since(start).Milliseconds())
 		if killErr := playerutils.KillProcess(m.cmd.Process, log); killErr != nil {
 			log.Error("Mplayer cmd kill", "err", killErr)
 		}
@@ -237,7 +233,7 @@ func (m *Mplayer) Close() (err error) {
 
 func (m *Mplayer) doCommand(cmd string) (string, error) {
 	logger := slog.With("method", "Mplayer.doCommand")
-	logger.Info(">>>>>>>>>>> " + cmd)
+	logger.Info(">>>> " + cmd)
 	cmd = cmd + "\n"
 	_, err := io.WriteString(m.wc, cmd)
 	if err != nil {
