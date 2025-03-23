@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/dancnb/sonicradio/config"
 	"github.com/dancnb/sonicradio/player/model"
@@ -218,10 +219,13 @@ func (m *Mplayer) Close() (err error) {
 	}
 
 	if m.cmd != nil {
+		start := time.Now()
+		slog.Debug("--------BEFORE -------------")
 		if waitErr := m.cmd.Wait(); waitErr != nil {
 			log.Error("Mplayer cmd wait", "err", waitErr)
 			err = waitErr
 		}
+		slog.Debug("--------AFTER -------------", "", time.Since(start).Milliseconds())
 		if killErr := playerutils.KillProcess(m.cmd.Process, log); killErr != nil {
 			log.Error("Mplayer cmd kill", "err", killErr)
 		}
