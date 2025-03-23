@@ -18,6 +18,7 @@ import (
 )
 
 var (
+	volArg   = "-volume"
 	baseArgs = []string{
 		// "-cache", "20480",
 		// "-cache-min", "50",
@@ -57,25 +58,26 @@ type Mplayer struct {
 	pt    *playerutils.PlaybackTime
 }
 
-func New(ctx context.Context) (*Mplayer, error) {
+func New(ctx context.Context, volume int) (*Mplayer, error) {
 	p := &Mplayer{
 		pt: &playerutils.PlaybackTime{},
 	}
-	err := p.getCmd(ctx)
+	err := p.getCmd(ctx, volume)
 	if err != nil {
 		return nil, err
 	}
 	return p, nil
 }
 
-func (m *Mplayer) getCmd(ctx context.Context) error {
+func (m *Mplayer) getCmd(ctx context.Context, volume int) error {
 	log := slog.With("method", "Mplayer.getCmd")
-	args := slices.Clone(baseArgs)
+	args := []string{volArg, fmt.Sprintf("%d", volume)}
+	args = append(args, slices.Clone(baseArgs)...)
 	cmd := exec.CommandContext(ctx, GetBaseCmd(), args...)
 	if errors.Is(cmd.Err, exec.ErrDot) {
 		cmd.Err = nil
 	} else if cmd.Err != nil {
-		log.Error("mpv cmd error", "error", cmd.Err.Error())
+		log.Error("mplayer cmd error", "error", cmd.Err.Error())
 		return cmd.Err
 	}
 
@@ -89,13 +91,13 @@ func (m *Mplayer) getCmd(ctx context.Context) error {
 	}
 	err = cmd.Start()
 	if err != nil {
-		log.Error("mpv cmd start", "error", err)
+		log.Error("mplayer cmd start", "error", err)
 		return err
 	}
 	m.cmd = cmd
 	m.wc = wc
 	m.rc = rc
-	log.Info("mpv cmd started", "pid", cmd.Process.Pid)
+	log.Info("mplayer cmd started", "pid", cmd.Process.Pid)
 
 	go m.readOutput(ctx)
 

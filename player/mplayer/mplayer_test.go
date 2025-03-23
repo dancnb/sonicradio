@@ -7,7 +7,7 @@ import (
 
 func TestMplayer(t *testing.T) {
 	ctx := context.Background()
-	p, err := New(ctx)
+	p, err := New(ctx, 100)
 	if err != nil {
 		t.Fatal(err)
 	}

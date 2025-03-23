@@ -37,6 +37,7 @@ func NewPlayer(ctx context.Context, cfg *config.Value) (*Player, error) {
 		return nil, err
 	}
 
+	vol := cfg.GetVolume()
 	switch cfg.Player {
 	case config.Mpv:
 		mpvPlayer, err := mpv.NewMPVSocket(ctx)
@@ -57,14 +58,13 @@ func NewPlayer(ctx context.Context, cfg *config.Value) (*Player, error) {
 		}
 		p.delegate = vlcPlayer
 	case config.MPlayer:
-		mplayer, err := mplayer.New(ctx)
+		mplayer, err := mplayer.New(ctx, vol)
 		if err != nil {
 			return nil, err
 		}
 		p.delegate = mplayer
 	}
 
-	vol := cfg.GetVolume()
 	_, err = p.delegate.SetVolume(clampVolume(vol))
 	if err != nil {
 		return nil, err
