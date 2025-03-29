@@ -25,9 +25,21 @@ type backendPlayer interface {
 	Play(url string) error
 	Pause(value bool) error
 	Stop() error
+
+	// SetVolume:
+	//
+	//   - sets the volume to an absolute value in [0,100]
+	//   - returns the set value and nil if succeeded, error if failed
 	SetVolume(value int) (int, error)
+
 	Metadata() *model.Metadata
+
+	// Seek:
+	//
+	//   - seek by a +/- amount of seconds,
+	//   - returns the metadata for the new playback position if succeeded, metadata with error if failed
 	Seek(amtSec int) *model.Metadata
+
 	Close() error
 }
 
@@ -157,6 +169,10 @@ func clampVolume(value int) int {
 	return value
 }
 
+// SetVolume:
+//
+//   - sets the volume to an absolute value in [0,100]
+//   - returns the set value and nil if succeeded, error if failed
 func (p *Player) SetVolume(value int) (int, error) {
 	return p.delegate.SetVolume(clampVolume(value))
 }
@@ -165,6 +181,10 @@ func (p *Player) Metadata() *model.Metadata {
 	return p.delegate.Metadata()
 }
 
+// Seek:
+//
+//   - seek by a +/- amount of seconds,
+//   - returns the metadata for the new playback position if succeeded, metadata with error if failed
 func (p *Player) Seek(amtSec int) *model.Metadata {
 	return p.delegate.Seek(amtSec)
 }
