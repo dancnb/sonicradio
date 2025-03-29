@@ -48,6 +48,7 @@ var (
 	ffplayDesc  = "\nFFplay does not allow changing the volume during playback or seeking backward/forward."
 	vlcDesc     = "\nFor VLC, pausing or seeking backward/forward may result in an invalid song title being displayed."
 	mplayerDesc = "\nFor MPlayer, seeking backward/forward is not available."
+	mpdDesc     = "\nTODO MPD desc"
 )
 
 func newSettingsTab(
@@ -102,6 +103,9 @@ func newSettingsTab(
 	if slices.Contains(playerTypes, config.MPlayer) {
 		playerDesc += mplayerDesc
 	}
+	// if slices.Contains(playerTypes, config.MPD) {
+	// 	playerDesc += mpdDesc
+	// }
 	st := &settingsTab{
 		cfg:           cfg,
 		changeThemeFn: changeThemeFn,
