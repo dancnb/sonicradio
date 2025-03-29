@@ -61,15 +61,17 @@ const (
 	FFPlay
 	Vlc
 	MPlayer
+	MPD
 )
 
-var Players = [4]PlayerType{Mpv, FFPlay, Vlc, MPlayer}
+var Players = [5]PlayerType{Mpv, FFPlay, Vlc, MPlayer, MPD}
 
 var playerNames = map[PlayerType]string{
 	Mpv:     "Mpv",
 	FFPlay:  "FFplay",
 	Vlc:     "VLC",
 	MPlayer: "MPlayer",
+	MPD:     "MPD",
 }
 
 func (p PlayerType) String() string {
