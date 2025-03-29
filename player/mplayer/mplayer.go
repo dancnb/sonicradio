@@ -26,6 +26,12 @@ var (
 	}
 )
 
+const baseCmd = "mplayer"
+
+func GetBaseCmd() string {
+	return baseCmd
+}
+
 type command uint8
 
 const (
