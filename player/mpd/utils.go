@@ -2,7 +2,7 @@
 
 package mpd
 
-const baseCmd = "mpc"
+const baseCmd = "mpd"
 
 func GetBaseCmd() string {
 	return baseCmd
