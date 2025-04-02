@@ -85,7 +85,7 @@ func NewPlayer(ctx context.Context, cfg *config.Value) (*Player, error) {
 	}
 
 	_, err = p.delegate.SetVolume(clampVolume(vol))
-	if err != nil {
+	if err != nil && cfg.Player != config.MPD {
 		return nil, err
 	}
 
@@ -172,7 +172,7 @@ func clampVolume(value int) int {
 // SetVolume:
 //
 //   - sets the volume to an absolute value in [0,100]
-//   - returns the set value and nil if succeeded, error if failed
+//   - returns the set value and nil if succeeded, or an irrelevant value and error if failed
 func (p *Player) SetVolume(value int) (int, error) {
 	return p.delegate.SetVolume(clampVolume(value))
 }
