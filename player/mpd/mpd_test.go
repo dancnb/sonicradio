@@ -9,7 +9,7 @@ import (
 
 func TestMplayer(t *testing.T) {
 	ctx := context.Background()
-	p, err := New(ctx, config.DefMpdHost, config.DefMpdPort)
+	p, err := New(ctx, config.DefMpdHost, config.DefMpdPort, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

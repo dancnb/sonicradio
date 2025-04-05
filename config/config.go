@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -47,9 +48,10 @@ type Value struct {
 	Theme       int         `json:"theme"`
 	StationView StationView `json:"stationView"`
 
-	Player  PlayerType `json:"playerType"`
-	MpdHost *string    `json:"mpdHost,omitempty"`
-	MpdPort *int       `json:"mpdPort,omitempty"`
+	Player      PlayerType `json:"playerType"`
+	MpdHost     *string    `json:"mpdHost,omitempty"`
+	MpdPort     *int       `json:"mpdPort,omitempty"`
+	MpdPassword *string    `json:"mpdPassword,omitempty"`
 
 	historyMtx     sync.Mutex          `json:"-"`
 	History        []HistoryEntry      `json:"history,omitempty"`
@@ -195,21 +197,24 @@ func Load() (cfg *Value, err error) {
 
 	// environment variables overwrite config file
 	if v, ok := os.LookupEnv("MPD_HOST"); ok && v != "" {
-		cfg.MpdHost = &v
-	} else {
-		defMpdHost := DefMpdHost
-		if cfg.MpdHost == nil {
-			cfg.MpdHost = &defMpdHost
+		parts := strings.Split(v, "@")
+		if len(parts) == 1 {
+			cfg.MpdHost = &parts[0]
+		} else {
+			cfg.MpdPassword = &parts[0]
+			cfg.MpdHost = &parts[1]
 		}
+	} else if cfg.MpdHost == nil {
+		defMpdHost := DefMpdHost
+		cfg.MpdHost = &defMpdHost
 	}
+
 	if v, ok := os.LookupEnv("MPD_PORT"); ok && v != "" {
 		intV, _ := strconv.Atoi(v)
 		cfg.MpdPort = &intV
-	} else {
+	} else if cfg.MpdPort == nil {
 		defMpdPort := DefMpdPort
-		if cfg.MpdPort == nil {
-			cfg.MpdPort = &defMpdPort
-		}
+		cfg.MpdPort = &defMpdPort
 	}
 
 	return

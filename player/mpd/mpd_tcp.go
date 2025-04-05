@@ -32,6 +32,7 @@ const (
 	seekcurr
 	setvol
 	getvol
+	password
 )
 
 var cmds = map[command]string{
@@ -45,21 +46,46 @@ var cmds = map[command]string{
 	seekcurr:    "seekcur %d",
 	setvol:      "setvol %d",
 	getvol:      "getvol",
+	password:    "password %s",
 }
 
 type Mpd struct {
+	password   *string
 	conn       net.Conn
 	nowPlaying atomic.Bool
 }
 
-func New(ctx context.Context, host string, port int) (*Mpd, error) {
-	p := &Mpd{}
+func New(ctx context.Context, host string, port int, password *string) (*Mpd, error) {
+	p := &Mpd{password: password}
 	conn, err := getConn(ctx, host, port)
 	if err != nil {
 		return nil, err
 	}
 	p.conn = conn
+
+	if err := p.setPassword(); err != nil {
+		return nil, err
+	}
+
 	return p, nil
+}
+
+const incorrectPass = "incorrect password"
+
+var errIncorectPass = errors.New("incorrect MPD password")
+
+func (m *Mpd) setPassword() error {
+	if m.password == nil {
+		return nil
+	}
+	cmd := fmt.Sprintf(cmds[password], *m.password)
+	out, err := m.doCmd(cmd, false)
+	if err != nil {
+		return err
+	} else if strings.Contains(out, incorrectPass) {
+		return errIncorectPass
+	}
+	return nil
 }
 
 func getConn(ctx context.Context, host string, port int) (net.Conn, error) {
@@ -76,18 +102,18 @@ func getConn(ctx context.Context, host string, port int) (net.Conn, error) {
 }
 
 func (m *Mpd) Play(streamURL string) error {
-	_, err := m.doCmd(cmds[clear])
+	_, err := m.doCmd(cmds[clear], true)
 	if err != nil {
 		return err
 	}
 
 	cmd := fmt.Sprintf(cmds[add], streamURL)
-	_, err = m.doCmd(cmd)
+	_, err = m.doCmd(cmd, true)
 	if err != nil {
 		return err
 	}
 
-	_, err = m.doCmd(cmds[play])
+	_, err = m.doCmd(cmds[play], true)
 	if err != nil {
 		return err
 	}
@@ -98,7 +124,7 @@ func (m *Mpd) Play(streamURL string) error {
 
 func (m *Mpd) Pause(value bool) error {
 	cmd := cmds[pause]
-	_, err := m.doCmd(cmd)
+	_, err := m.doCmd(cmd, true)
 	if err != nil {
 		return err
 	}
@@ -128,7 +154,7 @@ func (m *Mpd) SetVolume(value int) (int, error) {
 
 func (m *Mpd) doSetvol(value int) error {
 	cmd := fmt.Sprintf(cmds[setvol], value)
-	out, err := m.doCmd(cmd)
+	out, err := m.doCmd(cmd, true)
 	if err != nil {
 		return fmt.Errorf("setvol cmd err: %w", err)
 	}
@@ -151,7 +177,7 @@ func (m *Mpd) doSetvol(value int) error {
 }
 
 func (m *Mpd) doGetvol() (int, error) {
-	out, err := m.doCmd(cmds[getvol])
+	out, err := m.doCmd(cmds[getvol], true)
 	if err != nil {
 		return 0, fmt.Errorf("getvol cmd err: %w", err)
 	}
@@ -178,7 +204,7 @@ func (m *Mpd) doGetvol() (int, error) {
 const titleMsg = "Title:"
 
 func (m *Mpd) Metadata() *model.Metadata {
-	out, err := m.doCmd(cmds[currentSong])
+	out, err := m.doCmd(cmds[currentSong], true)
 	if err != nil {
 		return &model.Metadata{Err: fmt.Errorf("currentsong cmd err: %w", err)}
 	}
@@ -208,7 +234,7 @@ func (m *Mpd) Metadata() *model.Metadata {
 const elapsedMsg = "elapsed:"
 
 func (m *Mpd) getElapsedSeconds() (int64, error) {
-	out, err := m.doCmd(cmds[status])
+	out, err := m.doCmd(cmds[status], true)
 	if err != nil {
 		return -1, fmt.Errorf("status cmd err: %w", err)
 	}
@@ -246,7 +272,7 @@ func (m *Mpd) Seek(amtSec int) *model.Metadata {
 		pos = 0
 	}
 	cmd := fmt.Sprintf(cmds[seekcurr], pos)
-	out, err := m.doCmd(cmd)
+	out, err := m.doCmd(cmd, true)
 	if err != nil {
 		return &model.Metadata{Err: err}
 	} else if strings.Contains(strings.ToLower(out), notSeekableMsg) {
@@ -257,7 +283,7 @@ func (m *Mpd) Seek(amtSec int) *model.Metadata {
 }
 
 func (m *Mpd) Stop() error {
-	_, err := m.doCmd(cmds[stop])
+	_, err := m.doCmd(cmds[stop], true)
 	if err != nil {
 		return err
 	}
@@ -284,7 +310,7 @@ func (m *Mpd) Close() (err error) {
 		}
 	}()
 
-	_, err = m.doCmd(cmds[clear])
+	_, err = m.doCmd(cmds[clear], true)
 	if err != nil {
 		return err
 	}
@@ -296,18 +322,24 @@ func (m *Mpd) GetType() config.PlayerType {
 	return config.MPD
 }
 
-func (m *Mpd) doCmd(cmd string) (string, error) {
+const wrongPermission = "you don't have permission for"
+
+var errWrongPermission = errors.New("MPD permission error")
+
+func (m *Mpd) doCmd(cmd string, doLog bool) (string, error) {
 	cmd += "\n"
 	log := slog.With("method", "Mpd.doMpcCmd")
-	log.Info("start", "args", cmd)
-	defer func() {
-		log.Info("stop", "args", cmd)
-	}()
+	if doLog {
+		log.Info("start", "args", cmd)
+		defer func() {
+			log.Info("stop", "args", cmd)
+		}()
+	}
 
 	m.conn.SetDeadline(time.Now().Add(config.MpdConnTimeout))
 	_, err := m.conn.Write([]byte(cmd))
 	if err != nil {
-		return "", fmt.Errorf("write err: %w", err)
+		return "", fmt.Errorf("MPD write err: %w", err)
 	}
 
 	scanner := bufio.NewScanner(m.conn)
@@ -320,9 +352,14 @@ func (m *Mpd) doCmd(cmd string) (string, error) {
 		m.conn.SetDeadline(time.Now().Add(config.VlcConnTimeout))
 	}
 	if err := scanner.Err(); err != nil && !errors.Is(err, os.ErrDeadlineExceeded) {
-		return "", fmt.Errorf("scanner error: %w", err)
+		return "", fmt.Errorf("MPD read error: %w", err)
 	}
 	resS := res.String()
-	log.Info(fmt.Sprintf("<<<\n%s\n", resS))
+	if doLog {
+		log.Info(fmt.Sprintf("<<<\n%s\n", resS))
+	}
+	if strings.Contains(resS, wrongPermission) {
+		return "", errWrongPermission
+	}
 	return resS, nil
 }

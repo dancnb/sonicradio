@@ -143,11 +143,13 @@ func (v *Vlc) GetType() config.PlayerType {
 	return config.Vlc
 }
 
+var errPlay = errors.New("VLC request error")
+
 func (v *Vlc) Play(url string) error {
 	cmd := fmt.Sprintf(cmds[add], url)
 	_, err := v.doRequest(cmd)
 	if err != nil {
-		return err
+		return errPlay
 	}
 	return nil
 }
