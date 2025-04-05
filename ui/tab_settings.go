@@ -37,13 +37,16 @@ type settingsInputIdx byte
 const (
 	historySaveMaxIdx settingsInputIdx = iota
 	themesIdx
+	playerTypeIdx
+	mpdHostIdx
+	mpdPortIdx
 )
 
 var (
 	descriptions = []string{
 		`Maximum number of entries displayed in "History" tab.`,
 		`Preview and select a theme.`,
-		`Choose one of the available backend players (only those found in PATH are displayed): Mpv, FFplay, VLC, MPlayer. The choice will take effect after a restart.`,
+		`Choose one of the available backend players (only those found in PATH are displayed): Mpv, FFplay, VLC, MPlayer, MPD. The choice will take effect after a restart.`,
 	}
 	ffplayDesc  = "\nFFplay does not allow changing the volume during playback or seeking backward/forward."
 	vlcDesc     = "\nFor VLC, pausing or seeking backward/forward may result in an invalid song title being displayed."
@@ -92,7 +95,50 @@ func newSettingsTab(
 		cfg.Player = playerTypes[i]
 		slog.Info("change player type", "i", i, "new type", cfg.Player.String())
 	}
+	playerDesc := getPlayerDescription(playerTypes)
+	inputs := []*components.FormElement{
+		components.NewFormElement(
+			components.WithTextInput(&historySaveMax),
+			components.WithDescription(descriptions[0])),
+		components.NewFormElement(
+			components.WithOptionList(&themeList),
+			components.WithDescription(descriptions[1])),
+		components.NewFormElement(
+			components.WithOptionList(&playerList),
+			components.WithDescription(playerDesc)),
+	}
+	if slices.Contains(playerTypes, config.MPD) {
+		mpdHost := s.NewInputModel("MPD hostname", "127.0.0.1", nil, nil, nil, nil)
+		inputs = append(inputs, components.NewFormElement(components.WithTextInput(&mpdHost)))
+		mpdPort := s.NewInputModel("MPD port", "6600", nil, nil, nil, portValidator)
+		inputs = append(inputs, components.NewFormElement(components.WithTextInput(&mpdPort)))
+	}
 
+	st := &settingsTab{
+		cfg:           cfg,
+		changeThemeFn: changeThemeFn,
+		style:         s,
+		inputs:        inputs,
+		keymap:        newSettingsKeymap(),
+		help:          h,
+	}
+
+	st.loadConfig()
+	return st
+}
+
+func portValidator(v string) error {
+	port, err := strconv.Atoi(v)
+	if err != nil {
+		return fmt.Errorf("invalid port: %v", err)
+	}
+	if port < 1 || port > 65535 {
+		return fmt.Errorf("port out of range: %d", port)
+	}
+	return nil
+}
+
+func getPlayerDescription(playerTypes []config.PlayerType) string {
 	playerDesc := descriptions[2]
 	if slices.Contains(playerTypes, config.FFPlay) {
 		playerDesc += ffplayDesc
@@ -103,34 +149,20 @@ func newSettingsTab(
 	if slices.Contains(playerTypes, config.MPlayer) {
 		playerDesc += mplayerDesc
 	}
-	// if slices.Contains(playerTypes, config.MPD) {
-	// 	playerDesc += mpdDesc
-	// }
-	st := &settingsTab{
-		cfg:           cfg,
-		changeThemeFn: changeThemeFn,
-		style:         s,
-		inputs: []*components.FormElement{
-			components.NewFormElement(
-				components.WithTextInput(&historySaveMax),
-				components.WithDescription(descriptions[0])),
-			components.NewFormElement(
-				components.WithOptionList(&themeList),
-				components.WithDescription(descriptions[1])),
-			components.NewFormElement(
-				components.WithOptionList(&playerList),
-				components.WithDescription(playerDesc)),
-		},
-		keymap: newSettingsKeymap(),
-		help:   h,
+	if slices.Contains(playerTypes, config.MPD) {
+		playerDesc += mpdDesc
 	}
-
-	st.loadConfig()
-	return st
+	return playerDesc
 }
 
 func (s *settingsTab) loadConfig() {
 	s.inputs[historySaveMaxIdx].SetValue(fmt.Sprintf("%d", *s.cfg.HistorySaveMax))
+
+	if len(s.inputs) > int(playerTypeIdx) {
+		s.inputs[mpdHostIdx].SetValue(*s.cfg.MpdHost)
+		mpdPort := fmt.Sprintf("%d", *s.cfg.MpdPort)
+		s.inputs[mpdPortIdx].SetValue(mpdPort)
+	}
 }
 
 func (s *settingsTab) Init(m *Model) tea.Cmd {
@@ -162,12 +194,25 @@ func (s *settingsTab) onExit() {
 
 func (s *settingsTab) updateConfig() {
 	log := slog.With("method", "settingsTab.saveConfig")
+
 	historySaveMaxval := s.inputs[historySaveMaxIdx].Value()
 	intVal, err := strconv.Atoi(historySaveMaxval)
 	if err != nil {
 		log.Info(fmt.Sprintf("invalid HistorySaveMax input value: %v", err))
 	} else {
 		s.cfg.HistorySaveMax = &intVal
+	}
+
+	if len(s.inputs) > int(playerTypeIdx)+1 {
+		mpdHost := s.inputs[mpdHostIdx].Value()
+		s.cfg.MpdHost = &mpdHost
+		portV := s.inputs[mpdPortIdx].Value()
+		mpdPort, err := strconv.Atoi(portV)
+		if err != nil {
+			log.Info(fmt.Sprintf("mpd port(%s) parse error: %v", portV, err))
+		} else {
+			s.cfg.MpdPort = &mpdPort
+		}
 	}
 }
 
@@ -265,6 +310,16 @@ func (s *settingsTab) resetSettings() {
 	s.cfg.HistorySaveMax = &defHistorySaveMax
 	val := strconv.Itoa(defHistorySaveMax)
 	s.inputs[historySaveMaxIdx].SetValue(val)
+
+	if len(s.inputs) > int(playerTypeIdx)+1 {
+		defMpdHost := config.DefMpdHost
+		s.cfg.MpdHost = &defMpdHost
+		s.inputs[mpdHostIdx].SetValue(defMpdHost)
+		defMpdPort := config.DefMpdPort
+		s.cfg.MpdPort = &defMpdPort
+		val := strconv.Itoa(defMpdPort)
+		s.inputs[mpdPortIdx].SetValue(val)
+	}
 
 	s.changeThemeFn(0)
 	s.inputs[themesIdx].SetValue(0)

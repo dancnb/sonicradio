@@ -3,11 +3,13 @@ package mpd
 import (
 	"context"
 	"testing"
+
+	"github.com/dancnb/sonicradio/config"
 )
 
 func TestMplayer(t *testing.T) {
 	ctx := context.Background()
-	p, err := New(ctx)
+	p, err := New(ctx, config.DefMpdHost, config.DefMpdPort)
 	if err != nil {
 		t.Fatal(err)
 	}

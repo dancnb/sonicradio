@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -34,6 +35,9 @@ const (
 const (
 	DefVolume         = 100
 	DefHistorySaveMax = 100
+
+	DefMpdHost = "127.0.0.1"
+	DefMpdPort = 6600
 )
 
 type Value struct {
@@ -43,7 +47,9 @@ type Value struct {
 	Theme       int         `json:"theme"`
 	StationView StationView `json:"stationView"`
 
-	Player PlayerType `json:"playerType"`
+	Player  PlayerType `json:"playerType"`
+	MpdHost *string    `json:"mpdHost,omitempty"`
+	MpdPort *int       `json:"mpdPort,omitempty"`
 
 	historyMtx     sync.Mutex          `json:"-"`
 	History        []HistoryEntry      `json:"history,omitempty"`
@@ -186,6 +192,26 @@ func Load() (cfg *Value, err error) {
 	if len(cfg.History) > *cfg.HistorySaveMax {
 		cfg.History = cfg.History[len(cfg.History)-*cfg.HistorySaveMax:]
 	}
+
+	// environment variables overwrite config file
+	if v, ok := os.LookupEnv("MPD_HOST"); ok && v != "" {
+		cfg.MpdHost = &v
+	} else {
+		defMpdHost := DefMpdHost
+		if cfg.MpdHost == nil {
+			cfg.MpdHost = &defMpdHost
+		}
+	}
+	if v, ok := os.LookupEnv("MPD_PORT"); ok && v != "" {
+		intV, _ := strconv.Atoi(v)
+		cfg.MpdPort = &intV
+	} else {
+		defMpdPort := DefMpdPort
+		if cfg.MpdPort == nil {
+			cfg.MpdPort = &defMpdPort
+		}
+	}
+
 	return
 }
 
