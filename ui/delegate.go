@@ -224,7 +224,7 @@ func (d *stationDelegate) playCmd(s browser.Station) tea.Cmd {
 		if err != nil {
 			errMsg := fmt.Sprintf("error playing station %s: %s", s.Name, err.Error())
 			log.Error(errMsg)
-			return playRespMsg{fmt.Sprintf("Could not start playback for %s (%s)!", s.Name, s.URL)}
+			return playRespMsg{fmt.Sprintf("Could not start playback for %s [%s]: %s", s.Name, s.URL, err.Error())}
 		}
 		d.prevPlaying = d.currPlaying
 		d.currPlaying = &s
