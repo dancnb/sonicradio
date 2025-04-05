@@ -65,8 +65,13 @@ func New(ctx context.Context, host string, port int) (*Mpd, error) {
 func getConn(ctx context.Context, host string, port int) (net.Conn, error) {
 	var d net.Dialer
 	addr := fmt.Sprintf("%s:%d", host, port)
-	slog.Info("mpd tcp", "address", addr)
 	conn, err := d.DialContext(ctx, "tcp", addr)
+	slog.Info("mpd tcp", "address", addr, "err", err)
+	if err != nil {
+		addr = fmt.Sprintf("%s:%d", config.DefMpdHost, config.DefMpdPort)
+		conn, err = d.DialContext(ctx, "tcp", addr)
+		slog.Info("mpd tcp", "default address", addr, "err", err)
+	}
 	return conn, err
 }
 
