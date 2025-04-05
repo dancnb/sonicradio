@@ -40,6 +40,7 @@ const (
 	playerTypeIdx
 	mpdHostIdx
 	mpdPortIdx
+	mpdPassIdx
 )
 
 var (
@@ -52,6 +53,8 @@ var (
 	vlcDesc     = "\nFor VLC, pausing or seeking backward/forward may result in an invalid song title being displayed."
 	mplayerDesc = "\nFor MPlayer, seeking backward/forward is not available."
 	mpdDesc     = "\nFor MPD, a sound must be playing for the volume to be adjusted."
+
+	mpdSettingsDesc = "The change will take effect after a restart."
 )
 
 func newSettingsTab(
@@ -109,9 +112,21 @@ func newSettingsTab(
 	}
 	if slices.Contains(playerTypes, config.MPD) {
 		mpdHost := s.NewInputModel("MPD hostname", "127.0.0.1", nil, nil, nil, nil)
-		inputs = append(inputs, components.NewFormElement(components.WithTextInput(&mpdHost)))
+		inputs = append(inputs, components.NewFormElement(
+			components.WithTextInput(&mpdHost),
+			components.WithDescription(mpdSettingsDesc)),
+		)
 		mpdPort := s.NewInputModel("MPD port", "6600", nil, nil, nil, portValidator)
-		inputs = append(inputs, components.NewFormElement(components.WithTextInput(&mpdPort)))
+		inputs = append(inputs, components.NewFormElement(
+			components.WithTextInput(&mpdPort),
+			components.WithDescription(mpdSettingsDesc)),
+		)
+		// TODO hidden mode: 		mpdPass.Cursor.SetMode(cursor.CursorHide)
+		mpdPass := s.NewInputModel("MPD password", "---", nil, nil, nil, nil)
+		inputs = append(inputs, components.NewFormElement(
+			components.WithTextInput(&mpdPass),
+			components.WithDescription(mpdSettingsDesc)),
+		)
 	}
 
 	st := &settingsTab{
@@ -159,9 +174,11 @@ func (s *settingsTab) loadConfig() {
 	s.inputs[historySaveMaxIdx].SetValue(fmt.Sprintf("%d", *s.cfg.HistorySaveMax))
 
 	if len(s.inputs) > int(playerTypeIdx) {
-		s.inputs[mpdHostIdx].SetValue(*s.cfg.MpdHost)
-		mpdPort := fmt.Sprintf("%d", *s.cfg.MpdPort)
-		s.inputs[mpdPortIdx].SetValue(mpdPort)
+		s.inputs[mpdHostIdx].SetValue(s.cfg.MpdHost)
+		s.inputs[mpdPortIdx].SetValue(fmt.Sprintf("%d", s.cfg.MpdPort))
+		if s.cfg.MpdPassword != nil {
+			s.inputs[mpdPassIdx].SetValue(*s.cfg.MpdPassword)
+		}
 	}
 }
 
@@ -204,15 +221,19 @@ func (s *settingsTab) updateConfig() {
 	}
 
 	if len(s.inputs) > int(playerTypeIdx)+1 {
-		mpdHost := s.inputs[mpdHostIdx].Value()
-		s.cfg.MpdHost = &mpdHost
-		portV := s.inputs[mpdPortIdx].Value()
+		mpdHost := strings.TrimSpace(s.inputs[mpdHostIdx].Value())
+		s.cfg.MpdHost = mpdHost
+
+		portV := strings.TrimSpace(s.inputs[mpdPortIdx].Value())
 		mpdPort, err := strconv.Atoi(portV)
 		if err != nil {
 			log.Info(fmt.Sprintf("mpd port(%s) parse error: %v", portV, err))
 		} else {
-			s.cfg.MpdPort = &mpdPort
+			s.cfg.MpdPort = mpdPort
 		}
+
+		passV := strings.TrimSpace(s.inputs[mpdPassIdx].Value())
+		s.cfg.MpdPassword = &passV
 	}
 }
 
@@ -312,13 +333,14 @@ func (s *settingsTab) resetSettings() {
 	s.inputs[historySaveMaxIdx].SetValue(val)
 
 	if len(s.inputs) > int(playerTypeIdx)+1 {
-		defMpdHost := config.DefMpdHost
-		s.cfg.MpdHost = &defMpdHost
-		s.inputs[mpdHostIdx].SetValue(defMpdHost)
-		defMpdPort := config.DefMpdPort
-		s.cfg.MpdPort = &defMpdPort
-		val := strconv.Itoa(defMpdPort)
+		s.cfg.MpdHost = config.DefMpdHost
+		s.inputs[mpdHostIdx].SetValue(config.DefMpdHost)
+
+		s.cfg.MpdPort = config.DefMpdPort
+		val := strconv.Itoa(config.DefMpdPort)
 		s.inputs[mpdPortIdx].SetValue(val)
+
+		s.inputs[mpdPassIdx].SetValue("")
 	}
 
 	s.changeThemeFn(0)
@@ -342,7 +364,9 @@ func (s *settingsTab) View() string {
 	for i := range s.inputs {
 		b.WriteString(s.inputs[i].View())
 		b.WriteRune('\n')
-		b.WriteRune('\n')
+		if i < int(mpdHostIdx) {
+			b.WriteRune('\n')
+		}
 	}
 
 	currInput := s.inputs[s.idx]
@@ -389,12 +413,12 @@ type settingsKeymap struct {
 func newSettingsKeymap() settingsKeymap {
 	return settingsKeymap{
 		nextInput: key.NewBinding(
-			key.WithKeys("down", "j"),
-			key.WithHelp("↓/j", "next setting"),
+			key.WithKeys("down", "ctrl+j"),
+			key.WithHelp("↓/ctrl+j", "next setting"),
 		),
 		prevInput: key.NewBinding(
-			key.WithKeys("up", "k"),
-			key.WithHelp("↑/k", "prev setting"),
+			key.WithKeys("up", "ctrl+k"),
+			key.WithHelp("↑/ctrl+k", "prev setting"),
 		),
 		enterInput: key.NewBinding(
 			key.WithKeys("enter", " "),
@@ -433,8 +457,8 @@ func newSettingsKeymap() settingsKeymap {
 			key.WithHelp("?", "close help"),
 		),
 		quit: key.NewBinding(
-			key.WithKeys("q"),
-			key.WithHelp("q", "quit"),
+			key.WithKeys("ctrl+c"),
+			key.WithHelp("ctrl+c", "quit"),
 		),
 	}
 }

@@ -63,9 +63,7 @@ func New(ctx context.Context, host string, port int, password *string) (*Mpd, er
 	}
 	p.conn = conn
 
-	if err := p.setPassword(); err != nil {
-		return nil, err
-	}
+	_ = p.setPassword()
 
 	return p, nil
 }
