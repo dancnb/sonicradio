@@ -77,7 +77,7 @@ func NewPlayer(ctx context.Context, cfg *config.Value) (*Player, error) {
 		}
 		p.delegate = mplayer
 	case config.MPD:
-		mpdp, err := mpd.New(ctx)
+		mpdp, err := mpd.New(ctx, *cfg.MpdHost, *cfg.MpdPort)
 		if err != nil {
 			return nil, err
 		}

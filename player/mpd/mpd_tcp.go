@@ -52,9 +52,9 @@ type Mpd struct {
 	nowPlaying atomic.Bool
 }
 
-func New(ctx context.Context) (*Mpd, error) {
+func New(ctx context.Context, host string, port int) (*Mpd, error) {
 	p := &Mpd{}
-	conn, err := getConn(ctx)
+	conn, err := getConn(ctx, host, port)
 	if err != nil {
 		return nil, err
 	}
@@ -62,10 +62,11 @@ func New(ctx context.Context) (*Mpd, error) {
 	return p, nil
 }
 
-func getConn(ctx context.Context) (net.Conn, error) {
+func getConn(ctx context.Context, host string, port int) (net.Conn, error) {
 	var d net.Dialer
-	//TODO mpd host port pass
-	conn, err := d.DialContext(ctx, "tcp", "localhost:6600")
+	addr := fmt.Sprintf("%s:%d", host, port)
+	slog.Info("mpd tcp", "address", addr)
+	conn, err := d.DialContext(ctx, "tcp", addr)
 	return conn, err
 }
 
