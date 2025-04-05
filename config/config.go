@@ -37,7 +37,7 @@ const (
 	DefVolume         = 100
 	DefHistorySaveMax = 100
 
-	DefMpdHost = "127.0.0.1"
+	DefMpdHost = ""
 	DefMpdPort = 6600
 )
 
@@ -48,10 +48,11 @@ type Value struct {
 	Theme       int         `json:"theme"`
 	StationView StationView `json:"stationView"`
 
-	Player      PlayerType `json:"playerType"`
-	MpdHost     *string    `json:"mpdHost,omitempty"`
-	MpdPort     *int       `json:"mpdPort,omitempty"`
-	MpdPassword *string    `json:"mpdPassword,omitempty"`
+	Player         PlayerType `json:"playerType"`
+	MpdHost        string     `json:"mpdHost,omitempty"`
+	MpdPort        int        `json:"mpdPort,omitempty"`
+	MpdPassword    *string    `json:"mpdPassword,omitempty"`
+	mpdEnvPassword *string    `json:"-"`
 
 	historyMtx     sync.Mutex          `json:"-"`
 	History        []HistoryEntry      `json:"history,omitempty"`
@@ -199,25 +200,28 @@ func Load() (cfg *Value, err error) {
 	if v, ok := os.LookupEnv("MPD_HOST"); ok && v != "" {
 		parts := strings.Split(v, "@")
 		if len(parts) == 1 {
-			cfg.MpdHost = &parts[0]
+			cfg.MpdHost = parts[0]
 		} else {
-			cfg.MpdPassword = &parts[0]
-			cfg.MpdHost = &parts[1]
+			cfg.mpdEnvPassword = &parts[0]
+			cfg.MpdHost = parts[1]
 		}
-	} else if cfg.MpdHost == nil {
-		defMpdHost := DefMpdHost
-		cfg.MpdHost = &defMpdHost
 	}
 
 	if v, ok := os.LookupEnv("MPD_PORT"); ok && v != "" {
 		intV, _ := strconv.Atoi(v)
-		cfg.MpdPort = &intV
-	} else if cfg.MpdPort == nil {
-		defMpdPort := DefMpdPort
-		cfg.MpdPort = &defMpdPort
+		cfg.MpdPort = intV
+	} else if cfg.MpdPort == 0 {
+		cfg.MpdPort = DefMpdPort
 	}
 
 	return
+}
+
+func (v *Value) GetMpdPassword() *string {
+	if v.mpdEnvPassword != nil {
+		return v.mpdEnvPassword
+	}
+	return v.MpdPassword
 }
 
 func (v *Value) Save() error {
