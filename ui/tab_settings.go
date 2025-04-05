@@ -51,7 +51,7 @@ var (
 	ffplayDesc  = "\nFFplay does not allow changing the volume during playback or seeking backward/forward."
 	vlcDesc     = "\nFor VLC, pausing or seeking backward/forward may result in an invalid song title being displayed."
 	mplayerDesc = "\nFor MPlayer, seeking backward/forward is not available."
-	mpdDesc     = "\nTODO MPD desc"
+	mpdDesc     = "\nFor MPD, a sound must be playing for the volume to be adjusted."
 )
 
 func newSettingsTab(
