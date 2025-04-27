@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	HOST              = "all.api.radio-browser.info"
+	HOST              = "radio-browser.info"
 	backup_server     = "https://de1.api.radio-browser.info/json/servers"
 	serverMaxRetry    = 5
 	serverRetryMillis = 200
@@ -34,7 +34,7 @@ func NewApi(ctx context.Context, cfg *config.Value) (*Api, error) {
 		stationsCache: make(map[string][]Station),
 		stationVotes:  make(map[string]time.Time),
 	}
-	res, err := api.getServersDNSLookup(ctx, HOST)
+	res, err := api.getServers(ctx, HOST)
 	if err != nil {
 		msg := fmt.Errorf("could not perform DNS lookup for %q: %w", HOST, err)
 		slog.Error(msg.Error())
@@ -260,19 +260,19 @@ func (a *Api) StationVote(uuid string) error {
 
 func (a *Api) doServerRequest(method string, path string, body []byte) ([]byte, error) {
 	ix := rand.IntN(len(a.servers))
-	ip := a.servers[ix]
-	url := fmt.Sprintf("http://%s%s", ip, path)
+	host := a.servers[ix]
+	url := fmt.Sprintf("http://%s%s", host, path)
 	return a.doRequest(method, url, body)
 }
 
-func (a *Api) getServersDNSLookup(ctx context.Context, host string) ([]string, error) {
-	ips, err := net.DefaultResolver.LookupIP(ctx, "ip4", host)
+func (a *Api) getServers(ctx context.Context, name string) ([]string, error) {
+	_, hosts, err := net.DefaultResolver.LookupSRV(ctx, "api", "tcp", name)
 	if err != nil {
 		return nil, err
 	}
 	var res []string
-	for _, v := range ips {
-		res = append(res, v.String())
+	for _, v := range hosts {
+		res = append(res, v.Target)
 	}
 	return res, nil
 }
