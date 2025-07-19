@@ -76,6 +76,7 @@ Available options:
 - [x] Display rich station information
 - [x] Playback history tab
 - [x] Settings tab
+- [ ] Standalone mode
 
 ## License
 
