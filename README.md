@@ -13,6 +13,7 @@ One of the following tools must be installed and available in the PATH:
 - FFplay : <https://ffmpeg.org/ffplay.html>, comes bundled with ffmpeg
 - VLC: <https://www.videolan.org/vlc/>
 - MPlayer: <http://www.mplayerhq.hu/design7/dload.html>
+- Music Player Daemon: <https://www.musicpd.org/>
 
 Use one of the following methods:
 - Download one of the available binaries from [Releases](https://github.com/dancnb/sonicradio/releases) page.
