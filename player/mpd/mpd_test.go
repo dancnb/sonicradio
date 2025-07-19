@@ -21,14 +21,9 @@ func TestMplayer(t *testing.T) {
 	}()
 
 	streamUrl := "http://stream-uk1.radioparadise.com/aac-320"
-	// url = "http://89.238.227.6:8006/;"
-	// url = "http://radiocdn.nxthost.com/radio-deea"
+	// streamUrl = "http://89.238.227.6:8006/;"
+	// streamUrl = "http://radiocdn.nxthost.com/radio-deea"
 	streamUrl = "http://vibration.stream2net.eu:8220/;stream/1"
-
-	_, err = p.SetVolume(20)
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	err = p.Play(streamUrl)
 	if err != nil {
