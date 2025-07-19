@@ -224,7 +224,7 @@ func (d *stationDelegate) playCmd(s browser.Station) tea.Cmd {
 		if err != nil {
 			errMsg := fmt.Sprintf("error playing station %s: %s", s.Name, err.Error())
 			log.Error(errMsg)
-			return playRespMsg{fmt.Sprintf("Could not start playback for %s (%s)!", s.Name, s.URL)}
+			return playRespMsg{fmt.Sprintf("Could not start playback for %s [%s]: %s", s.Name, s.URL, err.Error())}
 		}
 		d.prevPlaying = d.currPlaying
 		d.currPlaying = &s
@@ -442,8 +442,8 @@ func newDelegateKeyMap() *delegateKeyMap {
 			key.WithHelp("space", "resume"),
 		),
 		playSelected: key.NewBinding(
-			key.WithKeys("enter"),
-			key.WithHelp("enter", "play"),
+			key.WithKeys("enter", "l"),
+			key.WithHelp("enter/l", "play"),
 		),
 		info: key.NewBinding(
 			key.WithKeys("i"),
@@ -478,12 +478,12 @@ func newDelegateKeyMap() *delegateKeyMap {
 			key.WithHelp("-", "volume -"),
 		),
 		seekBack: key.NewBinding(
-			key.WithKeys("left", "h"),
-			key.WithHelp("←/h", "seek backwards"),
+			key.WithKeys("left", ",", "<"),
+			key.WithHelp("←/<", "seek backwards"),
 		),
 		seekFw: key.NewBinding(
-			key.WithKeys("right", "l"),
-			key.WithHelp("→/l", "seek forward"),
+			key.WithKeys("right", ".", ">"),
+			key.WithHelp("→/>", "seek forward"),
 		),
 	}
 }

@@ -11,6 +11,8 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -20,12 +22,13 @@ var debug = flag.Bool("debug", false, "use -debug arg to log to a file")
 const (
 	ApiReqTimeout     = 10 * time.Second
 	MpvIpcConnTimeout = 10 * time.Second
-	VlcConnTimeout    = 20 * time.Millisecond
+	MpdConnTimeout    = 10 * time.Second
+	VlcConnTimeout    = 10 * time.Millisecond
 
 	VolumeStep  = 5
 	SeekStepSec = 10
 
-	defVersion  = "0.6.15"
+	defVersion  = "0.7.0"
 	cfgSubDir   = "sonicRadio"
 	cfgFilename = "config.json"
 )
@@ -33,6 +36,9 @@ const (
 const (
 	DefVolume         = 100
 	DefHistorySaveMax = 100
+
+	DefMpdHost = ""
+	DefMpdPort = 6600
 )
 
 type Value struct {
@@ -42,7 +48,11 @@ type Value struct {
 	Theme       int         `json:"theme"`
 	StationView StationView `json:"stationView"`
 
-	Player PlayerType `json:"playerType"`
+	Player         PlayerType `json:"playerType"`
+	MpdHost        string     `json:"mpdHost,omitempty"`
+	MpdPort        int        `json:"mpdPort,omitempty"`
+	MpdPassword    *string    `json:"mpdPassword,omitempty"`
+	mpdEnvPassword *string    `json:"-"`
 
 	historyMtx     sync.Mutex          `json:"-"`
 	History        []HistoryEntry      `json:"history,omitempty"`
@@ -61,15 +71,17 @@ const (
 	FFPlay
 	Vlc
 	MPlayer
+	MPD
 )
 
-var Players = [4]PlayerType{Mpv, FFPlay, Vlc, MPlayer}
+var Players = [5]PlayerType{Mpv, FFPlay, Vlc, MPlayer, MPD}
 
 var playerNames = map[PlayerType]string{
 	Mpv:     "Mpv",
 	FFPlay:  "FFplay",
 	Vlc:     "VLC",
 	MPlayer: "MPlayer",
+	MPD:     "MPD",
 }
 
 func (p PlayerType) String() string {
@@ -183,7 +195,33 @@ func Load() (cfg *Value, err error) {
 	if len(cfg.History) > *cfg.HistorySaveMax {
 		cfg.History = cfg.History[len(cfg.History)-*cfg.HistorySaveMax:]
 	}
+
+	// environment variables overwrite config file
+	if v, ok := os.LookupEnv("MPD_HOST"); ok && v != "" {
+		parts := strings.Split(v, "@")
+		if len(parts) == 1 {
+			cfg.MpdHost = parts[0]
+		} else {
+			cfg.mpdEnvPassword = &parts[0]
+			cfg.MpdHost = parts[1]
+		}
+	}
+
+	if v, ok := os.LookupEnv("MPD_PORT"); ok && v != "" {
+		intV, _ := strconv.Atoi(v)
+		cfg.MpdPort = intV
+	} else if cfg.MpdPort == 0 {
+		cfg.MpdPort = DefMpdPort
+	}
+
 	return
+}
+
+func (v *Value) GetMpdPassword() *string {
+	if v.mpdEnvPassword != nil {
+		return v.mpdEnvPassword
+	}
+	return v.MpdPassword
 }
 
 func (v *Value) Save() error {

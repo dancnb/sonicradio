@@ -38,8 +38,8 @@ func newHistoryTab(ctx context.Context, cfg *config.Value, s *styles.Style) *his
 		style: s,
 		keymap: historyKeymap{
 			play: key.NewBinding(
-				key.WithKeys("enter"),
-				key.WithHelp("enter", "play"),
+				key.WithKeys("enter", "l"),
+				key.WithHelp("enter/l", "play"),
 			),
 			deleteOne: key.NewBinding(
 				key.WithKeys("d"),

@@ -177,17 +177,21 @@ func (m *Mplayer) Seek(amtSec int) *model.Metadata {
 	return nil
 }
 
+var errPlay = errors.New("MPlayer command error")
+
 func (m *Mplayer) Play(url string) error {
 	m.title = nil
 
 	if err := m.Stop(); err != nil {
-		return err
+		return errPlay
 	}
 
 	cmd := fmt.Sprintf(cmds[play], url)
 	_, err := m.doCommand(cmd)
 	if err == nil {
 		m.pt.ResetPlayTime()
+	} else {
+		err = errPlay
 	}
 
 	return err

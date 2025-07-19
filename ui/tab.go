@@ -131,7 +131,6 @@ func (t *stationsTabBase) toNowPlaying(m *Model) {
 			break
 		}
 	}
-	slog.Info("method", "ui.baseTab.toNowPlaying", "selIndex", selIndex)
 	if selIndex > -1 {
 		t.list.Select(selIndex)
 	}

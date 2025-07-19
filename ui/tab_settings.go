@@ -13,6 +13,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dancnb/sonicradio/config"
@@ -37,17 +38,24 @@ type settingsInputIdx byte
 const (
 	historySaveMaxIdx settingsInputIdx = iota
 	themesIdx
+	playerTypeIdx
+	mpdHostIdx
+	mpdPortIdx
+	mpdPassIdx
 )
 
 var (
 	descriptions = []string{
 		`Maximum number of entries displayed in "History" tab.`,
 		`Preview and select a theme.`,
-		`Choose one of the available backend players (only those found in PATH are displayed): Mpv, FFplay, VLC, MPlayer. The choice will take effect after a restart.`,
+		`Choose one of the available backend players (only those found in PATH are displayed): Mpv, FFplay, VLC, MPlayer, MPD. The choice will take effect after a restart.`,
 	}
 	ffplayDesc  = "\nFFplay does not allow changing the volume during playback or seeking backward/forward."
 	vlcDesc     = "\nFor VLC, pausing or seeking backward/forward may result in an invalid song title being displayed."
 	mplayerDesc = "\nFor MPlayer, seeking backward/forward is not available."
+	mpdDesc     = "\nFor MPD, a sound must be playing for the volume to be adjusted."
+
+	mpdSettingsDesc = "The change will take effect after a restart."
 )
 
 func newSettingsTab(
@@ -91,7 +99,62 @@ func newSettingsTab(
 		cfg.Player = playerTypes[i]
 		slog.Info("change player type", "i", i, "new type", cfg.Player.String())
 	}
+	playerDesc := getPlayerDescription(playerTypes)
+	inputs := []*components.FormElement{
+		components.NewFormElement(
+			components.WithTextInput(&historySaveMax),
+			components.WithDescription(descriptions[0])),
+		components.NewFormElement(
+			components.WithOptionList(&themeList),
+			components.WithDescription(descriptions[1])),
+		components.NewFormElement(
+			components.WithOptionList(&playerList),
+			components.WithDescription(playerDesc)),
+	}
+	if slices.Contains(playerTypes, config.MPD) {
+		mpdHost := s.NewInputModel("MPD hostname", "127.0.0.1", nil, nil, nil, nil)
+		inputs = append(inputs, components.NewFormElement(
+			components.WithTextInput(&mpdHost),
+			components.WithDescription(mpdSettingsDesc)),
+		)
+		mpdPort := s.NewInputModel("MPD port", "6600", nil, nil, nil, portValidator)
+		inputs = append(inputs, components.NewFormElement(
+			components.WithTextInput(&mpdPort),
+			components.WithDescription(mpdSettingsDesc)),
+		)
+		mpdPass := s.NewInputModel("MPD password", "---", nil, nil, nil, nil)
+		mpdPass.EchoMode = textinput.EchoPassword
+		inputs = append(inputs, components.NewFormElement(
+			components.WithTextInput(&mpdPass),
+			components.WithDescription(mpdSettingsDesc)),
+		)
+	}
 
+	st := &settingsTab{
+		cfg:           cfg,
+		changeThemeFn: changeThemeFn,
+		style:         s,
+		inputs:        inputs,
+		keymap:        newSettingsKeymap(),
+		help:          h,
+	}
+
+	st.loadConfig()
+	return st
+}
+
+func portValidator(v string) error {
+	port, err := strconv.Atoi(v)
+	if err != nil {
+		return fmt.Errorf("invalid port: %v", err)
+	}
+	if port < 1 || port > 65535 {
+		return fmt.Errorf("port out of range: %d", port)
+	}
+	return nil
+}
+
+func getPlayerDescription(playerTypes []config.PlayerType) string {
 	playerDesc := descriptions[2]
 	if slices.Contains(playerTypes, config.FFPlay) {
 		playerDesc += ffplayDesc
@@ -102,31 +165,22 @@ func newSettingsTab(
 	if slices.Contains(playerTypes, config.MPlayer) {
 		playerDesc += mplayerDesc
 	}
-	st := &settingsTab{
-		cfg:           cfg,
-		changeThemeFn: changeThemeFn,
-		style:         s,
-		inputs: []*components.FormElement{
-			components.NewFormElement(
-				components.WithTextInput(&historySaveMax),
-				components.WithDescription(descriptions[0])),
-			components.NewFormElement(
-				components.WithOptionList(&themeList),
-				components.WithDescription(descriptions[1])),
-			components.NewFormElement(
-				components.WithOptionList(&playerList),
-				components.WithDescription(playerDesc)),
-		},
-		keymap: newSettingsKeymap(),
-		help:   h,
+	if slices.Contains(playerTypes, config.MPD) {
+		playerDesc += mpdDesc
 	}
-
-	st.loadConfig()
-	return st
+	return playerDesc
 }
 
 func (s *settingsTab) loadConfig() {
 	s.inputs[historySaveMaxIdx].SetValue(fmt.Sprintf("%d", *s.cfg.HistorySaveMax))
+
+	if len(s.inputs) > int(playerTypeIdx) {
+		s.inputs[mpdHostIdx].SetValue(s.cfg.MpdHost)
+		s.inputs[mpdPortIdx].SetValue(fmt.Sprintf("%d", s.cfg.MpdPort))
+		if s.cfg.MpdPassword != nil {
+			s.inputs[mpdPassIdx].SetValue(*s.cfg.MpdPassword)
+		}
+	}
 }
 
 func (s *settingsTab) Init(m *Model) tea.Cmd {
@@ -158,12 +212,29 @@ func (s *settingsTab) onExit() {
 
 func (s *settingsTab) updateConfig() {
 	log := slog.With("method", "settingsTab.saveConfig")
+
 	historySaveMaxval := s.inputs[historySaveMaxIdx].Value()
 	intVal, err := strconv.Atoi(historySaveMaxval)
 	if err != nil {
 		log.Info(fmt.Sprintf("invalid HistorySaveMax input value: %v", err))
 	} else {
 		s.cfg.HistorySaveMax = &intVal
+	}
+
+	if len(s.inputs) > int(playerTypeIdx)+1 {
+		mpdHost := strings.TrimSpace(s.inputs[mpdHostIdx].Value())
+		s.cfg.MpdHost = mpdHost
+
+		portV := strings.TrimSpace(s.inputs[mpdPortIdx].Value())
+		mpdPort, err := strconv.Atoi(portV)
+		if err != nil {
+			log.Info(fmt.Sprintf("mpd port(%s) parse error: %v", portV, err))
+		} else {
+			s.cfg.MpdPort = mpdPort
+		}
+
+		passV := strings.TrimSpace(s.inputs[mpdPassIdx].Value())
+		s.cfg.MpdPassword = &passV
 	}
 }
 
@@ -262,6 +333,17 @@ func (s *settingsTab) resetSettings() {
 	val := strconv.Itoa(defHistorySaveMax)
 	s.inputs[historySaveMaxIdx].SetValue(val)
 
+	if len(s.inputs) > int(playerTypeIdx)+1 {
+		s.cfg.MpdHost = config.DefMpdHost
+		s.inputs[mpdHostIdx].SetValue(config.DefMpdHost)
+
+		s.cfg.MpdPort = config.DefMpdPort
+		val := strconv.Itoa(config.DefMpdPort)
+		s.inputs[mpdPortIdx].SetValue(val)
+
+		s.inputs[mpdPassIdx].SetValue("")
+	}
+
 	s.changeThemeFn(0)
 	s.inputs[themesIdx].SetValue(0)
 }
@@ -283,7 +365,9 @@ func (s *settingsTab) View() string {
 	for i := range s.inputs {
 		b.WriteString(s.inputs[i].View())
 		b.WriteRune('\n')
-		b.WriteRune('\n')
+		if i < int(mpdHostIdx) {
+			b.WriteRune('\n')
+		}
 	}
 
 	currInput := s.inputs[s.idx]
@@ -330,12 +414,12 @@ type settingsKeymap struct {
 func newSettingsKeymap() settingsKeymap {
 	return settingsKeymap{
 		nextInput: key.NewBinding(
-			key.WithKeys("down", "j"),
-			key.WithHelp("↓/j", "next setting"),
+			key.WithKeys("down", "ctrl+j"),
+			key.WithHelp("↓/ctrl+j", "next setting"),
 		),
 		prevInput: key.NewBinding(
-			key.WithKeys("up", "k"),
-			key.WithHelp("↑/k", "prev setting"),
+			key.WithKeys("up", "ctrl+k"),
+			key.WithHelp("↑/ctrl+k", "prev setting"),
 		),
 		enterInput: key.NewBinding(
 			key.WithKeys("enter", " "),
@@ -374,8 +458,8 @@ func newSettingsKeymap() settingsKeymap {
 			key.WithHelp("?", "close help"),
 		),
 		quit: key.NewBinding(
-			key.WithKeys("q"),
-			key.WithHelp("q", "quit"),
+			key.WithKeys("ctrl+c"),
+			key.WithHelp("ctrl+c", "quit"),
 		),
 	}
 }

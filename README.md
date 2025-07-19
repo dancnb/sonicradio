@@ -49,12 +49,12 @@ Available options:
 | ctrl+b/pgup |             prev page |
 | g/home      |           go to start |
 | G/end       |             go to end |
-| enter       |                  play |
+| enter/l     |                  play |
 | space       |          pause/resume |
 | -           |              volume - |
 | +           |              volume + |
-| ←/h         |        seek backwards |
-| →/l         |          seek forward |
+| ←/<         |        seek backwards |
+| →/>         |          seek forward |
 | i           |          station info |
 | f           |      favorite station |
 | a           |      autoplay station |
@@ -76,6 +76,7 @@ Available options:
 - [x] Display rich station information
 - [x] Playback history tab
 - [x] Settings tab
+- [ ] Standalone mode
 
 ## License
 

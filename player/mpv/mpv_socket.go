@@ -139,6 +139,8 @@ func (mpv *MpvSocket) Pause(value bool) error {
 	return err
 }
 
+var errPlay = errors.New("Mpv request error")
+
 func (mpv *MpvSocket) Play(url string) error {
 	log := slog.With("method", "MpvSocket.Play")
 	log.Info("playing url=" + url)
@@ -146,11 +148,14 @@ func (mpv *MpvSocket) Play(url string) error {
 	// first unpause, otherwise will start paused
 	err := mpv.Pause(false)
 	if err != nil {
-		return err
+		return errPlay
 	}
 
 	playCmd := fmt.Sprintf(ipcCmds[play], url)
 	_, err = mpv.ipcRequest(playCmd)
+	if err != nil {
+		err = errPlay
+	}
 	return err
 }
 

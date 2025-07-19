@@ -57,10 +57,14 @@ func (f *FFPlay) GetType() config.PlayerType {
 	return config.FFPlay
 }
 
+var errplay = errors.New("FFplay command error")
+
 func (f *FFPlay) Play(url string) error {
 	err := f.play(url)
 	if err == nil {
 		f.pt.ResetPlayTime()
+	} else {
+		err = errplay
 	}
 	return err
 }
