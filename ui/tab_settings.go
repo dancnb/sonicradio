@@ -13,6 +13,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dancnb/sonicradio/config"
@@ -121,8 +122,8 @@ func newSettingsTab(
 			components.WithTextInput(&mpdPort),
 			components.WithDescription(mpdSettingsDesc)),
 		)
-		// TODO hidden mode: 		mpdPass.Cursor.SetMode(cursor.CursorHide)
 		mpdPass := s.NewInputModel("MPD password", "---", nil, nil, nil, nil)
+		mpdPass.EchoMode = textinput.EchoPassword
 		inputs = append(inputs, components.NewFormElement(
 			components.WithTextInput(&mpdPass),
 			components.WithDescription(mpdSettingsDesc)),
