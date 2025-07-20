@@ -174,7 +174,7 @@ func getPlayerDescription(playerTypes []config.PlayerType) string {
 func (s *settingsTab) loadConfig() {
 	s.inputs[historySaveMaxIdx].SetValue(fmt.Sprintf("%d", *s.cfg.HistorySaveMax))
 
-	if len(s.inputs) > int(playerTypeIdx) {
+	if len(s.inputs) > int(playerTypeIdx)+1 {
 		s.inputs[mpdHostIdx].SetValue(s.cfg.MpdHost)
 		s.inputs[mpdPortIdx].SetValue(fmt.Sprintf("%d", s.cfg.MpdPort))
 		if s.cfg.MpdPassword != nil {
