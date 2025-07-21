@@ -16,15 +16,41 @@ before:
     # - go generate ./...
 
 builds:
-  - env:
+  - id: linux
+    goos: [linux]
+    goarch: [amd64, arm64]
+    env:
       - CGO_ENABLED=0
-    goos:
-      - linux
-      # - windows
-      - darwin
+    ldflags:
+      - -s -w
+      - "-X main.version={{ .Version }}"
+    gcflags:
+      - all=-trimpath
+
+  - id: darwin
+    goos: [darwin]
+    goarch: [amd64, arm64]
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+      - "-X main.version={{ .Version }}"
+    gcflags:
+      - all=-trimpath
+
+  - id: windows
+    goos: [windows]
+    goarch: [amd64]
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+      - "-X main.version={{ .Version }}"
+    gcflags:
+      - all=-trimpath
 
 archives:
-  - format: tar.gz
+  - formats: [tar.gz]
     # this name template makes the OS and Arch compatible with the results of `uname`.
     name_template: >-
       {{ .ProjectName }}_
@@ -36,7 +62,7 @@ archives:
     # use zip for windows archives
     format_overrides:
       - goos: windows
-        format: zip
+        formats: [zip]
 
 changelog:
   sort: asc

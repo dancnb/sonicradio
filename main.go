@@ -17,6 +17,10 @@ import (
 	"github.com/dancnb/sonicradio/ui"
 )
 
+var (
+	version = "dev"
+)
+
 func main() {
 	run()
 }
@@ -46,7 +50,7 @@ func run() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cfg, err := config.Load()
+	cfg, err := config.Load(version)
 	if err != nil {
 		slog.Info("load config", "error", err.Error())
 	}

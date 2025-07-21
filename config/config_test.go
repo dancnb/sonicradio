@@ -9,7 +9,7 @@ func Test_load(t *testing.T) {
 }
 
 func testLoadConfig(t *testing.T) (*Value, error) {
-	cfg, err := Load()
+	cfg, err := Load("test")
 	if cfg == nil {
 		t.Error("config load: expected a non-nil config")
 	}

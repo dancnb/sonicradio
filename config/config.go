@@ -28,7 +28,6 @@ const (
 	VolumeStep  = 5
 	SeekStepSec = 10
 
-	defVersion  = "0.7.1"
 	cfgSubDir   = "sonicRadio"
 	cfgFilename = "config.json"
 )
@@ -149,16 +148,11 @@ func (v *Value) String() string {
 // - either a default value if no previously saved config is found in the file system
 //
 // - either the found config Value
-func Load() (cfg *Value, err error) {
-	versionVal := os.Getenv("SONIC_VERSION")
-	if versionVal == "" {
-		versionVal = defVersion
-	}
-
+func Load(version string) (cfg *Value, err error) {
 	defVolume := DefVolume
 	defHistorySaveMax := DefHistorySaveMax
 	cfg = &Value{
-		Version:        versionVal,
+		Version:        version,
 		Volume:         &defVolume,
 		HistorySaveMax: &defHistorySaveMax,
 		HistoryChan:    make(chan []HistoryEntry),
