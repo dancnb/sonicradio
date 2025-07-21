@@ -25,6 +25,8 @@ builds:
     ldflags:
       - -s -w
       - "-X main.version={{ .Version }}"
+    gcflags:
+      - all=-trimpath
 
 archives:
   - formats: [tar.gz]
