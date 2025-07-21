@@ -16,17 +16,50 @@ before:
     # - go generate ./...
 
 builds:
-  - env:
+  - id: linux
+    goos: [linux]
+    goarch: [amd64, arm64]
+    env:
       - CGO_ENABLED=0
-    goos:
-      - linux
-      # - windows
-      - darwin
     ldflags:
       - -s -w
       - "-X main.version={{ .Version }}"
     gcflags:
       - all=-trimpath
+
+  - id: darwin
+    goos: [darwin]
+    goarch: [amd64, arm64]
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+      - "-X main.version={{ .Version }}"
+    gcflags:
+      - all=-trimpath
+
+  - id: windows
+    goos: [windows]
+    goarch: [amd64]
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+      - "-X main.version={{ .Version }}"
+    gcflags:
+      - all=-trimpath
+
+  # - env:
+  #     - CGO_ENABLED=0
+  #   goos:
+  #     - linux
+  #     # - windows
+  #     - darwin
+  #   ldflags:
+  #     - -s -w
+  #     - "-X main.version={{ .Version }}"
+  #   gcflags:
+  #     - all=-trimpath
 
 archives:
   - formats: [tar.gz]
