@@ -17,11 +17,7 @@ import (
 	"time"
 )
 
-var (
-	debug = flag.Bool("debug", false, "use -debug arg to log to a file")
-
-	Version = "dev"
-)
+var debug = flag.Bool("debug", false, "use -debug arg to log to a file")
 
 const (
 	ApiReqTimeout     = 10 * time.Second
@@ -152,11 +148,11 @@ func (v *Value) String() string {
 // - either a default value if no previously saved config is found in the file system
 //
 // - either the found config Value
-func Load() (cfg *Value, err error) {
+func Load(version string) (cfg *Value, err error) {
 	defVolume := DefVolume
 	defHistorySaveMax := DefHistorySaveMax
 	cfg = &Value{
-		Version:        Version,
+		Version:        version,
 		Volume:         &defVolume,
 		HistorySaveMax: &defHistorySaveMax,
 		HistoryChan:    make(chan []HistoryEntry),

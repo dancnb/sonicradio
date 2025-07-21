@@ -24,7 +24,7 @@ builds:
       - darwin
     ldflags:
       - -s -w
-      - "-X config.Version={{ .Version }}"
+      # - "-X main.version={{ .Version }}"
 
 archives:
   - formats: [tar.gz]
