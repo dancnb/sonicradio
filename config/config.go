@@ -17,7 +17,11 @@ import (
 	"time"
 )
 
-var debug = flag.Bool("debug", false, "use -debug arg to log to a file")
+var (
+	debug = flag.Bool("debug", false, "use -debug arg to log to a file")
+
+	Version = "dev"
+)
 
 const (
 	ApiReqTimeout     = 10 * time.Second
@@ -28,7 +32,6 @@ const (
 	VolumeStep  = 5
 	SeekStepSec = 10
 
-	defVersion  = "0.7.1"
 	cfgSubDir   = "sonicRadio"
 	cfgFilename = "config.json"
 )
@@ -150,15 +153,10 @@ func (v *Value) String() string {
 //
 // - either the found config Value
 func Load() (cfg *Value, err error) {
-	versionVal := os.Getenv("SONIC_VERSION")
-	if versionVal == "" {
-		versionVal = defVersion
-	}
-
 	defVolume := DefVolume
 	defHistorySaveMax := DefHistorySaveMax
 	cfg = &Value{
-		Version:        versionVal,
+		Version:        Version,
 		Volume:         &defVolume,
 		HistorySaveMax: &defHistorySaveMax,
 		HistoryChan:    make(chan []HistoryEntry),
