@@ -22,4 +22,5 @@ go.work
 __*
 sonicradio
 .idea/*
+.vscode/*
 dist/
