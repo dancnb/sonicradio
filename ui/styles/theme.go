@@ -54,4 +54,9 @@ var Themes = []Theme{
 		Dark:  ColorProfile{primaryColor: "#e48189", secondaryColor: "#d7424e", invertedPrimaryColor: "#69161d", invertedSecondaryColor: "#931f29"},
 		Light: ColorProfile{primaryColor: "#69161d", secondaryColor: "#931f29", invertedPrimaryColor: "#e48189", invertedSecondaryColor: "#d7424e"},
 	},
+	{
+		Name:  "Grayscale",
+		Dark:  ColorProfile{primaryColor: "#e5e5e5ff", secondaryColor: "#bdbdbdff", invertedPrimaryColor: "#2e2e2eff", invertedSecondaryColor: "#818181ff"},
+		Light: ColorProfile{primaryColor: "#2e2e2eff", secondaryColor: "#818181ff", invertedPrimaryColor: "#e5e5e5ff", invertedSecondaryColor: "#bdbdbdff"},
+	},
 }
