@@ -95,6 +95,10 @@ func NewPlayer(ctx context.Context, cfg *config.Value) (*Player, error) {
 var errNoPlayerAvailable = errors.New("No available player found. Must have at least one of the following in PATH: mpv, ffplay, vlc.")
 
 func (p *Player) checkPlayerType(cfg *config.Value) error {
+	if cfg.Player == config.BEEP {
+		return nil
+	}
+
 	p.available = make(map[config.PlayerType]struct{}, len(config.Players))
 	var firstAvailable *config.PlayerType
 	for _, v := range config.Players {
@@ -109,6 +113,7 @@ func (p *Player) checkPlayerType(cfg *config.Value) error {
 	if len(p.available) == 0 {
 		return errNoPlayerAvailable
 	}
+	// if config file player not available anymore, default to first available player type
 	if _, ok := p.available[cfg.Player]; !ok {
 		cfg.Player = *firstAvailable
 	}
@@ -138,7 +143,7 @@ func checkAvailablePlayer(p config.PlayerType) bool {
 	return true
 }
 
-func (p *Player) PlayerTypes() []config.PlayerType {
+func (p *Player) AvailablePlayerTypes() []config.PlayerType {
 	var res []config.PlayerType
 	for _, v := range config.Players {
 		if _, ok := p.available[v]; ok {

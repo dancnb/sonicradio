@@ -59,7 +59,7 @@ func newSettingsTab(
 	ctx context.Context,
 	cfg *config.Value,
 	s *Style,
-	playerTypes []config.PlayerType,
+	availablePlayerTypes []config.PlayerType,
 	changeThemeFn func(int),
 ) *settingsTab {
 	h := help.New()
@@ -82,21 +82,21 @@ func newSettingsTab(
 	themeList.DoneCallbackFn = changeThemeFn
 
 	// player
-	playerOpts := make([]OptionValue, len(playerTypes))
+	playerOpts := make([]OptionValue, len(availablePlayerTypes))
 	var startIdx int
-	for i := range playerTypes {
-		playerOpts[i] = OptionValue{IdxView: i + 1, NameView: playerTypes[i].String()}
-		if playerTypes[i] == cfg.Player {
+	for i := range availablePlayerTypes {
+		playerOpts[i] = OptionValue{IdxView: i + 1, NameView: availablePlayerTypes[i].String()}
+		if availablePlayerTypes[i] == cfg.Player {
 			startIdx = i
 		}
 	}
 	playerList := NewOptionList("Player (requires restart)", playerOpts, startIdx, s)
 	playerList.SetQuick(true)
 	playerList.DoneCallbackFn = func(i int) {
-		cfg.Player = playerTypes[i]
+		cfg.Player = availablePlayerTypes[i]
 		slog.Info("change player type", "i", i, "new type", cfg.Player.String())
 	}
-	playerDesc := getPlayerDescription(playerTypes)
+	playerDesc := getPlayerDescription(availablePlayerTypes)
 	inputs := []*FormElement{
 		NewFormElement(
 			WithTextInput(&historySaveMax),
@@ -108,7 +108,7 @@ func newSettingsTab(
 			WithOptionList(&playerList),
 			WithDescription(playerDesc)),
 	}
-	if slices.Contains(playerTypes, config.MPD) {
+	if slices.Contains(availablePlayerTypes, config.MPD) {
 		mpdHost := s.NewInputModel("MPD hostname", "127.0.0.1", nil, nil, nil, nil)
 		inputs = append(inputs, NewFormElement(
 			WithTextInput(&mpdHost),

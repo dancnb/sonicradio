@@ -72,7 +72,7 @@ func newModel(ctx context.Context, cfg *config.Value, b *browser.Api, p *player.
 		newFavoritesTab(infoModel, style),
 		newBrowseTab(ctx, b, infoModel, style),
 		newHistoryTab(ctx, cfg, style),
-		newSettingsTab(ctx, cfg, style, p.PlayerTypes(), m.changeTheme),
+		newSettingsTab(ctx, cfg, style, p.AvailablePlayerTypes(), m.changeTheme),
 	}
 
 	if len(cfg.Favorites) > 0 {
