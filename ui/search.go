@@ -6,9 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dancnb/sonicradio/ui/components"
-	"github.com/dancnb/sonicradio/ui/styles"
-
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -20,16 +17,16 @@ import (
 type searchModel struct {
 	enabled bool
 
-	style *styles.Style
+	style *Style
 
 	browser   *browser.Api
 	countries []string
 	languages []string
 
-	inputs []components.FormElement
+	inputs []FormElement
 	idx    inputIdx
 
-	orderOptions components.OptionList
+	orderOptions OptionList
 	oIdx         orderIx
 
 	reverse bool
@@ -82,7 +79,7 @@ var searchOrder = map[orderIx]browser.OrderBy{
 	orderRand:       browser.Random,
 }
 
-var orderView = []components.OptionValue{
+var orderView = []OptionValue{
 	{IdxView: 1, NameView: "Votes            "},
 	{IdxView: 2, NameView: "Clicks           "},
 	{IdxView: 3, NameView: "Recent trends    "},
@@ -95,25 +92,25 @@ var orderView = []components.OptionValue{
 	{IdxView: 0, NameView: "Random           "},
 }
 
-func newSearchModel(ctx context.Context, browser *browser.Api, s *styles.Style) *searchModel {
+func newSearchModel(ctx context.Context, browser *browser.Api, s *Style) *searchModel {
 	k := newSearchKeymap()
 	inputs := []textinput.Model{
 		s.NewInputModel("Name          ", "leave empty for all", &k.prevSugg, &k.nextSugg, &k.acceptSugg, nil),
 		s.NewInputModel("Tags          ", "comma separated list", &k.prevSugg, &k.nextSugg, &k.acceptSugg, nil),
 		s.NewInputModel("Country       ", "---", &k.prevSugg, &k.nextSugg, &k.acceptSugg, nil),
 		s.NewInputModel("Language      ", "---", &k.prevSugg, &k.nextSugg, &k.acceptSugg, nil),
-		s.NewInputModel("Limit         ", "---", &k.prevSugg, &k.nextSugg, &k.acceptSugg, styles.NrInputValidator),
+		s.NewInputModel("Limit         ", "---", &k.prevSugg, &k.nextSugg, &k.acceptSugg, NrInputValidator),
 	}
-	formElems := make([]components.FormElement, len(inputs))
+	formElems := make([]FormElement, len(inputs))
 	for ii := range inputs {
-		formElems[ii] = *components.NewFormElement(components.WithTextInput(&inputs[ii]))
+		formElems[ii] = *NewFormElement(WithTextInput(&inputs[ii]))
 	}
 	h := help.New()
 	h.ShowAll = false
 	h.ShortSeparator = "   "
 	h.Styles = s.HelpStyles()
 
-	orderOpts := components.NewOptionList("Order by", orderView, 0, s)
+	orderOpts := NewOptionList("Order by", orderView, 0, s)
 	orderOpts.SetQuick(true)
 	sm := &searchModel{
 		browser:      browser,
@@ -190,7 +187,7 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	if s.orderOptions.IsActive() {
 		newOptions, cmd := s.orderOptions.Update(msg)
-		s.orderOptions = *newOptions.(*components.OptionList)
+		s.orderOptions = *newOptions.(*OptionList)
 		cmds = append(cmds, cmd)
 	}
 
@@ -198,7 +195,7 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		s.setSize(msg.Width, msg.Height)
 
-	case components.OptionMsg:
+	case OptionMsg:
 		if msg.Done {
 			s.orderOptions.SetFocused(false)
 			s.oIdx = orderIx(msg.SelIdx)
@@ -313,7 +310,7 @@ func (s *searchModel) View() string {
 	b.WriteRune('\n')
 	b.WriteRune('\n')
 
-	b.WriteString(s.style.PromptStyle.Render(styles.PadFieldName("Reverse       ", nil)))
+	b.WriteString(s.style.PromptStyle.Render(PadFieldName("Reverse       ", nil)))
 	rev := "off"
 	if s.reverse {
 		rev = "on"

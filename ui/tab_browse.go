@@ -3,8 +3,6 @@ package ui
 import (
 	"context"
 
-	"github.com/dancnb/sonicradio/ui/styles"
-
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -17,7 +15,7 @@ type browseTab struct {
 	searchModel    *searchModel
 }
 
-func newBrowseTab(ctx context.Context, browser *browser.Api, infoModel *infoModel, s *styles.Style) *browseTab {
+func newBrowseTab(ctx context.Context, browser *browser.Api, infoModel *infoModel, s *Style) *browseTab {
 	k := newListKeymap()
 
 	m := &browseTab{

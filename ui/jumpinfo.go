@@ -1,4 +1,4 @@
-package components
+package ui
 
 import (
 	"log/slog"

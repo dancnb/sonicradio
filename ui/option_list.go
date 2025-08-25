@@ -1,17 +1,12 @@
-package components
+package ui
 
 import (
 	"fmt"
-	"log/slog"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/dancnb/sonicradio/ui/styles"
-
-	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -27,7 +22,7 @@ type OptionList struct {
 	previewIdx int
 	jump       JumpInfo
 
-	style *styles.Style
+	style *Style
 
 	PartialCallbackFn func(int)
 	DoneCallbackFn    func(int)
@@ -42,7 +37,7 @@ type OptionValue struct {
 
 var padOptName = 17
 
-func NewOptionList(prompt string, options []OptionValue, startIdx int, s *styles.Style) OptionList {
+func NewOptionList(prompt string, options []OptionValue, startIdx int, s *Style) OptionList {
 	k := optionsKeymap{
 		acceptKey: key.NewBinding(
 			key.WithKeys("enter", " "),
@@ -216,17 +211,17 @@ func (o *OptionList) View() string {
 		if idx == 0 {
 			prefix = o.prompt
 		}
-		v := styles.MaxFieldLen - styles.IndexStringPadAmt
+		v := MaxFieldLen - IndexStringPadAmt
 		padAmt := &v
 		if isSel && o.IsFocused() {
 			*padAmt -= 1
 		}
-		b.WriteString(o.style.PromptStyle.Render(styles.PadFieldName(prefix, padAmt)))
+		b.WriteString(o.style.PromptStyle.Render(PadFieldName(prefix, padAmt)))
 
 		var optS strings.Builder
-		optIdx := styles.IndexString(o.options[idx].IdxView)
+		optIdx := IndexString(o.options[idx].IdxView)
 		optS.WriteString(optStyle.Render(optIdx))
-		optName := styles.PadFieldName(o.options[idx].NameView, &padOptName)
+		optName := PadFieldName(o.options[idx].NameView, &padOptName)
 		if isPreview {
 			optName = previewOptStyle.Render(optName)
 		} else {
@@ -279,14 +274,4 @@ type OptionMsg struct {
 	PreviewIdx int
 	Done       bool
 	CallbackFn func(int)
-}
-
-func logTeaMsg(msg tea.Msg, tag string) {
-	log := slog.With("method", tag)
-	switch msg.(type) {
-	case cursor.BlinkMsg, spinner.TickMsg:
-		break
-	default:
-		log.Info("tea.Msg", "type", fmt.Sprintf("%T", msg), "value", msg, "#", fmt.Sprintf("%#v", msg))
-	}
 }

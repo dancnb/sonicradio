@@ -1,4 +1,4 @@
-package components
+package ui
 
 import (
 	"github.com/charmbracelet/bubbles/help"

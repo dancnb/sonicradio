@@ -4,9 +4,6 @@ import (
 	"log/slog"
 	"strconv"
 
-	"github.com/dancnb/sonicradio/ui/components"
-	"github.com/dancnb/sonicradio/ui/styles"
-
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -62,15 +59,15 @@ type stationTab interface {
 
 type stationsTabBase struct {
 	uiTab
-	style      *styles.Style
+	style      *Style
 	list       list.Model
 	viewMsg    string
 	listKeymap listKeymap
-	jump       components.JumpInfo
+	jump       JumpInfo
 	infoModel  *infoModel
 }
 
-func newStationsTab(k listKeymap, infoModel *infoModel, s *styles.Style) stationsTabBase {
+func newStationsTab(k listKeymap, infoModel *infoModel, s *Style) stationsTabBase {
 	t := stationsTabBase{
 		style:      s,
 		listKeymap: k,
