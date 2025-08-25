@@ -7,6 +7,7 @@ import (
 	"os/exec"
 
 	"github.com/dancnb/sonicradio/config"
+	"github.com/dancnb/sonicradio/player/beep"
 	"github.com/dancnb/sonicradio/player/ffplay"
 	"github.com/dancnb/sonicradio/player/model"
 	"github.com/dancnb/sonicradio/player/mpd"
@@ -17,11 +18,10 @@ import (
 
 type Player struct {
 	delegate  backendPlayer
-	available map[config.PlayerType]struct{}
+	available map[config.ExternalPlayerType]struct{}
 }
 
 type backendPlayer interface {
-	GetType() config.PlayerType
 	Play(url string) error
 	Pause(value bool) error
 	Stop() error
@@ -44,6 +44,10 @@ type backendPlayer interface {
 }
 
 func NewPlayer(ctx context.Context, cfg *config.Value) (*Player, error) {
+	if cfg.IsStandalone {
+		return newStandalonePlayer(ctx, cfg)
+	}
+
 	p := new(Player)
 	err := p.checkPlayerType(cfg)
 	if err != nil {
@@ -92,16 +96,23 @@ func NewPlayer(ctx context.Context, cfg *config.Value) (*Player, error) {
 	return p, nil
 }
 
+func newStandalonePlayer(ctx context.Context, cfg *config.Value) (*Player, error) {
+	vol := cfg.GetVolume()
+	p := &Player{
+		delegate: beep.NewBeep(ctx),
+	}
+	if _, err := p.delegate.SetVolume(clampVolume(vol)); err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
 var errNoPlayerAvailable = errors.New("No available player found. Must have at least one of the following in PATH: mpv, ffplay, vlc.")
 
 func (p *Player) checkPlayerType(cfg *config.Value) error {
-	if cfg.Player == config.BEEP {
-		return nil
-	}
-
-	p.available = make(map[config.PlayerType]struct{}, len(config.Players))
-	var firstAvailable *config.PlayerType
-	for _, v := range config.Players {
+	p.available = make(map[config.ExternalPlayerType]struct{}, len(config.ExternalPlayers))
+	var firstAvailable *config.ExternalPlayerType
+	for _, v := range config.ExternalPlayers {
 		if ok := checkAvailablePlayer(v); !ok {
 			continue
 		}
@@ -121,7 +132,7 @@ func (p *Player) checkPlayerType(cfg *config.Value) error {
 	return nil
 }
 
-var baseCmds = map[config.PlayerType]func() string{
+var baseCmds = map[config.ExternalPlayerType]func() string{
 	config.Mpv:     mpv.GetBaseCmd,
 	config.FFPlay:  ffplay.GetBaseCmd,
 	config.Vlc:     vlc.GetBaseCmd,
@@ -129,7 +140,7 @@ var baseCmds = map[config.PlayerType]func() string{
 	config.MPD:     mpd.GetBaseCmd,
 }
 
-func checkAvailablePlayer(p config.PlayerType) bool {
+func checkAvailablePlayer(p config.ExternalPlayerType) bool {
 	baseCmdFn, ok := baseCmds[p]
 	if !ok {
 		return false
@@ -143,9 +154,9 @@ func checkAvailablePlayer(p config.PlayerType) bool {
 	return true
 }
 
-func (p *Player) AvailablePlayerTypes() []config.PlayerType {
-	var res []config.PlayerType
-	for _, v := range config.Players {
+func (p *Player) AvailablePlayerTypes() []config.ExternalPlayerType {
+	var res []config.ExternalPlayerType
+	for _, v := range config.ExternalPlayers {
 		if _, ok := p.available[v]; ok {
 			res = append(res, v)
 		}

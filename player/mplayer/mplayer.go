@@ -11,7 +11,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/dancnb/sonicradio/config"
 	"github.com/dancnb/sonicradio/player/model"
 	playerutils "github.com/dancnb/sonicradio/player/utils"
 )
@@ -141,10 +140,6 @@ func (m *Mplayer) parseOutputLine(logger *slog.Logger, output string) {
 			m.title = &titleS
 		}
 	}
-}
-
-func (m *Mplayer) GetType() config.PlayerType {
-	return config.MPlayer
 }
 
 func (m *Mplayer) Pause(value bool) error {

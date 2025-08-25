@@ -48,11 +48,13 @@ type Value struct {
 	Theme       int         `json:"theme"`
 	StationView StationView `json:"stationView"`
 
-	Player         PlayerType `json:"playerType"`
-	MpdHost        string     `json:"mpdHost,omitempty"`
-	MpdPort        int        `json:"mpdPort,omitempty"`
-	MpdPassword    *string    `json:"mpdPassword,omitempty"`
-	mpdEnvPassword *string    `json:"-"`
+	IsStandalone bool `json:"-"`
+
+	Player         ExternalPlayerType `json:"playerType"`
+	MpdHost        string             `json:"mpdHost,omitempty"`
+	MpdPort        int                `json:"mpdPort,omitempty"`
+	MpdPassword    *string            `json:"mpdPassword,omitempty"`
+	mpdEnvPassword *string            `json:"-"`
 
 	historyMtx     sync.Mutex          `json:"-"`
 	History        []HistoryEntry      `json:"history,omitempty"`
@@ -62,29 +64,27 @@ type Value struct {
 	AutoplayFavorite string `json:"autoplayFavorite"`
 }
 
-type PlayerType uint8
+type ExternalPlayerType uint8
 
 const (
-	Mpv PlayerType = iota
+	Mpv ExternalPlayerType = iota
 	FFPlay
 	Vlc
 	MPlayer
 	MPD
-	BEEP
 )
 
-var Players = [6]PlayerType{Mpv, FFPlay, Vlc, MPlayer, MPD, BEEP}
+var ExternalPlayers = [5]ExternalPlayerType{Mpv, FFPlay, Vlc, MPlayer, MPD}
 
-var playerNames = map[PlayerType]string{
+var playerNames = map[ExternalPlayerType]string{
 	Mpv:     "Mpv",
 	FFPlay:  "FFplay",
 	Vlc:     "VLC",
 	MPlayer: "MPlayer",
 	MPD:     "MPD",
-	BEEP:    "BEEP",
 }
 
-func (p PlayerType) String() string {
+func (p ExternalPlayerType) String() string {
 	return playerNames[p]
 }
 

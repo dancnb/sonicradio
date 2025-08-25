@@ -124,10 +124,6 @@ func mpvCmd(ctx context.Context, sockFile string) (*exec.Cmd, error) {
 	return cmd, nil
 }
 
-func (mpv *MpvSocket) GetType() config.PlayerType {
-	return config.Mpv
-}
-
 func (mpv *MpvSocket) Pause(value bool) error {
 	log := slog.With("method", "MpvSocket.Pause")
 	log.Info("pause", "value", value)

@@ -57,7 +57,7 @@ func run() {
 	if cfg == nil {
 		panic("could not get config")
 	}
-	cfg.Player = config.BEEP
+	cfg.IsStandalone = true
 
 	slog.Info("loaded", "config", cfg.String())
 

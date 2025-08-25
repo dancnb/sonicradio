@@ -1,15 +1,15 @@
 package beep
 
 import (
-	"github.com/dancnb/sonicradio/config"
+	"context"
+
 	"github.com/dancnb/sonicradio/player/model"
 )
 
 type Beep struct{}
 
-func NewBeep() *Beep { return &Beep{} }
+func NewBeep(ctx context.Context) *Beep { return &Beep{} }
 
-func (b *Beep) GetType() config.PlayerType       { return config.BEEP }
 func (b *Beep) Play(url string) error            { return nil }
 func (b *Beep) Pause(value bool) error           { return nil }
 func (b *Beep) Stop() error                      { return nil }

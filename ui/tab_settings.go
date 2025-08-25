@@ -59,7 +59,7 @@ func newSettingsTab(
 	ctx context.Context,
 	cfg *config.Value,
 	s *Style,
-	availablePlayerTypes []config.PlayerType,
+	availablePlayerTypes []config.ExternalPlayerType,
 	changeThemeFn func(int),
 ) *settingsTab {
 	h := help.New()
@@ -151,7 +151,7 @@ func portValidator(v string) error {
 	return nil
 }
 
-func getPlayerDescription(playerTypes []config.PlayerType) string {
+func getPlayerDescription(playerTypes []config.ExternalPlayerType) string {
 	playerDesc := descriptions[2]
 	if slices.Contains(playerTypes, config.FFPlay) {
 		playerDesc += ffplayDesc
