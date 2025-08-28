@@ -28,8 +28,9 @@ const (
 	VolumeStep  = 5
 	SeekStepSec = 10
 
-	cfgSubDir   = "sonicRadio"
-	cfgFilename = "config.json"
+	cfgSubDir       = "sonicRadio"
+	cfgFilename     = "config.json"
+	historyFilename = "history.json"
 )
 
 const (
@@ -59,8 +60,6 @@ type Value struct {
 	HistoryChan    chan []HistoryEntry `json:"-"`
 
 	AutoplayFavorite string `json:"autoplayFavorite"`
-
-	saveMtx sync.Mutex
 }
 
 type PlayerType uint8
@@ -158,12 +157,11 @@ func Load(version string) (cfg *Value, err error) {
 		HistoryChan:    make(chan []HistoryEntry),
 	}
 
-	fp, err := getOrCreateConfigDir()
+	cfgDirPath, err := getOrCreateConfigDir()
 	if err != nil {
 		return
 	}
-	fp = filepath.Join(fp, cfgFilename)
-	f, err := os.Open(fp)
+	f, err := os.Open(filepath.Join(cfgDirPath, cfgFilename))
 	if err != nil {
 		return
 	}
@@ -185,6 +183,10 @@ func Load(version string) (cfg *Value, err error) {
 	}
 	if cfg.HistorySaveMax == nil {
 		cfg.HistorySaveMax = &defHistorySaveMax
+	}
+	err = cfg.loadHistory(filepath.Join(cfgDirPath, historyFilename))
+	if err != nil {
+		return
 	}
 	if len(cfg.History) > *cfg.HistorySaveMax {
 		cfg.History = cfg.History[len(cfg.History)-*cfg.HistorySaveMax:]
@@ -211,6 +213,42 @@ func Load(version string) (cfg *Value, err error) {
 	return
 }
 
+func (v *Value) loadHistory(historyFilePath string) (err error) {
+	// if history found in config file (older version)
+	if len(v.History) > 0 {
+		return
+	}
+
+	_, err = os.Stat(historyFilePath)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+
+	hf, err := os.Open(historyFilePath)
+	if err != nil {
+		return
+	}
+	defer func() {
+		closeErr := hf.Close()
+		if closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
+
+	b, err := io.ReadAll(hf)
+	if err != nil {
+		return
+	}
+	var entries []HistoryEntry
+	err = json.Unmarshal(b, &entries)
+	if err != nil {
+		return
+	}
+	v.History = entries
+
+	return
+}
+
 func (v *Value) GetMpdPassword() *string {
 	if v.mpdEnvPassword != nil {
 		return v.mpdEnvPassword
@@ -219,26 +257,58 @@ func (v *Value) GetMpdPassword() *string {
 }
 
 func (v *Value) Save() error {
-	v.saveMtx.Lock()
-	defer v.saveMtx.Unlock()
+	cfgDirPath, err := getOrCreateConfigDir()
+	if err != nil {
+		return err
+	}
+	entries, err := v.saveCfgFile(cfgDirPath)
+	if err != nil {
+		return err
+	}
+	return v.saveHistoryFile(cfgDirPath, entries)
+}
 
-	fp, err := getOrCreateConfigDir()
+func (v *Value) saveCfgFile(cfgDirPath string) (entries []HistoryEntry, err error) {
+	cfgFile, err := os.Create(filepath.Join(cfgDirPath, cfgFilename))
 	if err != nil {
-		return err
+		return
 	}
-	fp = filepath.Join(fp, cfgFilename)
-	f, err := os.Create(fp)
-	if err != nil {
-		return err
-	}
-	enc := json.NewEncoder(f)
+	defer func() {
+		closeErr := cfgFile.Close()
+		if closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
+
+	enc := json.NewEncoder(cfgFile)
 	enc.SetIndent("  ", "  ")
+	entries = slices.Clone(v.History)
+	v.History = nil
 	err = enc.Encode(v)
 	if err != nil {
-		return err
+		return
 	}
-	err = f.Close()
-	return err
+
+	return
+}
+
+func (*Value) saveHistoryFile(cfgDirPath string, entries []HistoryEntry) (err error) {
+	historyFile, err := os.Create(filepath.Join(cfgDirPath, historyFilename))
+	if err != nil {
+		return
+	}
+	defer func() {
+		closeErr := historyFile.Close()
+		if closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
+
+	enc := json.NewEncoder(historyFile)
+	enc.SetIndent("  ", "  ")
+	err = enc.Encode(entries)
+
+	return
 }
 
 func getOrCreateConfigDir() (string, error) {

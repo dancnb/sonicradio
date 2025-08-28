@@ -38,7 +38,7 @@ func (v *Value) DeleteHistoryEntry(delEntry HistoryEntry) {
 	v.History = slices.DeleteFunc(v.History, func(e HistoryEntry) bool {
 		return e.Timestamp.Equal(delEntry.Timestamp)
 	})
-	v.saveHistory()
+	v.updateHistoryEntries()
 }
 
 func (v *Value) ClearHistory() {
@@ -46,15 +46,15 @@ func (v *Value) ClearHistory() {
 	defer v.historyMtx.Unlock()
 
 	v.History = v.History[:0]
-	v.saveHistory()
+	v.updateHistoryEntries()
 }
 
-func (v *Value) saveHistory() []HistoryEntry {
-	log := slog.With("method", "config.Value.saveHistory")
+func (v *Value) updateHistoryEntries() []HistoryEntry {
+	log := slog.With("method", "config.Value.updateHistoryEntries")
 	startIx := max(0, len(v.History)-*v.HistorySaveMax)
 	entries := v.History[startIx:len(v.History)]
 	v.History = entries
-	log.Info("saved entries", "len", len(entries), "startIdx", startIx)
+	log.Info("updated entries", "len", len(entries), "startIdx", startIx)
 	return entries
 }
 
@@ -66,7 +66,7 @@ func (v *Value) AddHistoryEntry(timestamp time.Time, uuid string, station string
 	log.Info("", "uuid", uuid, "stationName", station, "song", song)
 
 	if ok := v.upsertHistory(timestamp, uuid, station, song); ok {
-		entries := v.saveHistory()
+		entries := v.updateHistoryEntries()
 		v.HistoryChan <- entries
 	}
 }
