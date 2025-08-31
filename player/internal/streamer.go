@@ -19,6 +19,7 @@ import (
 )
 
 const (
+	defChunkSize  = 1024
 	defBufferSize = 16384
 )
 
@@ -168,7 +169,7 @@ func readStream(
 
 	chunkByteSize := metaInt
 	if chunkByteSize == 0 {
-		chunkByteSize = defBufferSize
+		chunkByteSize = defChunkSize
 	}
 
 	for {
@@ -220,7 +221,7 @@ func readStream(
 func bufferStream(ctx context.Context, bufStreamer *bufferedStreamer, streamer beep.StreamSeekCloser) {
 	// defer bufStreamer.Close()
 
-	samples := make([][2]float64, 1024)
+	samples := make([][2]float64, defChunkSize)
 	for {
 		select {
 		case <-ctx.Done():
@@ -247,7 +248,7 @@ func getDecoder(contentType string) (
 	error,
 ) {
 	switch contentType {
-	case "audio/mpeg":
+	case "audio/mpeg", "audio/x-scpls":
 		return mp3.Decode, nil
 	case "audio/ogg":
 		return vorbis.Decode, nil
