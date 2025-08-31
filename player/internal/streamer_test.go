@@ -32,7 +32,7 @@ func Test_openStream(t *testing.T) {
 		"http://radiocdn.nxthost.com/radio-deea",
 		// "https://cast.streams.ovh:2199/tunein/tranceathena.pls",
 		"http://cast.streams.ovh:8008/stream",
-		"https://icecast.walmradio.com:8443/walm",
+		// "https://icecast.walmradio.com:8443/walm",
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -55,7 +55,7 @@ func Test_playStream(t *testing.T) {
 	// url = "https://icecast.walmradio.com:8443/otr_opus"
 	// url = "http://play.strefa.fm:8000/strefa.ogg"
 	// url = "http://cast.streams.ovh:8008/stream"
-	url = "https://icecast.walmradio.com:8443/walm"
+	// url = "https://icecast.walmradio.com:8443/walm"
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

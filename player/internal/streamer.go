@@ -179,11 +179,12 @@ func readStream(
 			return
 
 		default:
-			_, err := io.CopyN(wc, r, chunkByteSize)
+			n, err := io.CopyN(wc, r, chunkByteSize)
 			if err != nil {
 				log.Error(fmt.Sprintf("read from stream audio data err: %v", err.Error()))
 				return
 			}
+			log.Info(fmt.Sprintf("copied %d bytes to audio pipe", n))
 			if metaInt == 0 {
 				continue
 			}
@@ -194,14 +195,14 @@ func readStream(
 				return
 			}
 			metaLen := int(metaLenByte) * 16
-			// log.Info(fmt.Sprintf("meta len=%d", metaLen))
 			if metaLen > 0 {
 				metaData := make([]byte, metaLen)
-				_, err := io.ReadFull(r, metaData)
+				n, err := io.ReadFull(r, metaData)
 				if err != nil {
 					log.Error(fmt.Sprintf("read from stream metadata content err: %v", err.Error()))
 					return
 				}
+				log.Info(fmt.Sprintf("read %d metdata bytes", n))
 
 				metaStr := string(metaData)
 				log.Info("--- metadata: " + metaStr)
@@ -219,8 +220,7 @@ func readStream(
 }
 
 func bufferStream(ctx context.Context, bufStreamer *bufferedStreamer, streamer beep.StreamSeekCloser) {
-	// defer bufStreamer.Close()
-
+	log := slog.With("caller", "bufferStream")
 	samples := make([][2]float64, defChunkSize)
 	for {
 		select {
@@ -229,11 +229,13 @@ func bufferStream(ctx context.Context, bufStreamer *bufferedStreamer, streamer b
 
 		default:
 			n, ok := streamer.Stream(samples)
+			log.Info(fmt.Sprintf("streamed %d samples from beep streamer", n))
 			if !ok {
 				break
 			}
 			for i := 0; i < n; i++ {
 				bufStreamer.samples <- samples[i]
+				// log.Info(fmt.Sprintf("sent sample %d to buffered streamer", i))
 			}
 		}
 	}
