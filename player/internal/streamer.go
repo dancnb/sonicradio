@@ -19,8 +19,9 @@ import (
 )
 
 const (
-	defChunkSize  = 1024
-	defBufferSize = 16384
+	defNetworkChunkSize = 1024
+	defBufferChunkSize  = 1024
+	defBufferSize       = 16384
 )
 
 type bufferedStreamer struct {
@@ -169,7 +170,7 @@ func readStream(
 
 	chunkByteSize := metaInt
 	if chunkByteSize == 0 {
-		chunkByteSize = defChunkSize
+		chunkByteSize = defNetworkChunkSize
 	}
 
 	for {
@@ -221,7 +222,7 @@ func readStream(
 
 func bufferStream(ctx context.Context, bufStreamer *bufferedStreamer, streamer beep.StreamSeekCloser) {
 	log := slog.With("caller", "bufferStream")
-	samples := make([][2]float64, defChunkSize)
+	samples := make([][2]float64, defBufferChunkSize)
 	for {
 		select {
 		case <-ctx.Done():
