@@ -7,8 +7,8 @@ import (
 	"os/exec"
 
 	"github.com/dancnb/sonicradio/config"
-	"github.com/dancnb/sonicradio/player/beep"
 	"github.com/dancnb/sonicradio/player/ffplay"
+	"github.com/dancnb/sonicradio/player/internal"
 	"github.com/dancnb/sonicradio/player/model"
 	"github.com/dancnb/sonicradio/player/mpd"
 	"github.com/dancnb/sonicradio/player/mplayer"
@@ -99,7 +99,7 @@ func NewPlayer(ctx context.Context, cfg *config.Value) (*Player, error) {
 func newStandalonePlayer(ctx context.Context, cfg *config.Value) (*Player, error) {
 	vol := cfg.GetVolume()
 	p := &Player{
-		delegate: beep.NewBeep(ctx),
+		delegate: internal.New(ctx),
 	}
 	if _, err := p.delegate.SetVolume(clampVolume(vol)); err != nil {
 		return nil, err
