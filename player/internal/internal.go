@@ -16,32 +16,32 @@ type Internal struct {
 
 func New(ctx context.Context) *Internal { return &Internal{} }
 
-func (b *Internal) Play(url string) error {
-	b.Stop()
+func (i *Internal) Play(url string) error {
+	i.Stop()
 
 	var ctx context.Context
-	ctx, b.cancelFn = context.WithCancel(context.Background())
+	ctx, i.cancelFn = context.WithCancel(context.Background())
 	var err error
-	b.buffStreamer, err = playStream(ctx, url)
+	i.buffStreamer, err = playStream(ctx, url)
 	return err
 }
 
-func (b *Internal) Pause(value bool) error {
+func (i *Internal) Pause(value bool) error {
 	speaker.Lock()
-	b.buffStreamer.ctrl.Paused = !b.buffStreamer.ctrl.Paused
+	i.buffStreamer.ctrl.Paused = !i.buffStreamer.ctrl.Paused
 	speaker.Unlock()
 	return nil
 }
 
-func (b *Internal) Stop() error {
-	if b.cancelFn != nil {
-		b.cancelFn()
+func (i *Internal) Stop() error {
+	if i.cancelFn != nil {
+		i.cancelFn()
 	}
 	return nil
 }
 
 // TODO
-func (b *Internal) SetVolume(value int) (int, error) {
+func (i *Internal) SetVolume(value int) (int, error) {
 	// speaker.Lock()
 	// b.buffStreamer.volume.Volume -= 0.1
 	// speaker.Unlock()
@@ -49,9 +49,9 @@ func (b *Internal) SetVolume(value int) (int, error) {
 }
 
 // TODO
-func (b *Internal) Metadata() *model.Metadata { return nil }
+func (i *Internal) Metadata() *model.Metadata { return nil }
 
 // TODO
-func (b *Internal) Seek(amtSec int) *model.Metadata { return nil }
+func (i *Internal) Seek(amtSec int) *model.Metadata { return nil }
 
-func (b *Internal) Close() error { return nil }
+func (i *Internal) Close() error { return nil }
