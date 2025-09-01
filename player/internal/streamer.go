@@ -35,11 +35,86 @@ const (
 type bufferedStreamer struct {
 	samples chan [2]float64
 	closed  bool
+
+	beepStreamer beep.StreamSeekCloser
+	format       beep.Format
+	ctrl         *beep.Ctrl
+	resampler    *beep.Resampler
+	volume       *effects.Volume
 }
 
-func newBufferedStreamer(bufSize int) *bufferedStreamer {
-	return &bufferedStreamer{
-		samples: make(chan [2]float64, bufSize),
+func newBufferedStreamer(
+	ctx context.Context,
+	beepStreamer beep.StreamSeekCloser,
+	format beep.Format,
+	bufSize int) *bufferedStreamer {
+
+	bs := &bufferedStreamer{
+		samples:      make(chan [2]float64, bufSize),
+		beepStreamer: beepStreamer,
+		format:       format,
+	}
+
+	go func() {
+		<-ctx.Done()
+		slog.Info("===  CANCEL 1 (beepStreamer) ===")
+		beepStreamer.Close()
+	}()
+
+	// go bs.doBuffer(ctx, beepStreamer)
+	go bs.doBuffer(beepStreamer)
+
+	return bs
+}
+
+// func (bufStreamer *bufferedStreamer) doBuffer_v1(
+// 	ctx context.Context,
+// 	beepStreamer beep.StreamSeekCloser,
+// ) {
+// 	defer bufStreamer.Close() //cancel.3
+// 	log := slog.With("caller", "bufferStream")
+// 	samples := make([][2]float64, defBufferChunkSize)
+// 	for {
+// 		select {
+// 		case <-ctx.Done():
+// 			return
+// 		default:
+// 			n, more := beepStreamer.Stream(samples)
+// 			log.Info(fmt.Sprintf("streamed %d samples from beep streamer, more=%v", n, more))
+// 			if !more { //cancel.2
+// 				break
+// 				// TODO: handle beepStreamer.Err() ?
+// 			}
+// 			for i := range n {
+// 				bufStreamer.samples <- samples[i]
+// 				// log.Info(fmt.Sprintf("sent sample %d -> buffered streamer -> speaker", i))
+// 			}
+// 		}
+// 	}
+// }
+
+func (bufStreamer *bufferedStreamer) doBuffer(beepStreamer beep.StreamSeekCloser) {
+	defer func() {
+		slog.Info("===  CANCEL 3 (bufStreamer) ===")
+		bufStreamer.Close()
+	}()
+
+	log := slog.With("caller", "bufferStream")
+	samples := make([][2]float64, defBufferChunkSize)
+	for {
+		n, more := beepStreamer.Stream(samples)
+		log.Info(fmt.Sprintf("streamed %d samples from beep streamer, more=%v", n, more))
+		if !more {
+			slog.Info("===  CANCEL 2 (no more samples in beepStreamer) ===")
+			if err := beepStreamer.Err(); err != nil {
+				slog.Info(fmt.Sprintf("beepStreamer error: %#v", err))
+			}
+			break
+		}
+		for i := range n {
+			bufStreamer.samples <- samples[i]
+			// log.Info(fmt.Sprintf("sent sample %d -> buffered streamer -> speaker", i))
+		}
 	}
 }
 
@@ -47,6 +122,7 @@ func (s *bufferedStreamer) Stream(samples [][2]float64) (n int, ok bool) {
 	for i := range samples {
 		val, more := <-s.samples
 		if !more {
+			slog.Info("===  CANCEL 4 (no more samples in bufferedStreamer) ===")
 			return i, i > 0
 		}
 		samples[i] = val
@@ -63,18 +139,18 @@ func (s *bufferedStreamer) Close() {
 	}
 }
 
-func playStream(ctx context.Context, url string) error {
+func playStream(ctx context.Context, url string) (*bufferedStreamer, error) {
 	// -- Network read
 	resp, metaInfo, err := openStream(ctx, url)
 	if err != nil {
-		return fmt.Errorf("open stream err: %w", err)
+		return nil, fmt.Errorf("open stream err: %w", err)
 	}
-	defer resp.Body.Close()
 
 	if strings.ToLower(metaInfo.ContentType) == contentTypePls {
+		defer resp.Body.Close()
 		b, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return fmt.Errorf("failed to read pls file: %w", err)
+			return nil, fmt.Errorf("failed to read pls file: %w", err)
 		}
 		scanner := bufio.NewScanner(bytes.NewReader(b))
 		var plsUrl string
@@ -88,43 +164,40 @@ func playStream(ctx context.Context, url string) error {
 			}
 		}
 		if plsUrl == "" {
-			return fmt.Errorf("could not parse URL from playlist file [%s]", url)
+			return nil, fmt.Errorf("could not parse URL from playlist file [%s]", url)
 		}
 		return playStream(ctx, plsUrl)
 	}
 
-	reader := bufio.NewReader(resp.Body)
 	audioPipeR, audioPipeW := io.Pipe()
-	go readStream(ctx, audioPipeW, reader, int64(metaInfo.Metaint))
+	go readStream(ctx, audioPipeW, resp.Body, int64(metaInfo.Metaint))
 
 	// -- Decode
 	decoderFn, err := getDecoder(metaInfo.ContentType)
 	if err != nil {
-		return fmt.Errorf("get decoder err: %w", err)
+		return nil, fmt.Errorf("get decoder err: %w", err)
 	}
 	beepStreamer, format, err := decoderFn(audioPipeR)
 	if err != nil {
-		return fmt.Errorf("call decoder err: %w", err)
+		return nil, fmt.Errorf("call decoder err: %w", err)
 	}
-	defer beepStreamer.Close()
 
 	// -- Buffer
 	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
-	bufStreamer := newBufferedStreamer(defBufferSize)
-	go bufferStream(ctx, bufStreamer, beepStreamer)
+	bufStreamer := newBufferedStreamer(ctx, beepStreamer, format, defBufferSize)
 
 	// -- Play
-	ctrl := &beep.Ctrl{Streamer: bufStreamer, Paused: false}
-	resampler := beep.ResampleRatio(4, 1, ctrl)
-	volume := &effects.Volume{
-		Streamer: resampler,
+	bufStreamer.ctrl = &beep.Ctrl{Streamer: bufStreamer, Paused: false}
+	bufStreamer.resampler = beep.ResampleRatio(4, 1, bufStreamer.ctrl)
+	bufStreamer.volume = &effects.Volume{
+		Streamer: bufStreamer.resampler,
 		Base:     2,
 		Volume:   0,
 		Silent:   false,
 	}
-	speaker.Play(volume)
+	speaker.Play(bufStreamer.volume)
 
-	select {} // keep running
+	return bufStreamer, nil
 }
 
 // metaInfo contains icy headers.  Example(https://icecast.walmradio.com:8443/otr_opus):
@@ -199,11 +272,18 @@ func openStream(
 func readStream(
 	ctx context.Context,
 	wc io.WriteCloser,
-	r *bufio.Reader,
+	respBody io.ReadCloser,
 	metaInt int64,
 ) {
 	log := slog.With("caller", "readStream")
-	defer wc.Close()
+	bufReader := bufio.NewReader(respBody)
+
+	defer func() {
+		err := respBody.Close()
+		log.Info(fmt.Sprintf("http response body close err: %#v", err))
+		err = wc.Close()
+		log.Info(fmt.Sprintf("audio pipe writer body close err: %#v", err))
+	}()
 
 	chunkByteSize := metaInt
 	if chunkByteSize == 0 {
@@ -217,7 +297,7 @@ func readStream(
 			return
 
 		default:
-			n, err := io.CopyN(wc, r, chunkByteSize)
+			n, err := io.CopyN(wc, bufReader, chunkByteSize)
 			if err != nil {
 				log.Error(fmt.Sprintf("read from stream audio data err: %v", err.Error()))
 				return
@@ -227,7 +307,7 @@ func readStream(
 				continue
 			}
 
-			metaLenByte, err := r.ReadByte()
+			metaLenByte, err := bufReader.ReadByte()
 			if err != nil {
 				log.Error(fmt.Sprintf("read from stream metadata length err: %v", err.Error()))
 				return
@@ -235,7 +315,7 @@ func readStream(
 			metaLen := int(metaLenByte) * 16
 			if metaLen > 0 {
 				metaData := make([]byte, metaLen)
-				n, err := io.ReadFull(r, metaData)
+				n, err := io.ReadFull(bufReader, metaData)
 				if err != nil {
 					log.Error(fmt.Sprintf("read from stream metadata content err: %v", err.Error()))
 					return
@@ -252,35 +332,6 @@ func readStream(
 						log.Info(" ----------------------->>   Now playing " + title)
 					}
 				}
-			}
-		}
-	}
-}
-
-func bufferStream(
-	ctx context.Context,
-	bufStreamer *bufferedStreamer,
-	beepStreamer beep.StreamSeekCloser,
-) {
-	defer bufStreamer.Close()
-
-	log := slog.With("caller", "bufferStream")
-	samples := make([][2]float64, defBufferChunkSize)
-	for {
-		select {
-		case <-ctx.Done():
-			return
-
-		default:
-			n, ok := beepStreamer.Stream(samples)
-			log.Info(fmt.Sprintf("streamed %d samples from beep streamer", n))
-			if !ok {
-				break
-				// TODO: handle beepStreamer.Err() ?
-			}
-			for i := 0; i < n; i++ {
-				bufStreamer.samples <- samples[i]
-				// log.Info(fmt.Sprintf("sent sample %d to buffered streamer", i))
 			}
 		}
 	}

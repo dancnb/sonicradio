@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// TODO: move in player + rename this to os_utils?
 type PlaybackTime struct {
 	playTimeMtx   sync.Mutex
 	playedTime    *time.Duration
