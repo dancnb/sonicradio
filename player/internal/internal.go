@@ -22,7 +22,7 @@ func (i *Internal) Play(url string) error {
 	var ctx context.Context
 	ctx, i.cancelFn = context.WithCancel(context.Background())
 	var err error
-	i.buffStreamer, err = playStream(ctx, url)
+	i.buffStreamer, err = newBufferedStreamer(ctx, url)
 	return err
 }
 

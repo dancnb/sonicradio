@@ -23,9 +23,7 @@ const (
 	defNetworkChunkSize = 4096
 	defBufferChunkSize  = 1024
 	defBufferSize       = 16384
-)
 
-const (
 	contentTypePls  = "audio/x-scpls"
 	contentTypeMpeg = "audio/mpeg"
 	contentTypeOgg  = "audio/ogg"
@@ -45,32 +43,77 @@ type bufferedStreamer struct {
 	volume       *effects.Volume
 }
 
-func newBufferedStreamer(
-	ctx context.Context,
-	url string,
-	beepStreamer beep.StreamSeekCloser,
-	format beep.Format,
-	bufSize int) *bufferedStreamer {
-
-	bs := &bufferedStreamer{
-		url:          url,
-		samples:      make(chan [2]float64, bufSize),
-		beepStreamer: beepStreamer,
-		format:       format,
+func newBufferedStreamer(ctx context.Context, url string) (*bufferedStreamer, error) {
+	// -- Network read
+	resp, metaInfo, err := openStream(ctx, url)
+	if err != nil {
+		return nil, fmt.Errorf("open stream err: %w", err)
 	}
 
+	if strings.ToLower(metaInfo.ContentType) == contentTypePls {
+		defer resp.Body.Close()
+		b, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read pls file: %w", err)
+		}
+		scanner := bufio.NewScanner(bytes.NewReader(b))
+		var plsUrl string
+		for scanner.Scan() {
+			l := scanner.Text()
+			if strings.Contains(strings.ToLower(l), "file1") {
+				if p := strings.Split(l, "="); len(p) == 2 {
+					plsUrl = strings.TrimSpace(p[1])
+					break
+				}
+			}
+		}
+		if plsUrl == "" {
+			return nil, fmt.Errorf("could not parse URL from playlist file [%s]", url)
+		}
+		return newBufferedStreamer(ctx, plsUrl)
+	}
+
+	audioPipeR, audioPipeW := io.Pipe()
+	go readStream(ctx, url, audioPipeW, resp.Body, int64(metaInfo.Metaint))
+
+	// -- Decode
+	decoderFn, err := getDecoder(metaInfo.ContentType)
+	if err != nil {
+		return nil, err
+	}
+	beepStreamer, format, err := decoderFn(audioPipeR)
+	if err != nil {
+		return nil, fmt.Errorf("call decoder err: %w", err)
+	}
 	go func() {
 		<-ctx.Done()
-		slog.With(
-			"caller", "newBufferedStreamer",
-			"url", url).
+		slog.With("caller", "newBufferedStreamer", "url", url).
 			Info("===  CANCEL 1 (beepStreamer close) ===")
 		beepStreamer.Close()
 	}()
+	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
 
-	go bs.doBuffer(beepStreamer)
+	// -- Buffer
+	bufStreamer := &bufferedStreamer{
+		url:          url,
+		samples:      make(chan [2]float64, defBufferSize),
+		beepStreamer: beepStreamer,
+		format:       format,
+	}
+	go bufStreamer.doBuffer(beepStreamer)
 
-	return bs
+	// -- Play
+	bufStreamer.ctrl = &beep.Ctrl{Streamer: bufStreamer, Paused: false}
+	bufStreamer.resampler = beep.ResampleRatio(4, 1, bufStreamer.ctrl)
+	bufStreamer.volume = &effects.Volume{
+		Streamer: bufStreamer.resampler,
+		Base:     2,
+		Volume:   0,
+		Silent:   false,
+	}
+	speaker.Play(bufStreamer.volume)
+
+	return bufStreamer, nil
 }
 
 func (bs *bufferedStreamer) doBuffer(beepStreamer beep.StreamSeekCloser) {
@@ -118,67 +161,6 @@ func (bs *bufferedStreamer) Close() {
 		close(bs.samples)
 		bs.closed = true
 	}
-}
-
-func playStream(ctx context.Context, url string) (*bufferedStreamer, error) {
-	// -- Network read
-	resp, metaInfo, err := openStream(ctx, url)
-	if err != nil {
-		return nil, fmt.Errorf("open stream err: %w", err)
-	}
-
-	if strings.ToLower(metaInfo.ContentType) == contentTypePls {
-		defer resp.Body.Close()
-		b, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read pls file: %w", err)
-		}
-		scanner := bufio.NewScanner(bytes.NewReader(b))
-		var plsUrl string
-		for scanner.Scan() {
-			l := scanner.Text()
-			if strings.Contains(strings.ToLower(l), "file1") {
-				if p := strings.Split(l, "="); len(p) == 2 {
-					plsUrl = strings.TrimSpace(p[1])
-					break
-				}
-			}
-		}
-		if plsUrl == "" {
-			return nil, fmt.Errorf("could not parse URL from playlist file [%s]", url)
-		}
-		return playStream(ctx, plsUrl)
-	}
-
-	audioPipeR, audioPipeW := io.Pipe()
-	go readStream(ctx, url, audioPipeW, resp.Body, int64(metaInfo.Metaint))
-
-	// -- Decode
-	decoderFn, err := getDecoder(metaInfo.ContentType)
-	if err != nil {
-		return nil, err
-	}
-	beepStreamer, format, err := decoderFn(audioPipeR)
-	if err != nil {
-		return nil, fmt.Errorf("call decoder err: %w", err)
-	}
-
-	// -- Buffer
-	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
-	bufStreamer := newBufferedStreamer(ctx, url, beepStreamer, format, defBufferSize)
-
-	// -- Play
-	bufStreamer.ctrl = &beep.Ctrl{Streamer: bufStreamer, Paused: false}
-	bufStreamer.resampler = beep.ResampleRatio(4, 1, bufStreamer.ctrl)
-	bufStreamer.volume = &effects.Volume{
-		Streamer: bufStreamer.resampler,
-		Base:     2,
-		Volume:   0,
-		Silent:   false,
-	}
-	speaker.Play(bufStreamer.volume)
-
-	return bufStreamer, nil
 }
 
 // metaInfo contains icy headers.  Example(https://icecast.walmradio.com:8443/otr_opus):
