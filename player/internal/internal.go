@@ -54,5 +54,4 @@ func (b *Internal) Metadata() *model.Metadata { return nil }
 // TODO
 func (b *Internal) Seek(amtSec int) *model.Metadata { return nil }
 
-// TODO
 func (b *Internal) Close() error { return nil }

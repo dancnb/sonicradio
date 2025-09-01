@@ -33,6 +33,8 @@ const (
 )
 
 type bufferedStreamer struct {
+	url string
+
 	samples chan [2]float64
 	closed  bool
 
@@ -45,11 +47,13 @@ type bufferedStreamer struct {
 
 func newBufferedStreamer(
 	ctx context.Context,
+	url string,
 	beepStreamer beep.StreamSeekCloser,
 	format beep.Format,
 	bufSize int) *bufferedStreamer {
 
 	bs := &bufferedStreamer{
+		url:          url,
 		samples:      make(chan [2]float64, bufSize),
 		beepStreamer: beepStreamer,
 		format:       format,
@@ -57,7 +61,10 @@ func newBufferedStreamer(
 
 	go func() {
 		<-ctx.Done()
-		slog.Info("===  CANCEL 1 (beepStreamer) ===")
+		slog.With(
+			"caller", "newBufferedStreamer",
+			"url", url).
+			Info("===  CANCEL 1 (beepStreamer close) ===")
 		beepStreamer.Close()
 	}()
 
@@ -66,36 +73,37 @@ func newBufferedStreamer(
 	return bs
 }
 
-func (bufStreamer *bufferedStreamer) doBuffer(beepStreamer beep.StreamSeekCloser) {
+func (bs *bufferedStreamer) doBuffer(beepStreamer beep.StreamSeekCloser) {
+	log := slog.With("method", "bufferedStreamer.doBuffer", "url", bs.url)
 	defer func() {
-		slog.Info("===  CANCEL 3 (bufStreamer) ===")
-		bufStreamer.Close()
+		log.Info("===  CANCEL 3 (bufStreamer close) ===")
+		bs.Close()
 	}()
 
-	log := slog.With("caller", "bufferStream")
 	samples := make([][2]float64, defBufferChunkSize)
 	for {
 		n, more := beepStreamer.Stream(samples)
 		log.Info(fmt.Sprintf("streamed %d samples from beep streamer, more=%v", n, more))
 		if !more {
-			slog.Info("===  CANCEL 2 (no more samples in beepStreamer) ===")
+			log.Info("===  CANCEL 2 (no more samples in beepStreamer) ===")
 			if err := beepStreamer.Err(); err != nil {
-				slog.Info(fmt.Sprintf("beepStreamer error: %#v", err))
+				log.Info(fmt.Sprintf("beepStreamer error: %#v", err))
 			}
 			break
 		}
 		for i := range n {
-			bufStreamer.samples <- samples[i]
+			bs.samples <- samples[i]
 			// log.Info(fmt.Sprintf("sent sample %d -> buffered streamer -> speaker", i))
 		}
 	}
 }
 
-func (s *bufferedStreamer) Stream(samples [][2]float64) (n int, ok bool) {
+func (bs *bufferedStreamer) Stream(samples [][2]float64) (n int, ok bool) {
+	log := slog.With("method", "bufferedStreamer.doBuffer", "url", bs.url)
 	for i := range samples {
-		val, more := <-s.samples
+		val, more := <-bs.samples
 		if !more {
-			slog.Info("===  CANCEL 4 (no more samples in bufferedStreamer) ===")
+			log.Info("===  CANCEL 4 (no more samples in bufferedStreamer) ===")
 			return i, i > 0
 		}
 		samples[i] = val
@@ -103,12 +111,12 @@ func (s *bufferedStreamer) Stream(samples [][2]float64) (n int, ok bool) {
 	return len(samples), true
 }
 
-func (s *bufferedStreamer) Err() error { return nil }
+func (bs *bufferedStreamer) Err() error { return nil }
 
-func (s *bufferedStreamer) Close() {
-	if !s.closed {
-		close(s.samples)
-		s.closed = true
+func (bs *bufferedStreamer) Close() {
+	if !bs.closed {
+		close(bs.samples)
+		bs.closed = true
 	}
 }
 
@@ -143,12 +151,12 @@ func playStream(ctx context.Context, url string) (*bufferedStreamer, error) {
 	}
 
 	audioPipeR, audioPipeW := io.Pipe()
-	go readStream(ctx, audioPipeW, resp.Body, int64(metaInfo.Metaint))
+	go readStream(ctx, url, audioPipeW, resp.Body, int64(metaInfo.Metaint))
 
 	// -- Decode
 	decoderFn, err := getDecoder(metaInfo.ContentType)
 	if err != nil {
-		return nil, fmt.Errorf("get decoder err: %w", err)
+		return nil, err
 	}
 	beepStreamer, format, err := decoderFn(audioPipeR)
 	if err != nil {
@@ -157,7 +165,7 @@ func playStream(ctx context.Context, url string) (*bufferedStreamer, error) {
 
 	// -- Buffer
 	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
-	bufStreamer := newBufferedStreamer(ctx, beepStreamer, format, defBufferSize)
+	bufStreamer := newBufferedStreamer(ctx, url, beepStreamer, format, defBufferSize)
 
 	// -- Play
 	bufStreamer.ctrl = &beep.Ctrl{Streamer: bufStreamer, Paused: false}
@@ -244,11 +252,12 @@ func openStream(
 
 func readStream(
 	ctx context.Context,
+	url string,
 	wc io.WriteCloser,
 	respBody io.ReadCloser,
 	metaInt int64,
 ) {
-	log := slog.With("caller", "readStream")
+	log := slog.With("caller", "readStream", "url", url)
 	bufReader := bufio.NewReader(respBody)
 
 	defer func() {
