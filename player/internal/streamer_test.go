@@ -52,10 +52,11 @@ func Test_openStream(t *testing.T) {
 func Test_playStream(t *testing.T) {
 	url := "http://vibration.stream2net.eu:8220/;stream/1"
 	// url = "http://oceanwaves.radio.mynoise.net/"
-	url = "https://icecast.walmradio.com:8443/otr_opus"
+	// url = "https://icecast.walmradio.com:8443/otr_opus"
 	// url = "http://play.strefa.fm:8000/strefa.ogg"
 	// url = "http://cast.streams.ovh:8008/stream"
 	// url = "https://icecast.walmradio.com:8443/walm"
+	// url = "https://cast.streams.ovh:2199/tunein/tranceathena.pls"
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -63,11 +64,3 @@ func Test_playStream(t *testing.T) {
 		t.Error(err)
 	}
 }
-
-//TODO pls file:
-// [playlist]
-// numberofentries=1
-// File1=http://cast.streams.ovh:8008/stream
-// Title1=Trance Athena Radio
-// Length1=-1
-// version=2

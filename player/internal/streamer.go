@@ -2,6 +2,7 @@ package internal
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -19,9 +20,16 @@ import (
 )
 
 const (
-	defNetworkChunkSize = 1024
+	defNetworkChunkSize = 4096
 	defBufferChunkSize  = 1024
 	defBufferSize       = 16384
+)
+
+const (
+	contentTypePls  = "audio/x-scpls"
+	contentTypeMpeg = "audio/mpeg"
+	contentTypeOgg  = "audio/ogg"
+	contentTypeAac  = "audio/aac"
 )
 
 type bufferedStreamer struct {
@@ -62,6 +70,29 @@ func playStream(ctx context.Context, url string) error {
 		return fmt.Errorf("open stream err: %w", err)
 	}
 	defer resp.Body.Close()
+
+	if strings.ToLower(metaInfo.ContentType) == contentTypePls {
+		b, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("failed to read pls file: %w", err)
+		}
+		scanner := bufio.NewScanner(bytes.NewReader(b))
+		var plsUrl string
+		for scanner.Scan() {
+			l := scanner.Text()
+			if strings.Contains(strings.ToLower(l), "file1") {
+				if p := strings.Split(l, "="); len(p) == 2 {
+					plsUrl = strings.TrimSpace(p[1])
+					break
+				}
+			}
+		}
+		if plsUrl == "" {
+			return fmt.Errorf("could not parse URL from playlist file [%s]", url)
+		}
+		return playStream(ctx, plsUrl)
+	}
+
 	reader := bufio.NewReader(resp.Body)
 	audioPipeR, audioPipeW := io.Pipe()
 	go readStream(ctx, audioPipeW, reader, int64(metaInfo.Metaint))
@@ -80,7 +111,6 @@ func playStream(ctx context.Context, url string) error {
 	// -- Buffer
 	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
 	bufStreamer := newBufferedStreamer(defBufferSize)
-	defer bufStreamer.Close()
 	go bufferStream(ctx, bufStreamer, beepStreamer)
 
 	// -- Play
@@ -127,7 +157,14 @@ type metaInfo struct {
 	ContentType string
 }
 
-func openStream(ctx context.Context, url string) (resp *http.Response, metaInfo metaInfo, err error) {
+func openStream(
+	ctx context.Context,
+	url string,
+) (
+	resp *http.Response,
+	metaInfo metaInfo,
+	err error,
+) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return
@@ -220,7 +257,13 @@ func readStream(
 	}
 }
 
-func bufferStream(ctx context.Context, bufStreamer *bufferedStreamer, streamer beep.StreamSeekCloser) {
+func bufferStream(
+	ctx context.Context,
+	bufStreamer *bufferedStreamer,
+	beepStreamer beep.StreamSeekCloser,
+) {
+	defer bufStreamer.Close()
+
 	log := slog.With("caller", "bufferStream")
 	samples := make([][2]float64, defBufferChunkSize)
 	for {
@@ -229,10 +272,11 @@ func bufferStream(ctx context.Context, bufStreamer *bufferedStreamer, streamer b
 			return
 
 		default:
-			n, ok := streamer.Stream(samples)
+			n, ok := beepStreamer.Stream(samples)
 			log.Info(fmt.Sprintf("streamed %d samples from beep streamer", n))
 			if !ok {
 				break
+				// TODO: handle beepStreamer.Err() ?
 			}
 			for i := 0; i < n; i++ {
 				bufStreamer.samples <- samples[i]
@@ -251,11 +295,11 @@ func getDecoder(contentType string) (
 	error,
 ) {
 	switch contentType {
-	case "audio/mpeg", "audio/x-scpls":
+	case contentTypeMpeg:
 		return mp3.Decode, nil
-	case "audio/ogg":
+	case contentTypeOgg:
 		return vorbis.Decode, nil
-	case "audio/aac":
+	case contentTypeAac:
 		return nil, errAACNotAvailable
 	// TODO: wav?
 
