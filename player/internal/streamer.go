@@ -61,37 +61,10 @@ func newBufferedStreamer(
 		beepStreamer.Close()
 	}()
 
-	// go bs.doBuffer(ctx, beepStreamer)
 	go bs.doBuffer(beepStreamer)
 
 	return bs
 }
-
-// func (bufStreamer *bufferedStreamer) doBuffer_v1(
-// 	ctx context.Context,
-// 	beepStreamer beep.StreamSeekCloser,
-// ) {
-// 	defer bufStreamer.Close() //cancel.3
-// 	log := slog.With("caller", "bufferStream")
-// 	samples := make([][2]float64, defBufferChunkSize)
-// 	for {
-// 		select {
-// 		case <-ctx.Done():
-// 			return
-// 		default:
-// 			n, more := beepStreamer.Stream(samples)
-// 			log.Info(fmt.Sprintf("streamed %d samples from beep streamer, more=%v", n, more))
-// 			if !more { //cancel.2
-// 				break
-// 				// TODO: handle beepStreamer.Err() ?
-// 			}
-// 			for i := range n {
-// 				bufStreamer.samples <- samples[i]
-// 				// log.Info(fmt.Sprintf("sent sample %d -> buffered streamer -> speaker", i))
-// 			}
-// 		}
-// 	}
-// }
 
 func (bufStreamer *bufferedStreamer) doBuffer(beepStreamer beep.StreamSeekCloser) {
 	defer func() {
