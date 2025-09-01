@@ -52,14 +52,16 @@ func Test_openStream(t *testing.T) {
 func Test_playStream(t *testing.T) {
 	url := "http://vibration.stream2net.eu:8220/;stream/1"
 	// url = "http://oceanwaves.radio.mynoise.net/"
-	// url = "https://icecast.walmradio.com:8443/otr_opus"
-	url = "http://play.strefa.fm:8000/strefa.ogg"
+	url = "https://icecast.walmradio.com:8443/otr_opus"
+	// url = "http://play.strefa.fm:8000/strefa.ogg"
 	// url = "http://cast.streams.ovh:8008/stream"
 	// url = "https://icecast.walmradio.com:8443/walm"
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	playStream(ctx, url)
+	if err := playStream(ctx, url); err != nil {
+		t.Error(err)
+	}
 }
 
 //TODO pls file:
