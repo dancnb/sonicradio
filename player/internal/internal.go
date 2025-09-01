@@ -8,13 +8,14 @@ import (
 )
 
 type Internal struct {
-
 	// streamer
 	cancelFn     context.CancelFunc
 	buffStreamer *bufferedStreamer
 }
 
-func New(ctx context.Context) *Internal { return &Internal{} }
+func New(ctx context.Context) *Internal {
+	return &Internal{}
+}
 
 func (i *Internal) Play(url string) error {
 	i.Stop()
@@ -23,7 +24,10 @@ func (i *Internal) Play(url string) error {
 	ctx, i.cancelFn = context.WithCancel(context.Background())
 	var err error
 	i.buffStreamer, err = newBufferedStreamer(ctx, url)
-	return err
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (i *Internal) Pause(value bool) error {
@@ -48,8 +52,15 @@ func (i *Internal) SetVolume(value int) (int, error) {
 	return -1, nil
 }
 
-// TODO
-func (i *Internal) Metadata() *model.Metadata { return nil }
+// TODO position?
+func (i *Internal) Metadata() *model.Metadata {
+	if i.buffStreamer != nil {
+		return &model.Metadata{
+			Title: i.buffStreamer.title,
+		}
+	}
+	return nil
+}
 
 // TODO
 func (i *Internal) Seek(amtSec int) *model.Metadata { return nil }

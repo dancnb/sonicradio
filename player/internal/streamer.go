@@ -31,7 +31,8 @@ const (
 )
 
 type bufferedStreamer struct {
-	url string
+	url   string
+	title string
 
 	samples chan [2]float64
 	closed  bool
@@ -74,7 +75,8 @@ func newBufferedStreamer(ctx context.Context, url string) (*bufferedStreamer, er
 	}
 
 	audioPipeR, audioPipeW := io.Pipe()
-	go readStream(ctx, url, audioPipeW, resp.Body, int64(metaInfo.Metaint))
+	titleCh := make(chan string, 1)
+	go readStream(ctx, url, audioPipeW, resp.Body, int64(metaInfo.Metaint), titleCh)
 
 	// -- Decode
 	decoderFn, err := getDecoder(metaInfo.ContentType)
@@ -83,7 +85,7 @@ func newBufferedStreamer(ctx context.Context, url string) (*bufferedStreamer, er
 	}
 	beepStreamer, format, err := decoderFn(audioPipeR)
 	if err != nil {
-		return nil, fmt.Errorf("call decoder err: %w", err)
+		return nil, err
 	}
 	go func() {
 		<-ctx.Done()
@@ -101,6 +103,16 @@ func newBufferedStreamer(ctx context.Context, url string) (*bufferedStreamer, er
 		format:       format,
 	}
 	go bufStreamer.doBuffer(beepStreamer)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case t := <-titleCh:
+				bufStreamer.title = t
+			}
+		}
+	}()
 
 	// -- Play
 	bufStreamer.ctrl = &beep.Ctrl{Streamer: bufStreamer, Paused: false}
@@ -238,6 +250,7 @@ func readStream(
 	wc io.WriteCloser,
 	respBody io.ReadCloser,
 	metaInt int64,
+	titleCh chan string,
 ) {
 	log := slog.With("caller", "readStream", "url", url)
 	bufReader := bufio.NewReader(respBody)
@@ -247,6 +260,7 @@ func readStream(
 		log.Info(fmt.Sprintf("http response body close err: %#v", err))
 		err = wc.Close()
 		log.Info(fmt.Sprintf("audio pipe writer body close err: %#v", err))
+		close(titleCh)
 	}()
 
 	chunkByteSize := metaInt
@@ -293,7 +307,9 @@ func readStream(
 					end := strings.Index(metaStr[start:], "';")
 					if end > 0 {
 						title := metaStr[start : start+end]
-						log.Info(" ----------------------->>   Now playing " + title)
+						go func() {
+							titleCh <- title
+						}()
 					}
 				}
 			}
