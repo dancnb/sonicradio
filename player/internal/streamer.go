@@ -21,7 +21,7 @@ import (
 
 const (
 	defNetworkChunkSize = 4096
-	defBufferChunkSize  = 1024
+	defBufferChunkSize  = 4096
 	defBufferSize       = 16384
 
 	contentTypePls  = "audio/x-scpls"
@@ -138,7 +138,7 @@ func (bs *bufferedStreamer) doBuffer(beepStreamer beep.StreamSeekCloser) {
 	samples := make([][2]float64, defBufferChunkSize)
 	for {
 		n, more := beepStreamer.Stream(samples)
-		// log.Info(fmt.Sprintf("streamed %d samples from beep streamer, more=%v", n, more))
+		log.Info(fmt.Sprintf("beepStreamer ---> %d samples, more=%v ---> bufferedStreamer", n, more))
 		if !more {
 			log.Info("===  CANCEL 2 (no more samples in beepStreamer) ===")
 			if err := beepStreamer.Err(); err != nil {
@@ -148,7 +148,7 @@ func (bs *bufferedStreamer) doBuffer(beepStreamer beep.StreamSeekCloser) {
 		}
 		for i := range n {
 			bs.samples <- samples[i]
-			// log.Info(fmt.Sprintf("sent sample %d -> buffered streamer -> speaker", i))
+			// log.Info(fmt.Sprintf("beepStreamer -> sample %d -> bufferedStreamer", i))
 		}
 	}
 }
@@ -280,7 +280,7 @@ func readStream(
 				log.Error(fmt.Sprintf("read from stream audio data err: %v", err.Error()))
 				return
 			}
-			log.Info(fmt.Sprintf("copied %d bytes to audio pipe", n))
+			log.Info(fmt.Sprintf("network ---> copied %d bytes ---> audio pipe (beepStreamer)", n))
 			if metaInt == 0 {
 				continue
 			}

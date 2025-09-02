@@ -2,6 +2,8 @@ package internal
 
 import (
 	"context"
+	"log/slog"
+	"time"
 
 	"github.com/dancnb/sonicradio/player/model"
 	"github.com/gopxl/beep/v2/speaker"
@@ -52,12 +54,19 @@ func (i *Internal) SetVolume(value int) (int, error) {
 	return -1, nil
 }
 
-// TODO position?
 func (i *Internal) Metadata() *model.Metadata {
 	if i.buffStreamer != nil {
-		return &model.Metadata{
+		m := model.Metadata{
 			Title: i.buffStreamer.title,
 		}
+		speaker.Lock()
+		pos := i.buffStreamer.beepStreamer.Position()
+		posD := i.buffStreamer.format.SampleRate.D(pos)
+		posSec := int64(posD.Round(time.Second).Seconds())
+		slog.Info("", "pos", pos, "posD", posD)
+		m.PlaybackTimeSec = &posSec
+		speaker.Unlock()
+		return &m
 	}
 	return nil
 }
