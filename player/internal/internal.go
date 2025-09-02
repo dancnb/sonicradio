@@ -2,21 +2,20 @@ package internal
 
 import (
 	"context"
-	"log/slog"
-	"time"
 
 	"github.com/dancnb/sonicradio/player/model"
-	"github.com/gopxl/beep/v2/speaker"
 )
 
 type Internal struct {
+	volume int
+
 	// streamer
 	cancelFn     context.CancelFunc
 	buffStreamer *bufferedStreamer
 }
 
-func New(ctx context.Context) *Internal {
-	return &Internal{}
+func New(ctx context.Context, volume int) *Internal {
+	return &Internal{volume: volume}
 }
 
 func (i *Internal) Play(url string) error {
@@ -25,7 +24,7 @@ func (i *Internal) Play(url string) error {
 	var ctx context.Context
 	ctx, i.cancelFn = context.WithCancel(context.Background())
 	var err error
-	i.buffStreamer, err = newBufferedStreamer(ctx, url)
+	i.buffStreamer, err = newBufferedStreamer(ctx, url, i.volume)
 	if err != nil {
 		return err
 	}
@@ -33,9 +32,7 @@ func (i *Internal) Play(url string) error {
 }
 
 func (i *Internal) Pause(value bool) error {
-	speaker.Lock()
-	i.buffStreamer.ctrl.Paused = !i.buffStreamer.ctrl.Paused
-	speaker.Unlock()
+	i.buffStreamer.togglePause()
 	return nil
 }
 
@@ -46,29 +43,20 @@ func (i *Internal) Stop() error {
 	return nil
 }
 
-// TODO
 func (i *Internal) SetVolume(value int) (int, error) {
-	// speaker.Lock()
-	// b.buffStreamer.volume.Volume -= 0.1
-	// speaker.Unlock()
-	return -1, nil
+	i.volume = value
+	i.buffStreamer.setVolumeFromPercentage(value)
+	return value, nil
 }
 
 func (i *Internal) Metadata() *model.Metadata {
-	if i.buffStreamer != nil {
-		m := model.Metadata{
-			Title: i.buffStreamer.title,
-		}
-		speaker.Lock()
-		pos := i.buffStreamer.beepStreamer.Position()
-		posD := i.buffStreamer.format.SampleRate.D(pos)
-		posSec := int64(posD.Round(time.Second).Seconds())
-		slog.Info("", "pos", pos, "posD", posD)
-		m.PlaybackTimeSec = &posSec
-		speaker.Unlock()
-		return &m
+	if i.buffStreamer == nil {
+		return nil
 	}
-	return nil
+	return &model.Metadata{
+		Title:           i.buffStreamer.title,
+		PlaybackTimeSec: i.buffStreamer.getPositionSeconds(),
+	}
 }
 
 // TODO

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -28,6 +29,7 @@ const (
 	contentTypeMpeg = "audio/mpeg"
 	contentTypeOgg  = "audio/ogg"
 	contentTypeAac  = "audio/aac"
+	contentTypeAacp = "audio/aacp"
 )
 
 type bufferedStreamer struct {
@@ -44,7 +46,7 @@ type bufferedStreamer struct {
 	volume       *effects.Volume
 }
 
-func newBufferedStreamer(ctx context.Context, url string) (*bufferedStreamer, error) {
+func newBufferedStreamer(ctx context.Context, url string, volume int) (*bufferedStreamer, error) {
 	// -- Network read
 	resp, metaInfo, err := openStream(ctx, url)
 	if err != nil {
@@ -71,7 +73,7 @@ func newBufferedStreamer(ctx context.Context, url string) (*bufferedStreamer, er
 		if plsUrl == "" {
 			return nil, fmt.Errorf("could not parse URL from playlist file [%s]", url)
 		}
-		return newBufferedStreamer(ctx, plsUrl)
+		return newBufferedStreamer(ctx, plsUrl, volume)
 	}
 
 	audioPipeR, audioPipeW := io.Pipe()
@@ -117,10 +119,11 @@ func newBufferedStreamer(ctx context.Context, url string) (*bufferedStreamer, er
 	// -- Play
 	bufStreamer.ctrl = &beep.Ctrl{Streamer: bufStreamer, Paused: false}
 	bufStreamer.resampler = beep.ResampleRatio(4, 1, bufStreamer.ctrl)
+	expVolume := percentToExponent(float64(volume))
 	bufStreamer.volume = &effects.Volume{
 		Streamer: bufStreamer.resampler,
 		Base:     2,
-		Volume:   0,
+		Volume:   expVolume,
 		Silent:   false,
 	}
 	speaker.Play(bufStreamer.volume)
@@ -164,6 +167,53 @@ func (bs *bufferedStreamer) Stream(samples [][2]float64) (n int, ok bool) {
 		samples[i] = val
 	}
 	return len(samples), true
+}
+
+func (bs *bufferedStreamer) togglePause() {
+	if bs == nil {
+		return
+	}
+	speaker.Lock()
+	bs.ctrl.Paused = !bs.ctrl.Paused
+	speaker.Unlock()
+}
+
+func (bs *bufferedStreamer) getPositionSeconds() *int64 {
+	if bs == nil {
+		return nil
+	}
+	speaker.Lock()
+	pos := bs.beepStreamer.Position()
+	posD := bs.format.SampleRate.D(pos)
+	speaker.Unlock()
+	posSec := int64(posD.Round(time.Second).Seconds())
+	slog.Info("", "pos", pos, "posD", posD)
+	return &posSec
+}
+func (bs *bufferedStreamer) setVolumeFromPercentage(value int) {
+	if bs == nil {
+		return
+	}
+	log := slog.With("method", "bufferedStreamer.setVolumeFromPercentage")
+	speaker.Lock()
+	expValue := percentToExponent(float64(value))
+	bs.volume.Volume = expValue
+	speaker.Unlock()
+	log.Info("", "perc", value, "exp", expValue)
+}
+
+func percentToExponent(p float64) float64 {
+	minExp := -10.0
+	curve := 0.5
+	if p <= 0 {
+		return minExp
+	}
+	if p >= 100 {
+		return 0
+	}
+	n := p / 100.0
+	adjusted := math.Pow(n, curve)
+	return (1.0 - adjusted) * minExp
 }
 
 func (bs *bufferedStreamer) Err() error { return nil }
@@ -330,7 +380,7 @@ func getDecoder(contentType string) (
 		return mp3.Decode, nil
 	case contentTypeOgg:
 		return vorbis.Decode, nil
-	case contentTypeAac:
+	case contentTypeAac, contentTypeAacp:
 		return nil, errAACNotAvailable
 	// TODO: wav?
 

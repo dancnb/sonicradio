@@ -99,10 +99,7 @@ func NewPlayer(ctx context.Context, cfg *config.Value) (*Player, error) {
 func newStandalonePlayer(ctx context.Context, cfg *config.Value) (*Player, error) {
 	vol := cfg.GetVolume()
 	p := &Player{
-		delegate: internal.New(ctx),
-	}
-	if _, err := p.delegate.SetVolume(clampVolume(vol)); err != nil {
-		return nil, err
+		delegate: internal.New(ctx, clampVolume(vol)),
 	}
 	return p, nil
 }
