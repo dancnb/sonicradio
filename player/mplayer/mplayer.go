@@ -64,7 +64,7 @@ type Mplayer struct {
 
 func New(ctx context.Context, volume int) (*Mplayer, error) {
 	p := &Mplayer{
-		pt: &playerutils.PlaybackTime{},
+		pt: playerutils.NewPlaybackTime(),
 	}
 	err := p.getCmd(ctx, volume)
 	if err != nil {

@@ -138,7 +138,7 @@ func (bs *bufferedStreamer) doBuffer(beepStreamer beep.StreamSeekCloser) {
 	samples := make([][2]float64, defBufferChunkSize)
 	for {
 		n, more := beepStreamer.Stream(samples)
-		log.Info(fmt.Sprintf("streamed %d samples from beep streamer, more=%v", n, more))
+		// log.Info(fmt.Sprintf("streamed %d samples from beep streamer, more=%v", n, more))
 		if !more {
 			log.Info("===  CANCEL 2 (no more samples in beepStreamer) ===")
 			if err := beepStreamer.Err(); err != nil {

@@ -48,7 +48,7 @@ type FFPlay struct {
 
 func NewFFPlay(ctx context.Context) (*FFPlay, error) {
 	return &FFPlay{
-		pt: &playerutils.PlaybackTime{},
+		pt: playerutils.NewPlaybackTime(),
 	}, nil
 }
 
