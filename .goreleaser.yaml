@@ -20,7 +20,7 @@ builds:
     goos: [linux]
     goarch: [amd64, arm64]
     env:
-      - CGO_ENABLED=0
+      - CGO_ENABLED=1
     ldflags:
       - -s -w
       - "-X main.version={{ .Version }}"
@@ -31,7 +31,7 @@ builds:
     goos: [darwin]
     goarch: [amd64, arm64]
     env:
-      - CGO_ENABLED=0
+      - CGO_ENABLED=1
     ldflags:
       - -s -w
       - "-X main.version={{ .Version }}"
@@ -42,7 +42,7 @@ builds:
     goos: [windows]
     goarch: [amd64]
     env:
-      - CGO_ENABLED=0
+      - CGO_ENABLED=1
     ldflags:
       - -s -w
       - "-X main.version={{ .Version }}"
