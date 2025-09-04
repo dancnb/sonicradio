@@ -2,11 +2,18 @@
 
 A stylish TUI radio player making use of [Radio Browser API](https://www.radio-browser.info/) and [Bubbletea](https://github.com/charmbracelet/bubbletea).
 
+![ Demo](demo.gif)
 
 ## Installation
 
+- Install using go:
 
-### Prerequisites
+  ```
+    go install github.com/dancnb/sonicradio@latest
+  ```
+- Clone this repository and build from source (some additional prerequisites are need based on the platform, since this project uses <https://github.com/ebitengine/oto> for the internal player implementation).
+
+## Prerequisites (optional third-party backend players)
 
 One of the following tools must be installed and available in the PATH:
 - Mpv : <https://mpv.io/>
@@ -14,15 +21,6 @@ One of the following tools must be installed and available in the PATH:
 - VLC: <https://www.videolan.org/vlc/>
 - MPlayer: <http://www.mplayerhq.hu/design7/dload.html>
 - Music Player Daemon: <https://www.musicpd.org/>
-
-Use one of the following methods:
-- Download one of the available binaries from [Releases](https://github.com/dancnb/sonicradio/releases) page.
-- Install using go:
-
-  ```
-    go install github.com/dancnb/sonicradio@latest
-  ```
-- Clone this repository and build from source.
 
 ## Usage
 
@@ -38,7 +36,6 @@ Available options:
       -debug: creates a log file "sonicradio-[epoch millis].log" in OS specific temp dir
 ```
 
-![ Demo](demo.gif)
 
 ### Keybindings
 
@@ -77,7 +74,7 @@ Available options:
 - [x] Display rich station information
 - [x] Playback history tab
 - [x] Settings tab
-- [ ] Standalone mode
+- [x] Standalone mode
 
 ## License
 
