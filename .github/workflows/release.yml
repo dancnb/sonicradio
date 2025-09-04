@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   goreleaser:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,6 +28,8 @@ jobs:
           go-version: stable
       # More assembly might be required: Docker logins, GPG, etc.
       # It all depends on your needs.
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
