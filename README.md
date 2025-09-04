@@ -6,21 +6,25 @@ A stylish TUI radio player making use of [Radio Browser API](https://www.radio-b
 
 ## Installation
 
-- Install using go:
+- ### Install using go:
 
   ```
     go install github.com/dancnb/sonicradio@latest
   ```
-- Clone this repository and build from source (some additional prerequisites are need based on the platform, since this project uses <https://github.com/ebitengine/oto> for the internal player implementation).
+- ### Clone this repository and build from source.
 
-## Prerequisites (optional third-party backend players)
+  Some additional prerequisites are need based on the platform (ex: CGO required for non-Windows), since this project uses <https://github.com/gopxl/beep>, respectively <https://github.com/ebitengine/oto> for the internal player implementation.
 
-One of the following tools must be installed and available in the PATH:
-- Mpv : <https://mpv.io/>
-- FFplay : <https://ffmpeg.org/ffplay.html>, comes bundled with ffmpeg
-- VLC: <https://www.videolan.org/vlc/>
-- MPlayer: <http://www.mplayerhq.hu/design7/dload.html>
-- Music Player Daemon: <https://www.musicpd.org/>
+- ### Optional third-party backend players:
+
+  One of the following tools must be installed and available in the PATH:
+  - Mpv : <https://mpv.io/>
+  - FFplay : <https://ffmpeg.org/ffplay.html>, comes bundled with ffmpeg
+  - VLC: <https://www.videolan.org/vlc/>
+  - MPlayer: <http://www.mplayerhq.hu/design7/dload.html>
+  - Music Player Daemon: <https://www.musicpd.org/>
+  
+- ### Download binaries available in [Releases](https://github.com/dancnb/sonicradio/releases) page.
 
 ## Usage
 
