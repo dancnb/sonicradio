@@ -9,13 +9,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dancnb/sonicradio/browser"
-	"github.com/dancnb/sonicradio/ui/styles"
 )
 
 type infoModel struct {
 	enabled bool
 
-	style *styles.Style
+	style *Style
 
 	b       *browser.Api
 	station browser.Station
@@ -26,7 +25,7 @@ type infoModel struct {
 	height int
 }
 
-func newInfoModel(b *browser.Api, s *styles.Style) *infoModel {
+func newInfoModel(b *browser.Api, s *Style) *infoModel {
 	k := newInfoKeymap()
 
 	h := help.New()
@@ -146,7 +145,7 @@ func (i *infoModel) View() string {
 }
 
 func (i *infoModel) renderInfoField(b *strings.Builder, fieldName, fieldValue string) {
-	fnRender := i.style.InfoFieldNameStyle.Render(styles.PadFieldName(fieldName, nil))
+	fnRender := i.style.InfoFieldNameStyle.Render(PadFieldName(fieldName, nil))
 	b.WriteString(fnRender)
 	fnw := lipgloss.Width(fnRender)
 	fv := strings.TrimSpace(fieldValue)

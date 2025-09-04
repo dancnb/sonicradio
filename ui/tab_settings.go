@@ -8,9 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dancnb/sonicradio/ui/components"
-	"github.com/dancnb/sonicradio/ui/styles"
-
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -23,14 +20,14 @@ type settingsTab struct {
 	cfg           *config.Value
 	changeThemeFn func(int)
 
-	style  *styles.Style
+	style  *Style
 	keymap settingsKeymap
 	help   help.Model
 	width  int
 	height int
 
 	idx    settingsInputIdx
-	inputs []*components.FormElement
+	inputs []*FormElement
 }
 
 type settingsInputIdx byte
@@ -48,7 +45,7 @@ var (
 	descriptions = []string{
 		`Maximum number of entries displayed in "History" tab.`,
 		`Preview and select a theme.`,
-		`Choose one of the available backend players (only those found in PATH are displayed): Mpv, FFplay, VLC, MPlayer, MPD. The choice will take effect after a restart.`,
+		"Select a backend player (only those in PATH are shown: Mpv, FFplay, VLC, MPlayer, MPD), or use the experimental Internal player.\nChanges take effect after restart.\n",
 	}
 	ffplayDesc  = "\nFFplay does not allow changing the volume during playback or seeking backward/forward."
 	vlcDesc     = "\nFor VLC, pausing or seeking backward/forward may result in an invalid song title being displayed."
@@ -61,8 +58,8 @@ var (
 func newSettingsTab(
 	ctx context.Context,
 	cfg *config.Value,
-	s *styles.Style,
-	playerTypes []config.PlayerType,
+	s *Style,
+	availablePlayerTypes []config.PlayerType,
 	changeThemeFn func(int),
 ) *settingsTab {
 	h := help.New()
@@ -71,62 +68,62 @@ func newSettingsTab(
 	h.Styles = s.HelpStyles()
 
 	// history max entries
-	historySaveMax := s.NewInputModel("History max entries", "---", nil, nil, nil, styles.NrInputValidator)
+	historySaveMax := s.NewInputModel("History max entries", "---", nil, nil, nil, NrInputValidator)
 
 	// themes
-	themeOpts := make([]components.OptionValue, len(styles.Themes))
-	for i := range styles.Themes {
-		themeOpts[i] = components.OptionValue{IdxView: i + 1, NameView: styles.Themes[i].Name}
+	themeOpts := make([]OptionValue, len(Themes))
+	for i := range Themes {
+		themeOpts[i] = OptionValue{IdxView: i + 1, NameView: Themes[i].Name}
 	}
-	themeList := components.NewOptionList("Theme", themeOpts, cfg.Theme, s)
+	themeList := NewOptionList("Theme", themeOpts, cfg.Theme, s)
 	// TODO: false if more than 10 themes
 	themeList.SetQuick(true)
 	themeList.PartialCallbackFn = changeThemeFn
 	themeList.DoneCallbackFn = changeThemeFn
 
 	// player
-	playerOpts := make([]components.OptionValue, len(playerTypes))
+	playerOpts := make([]OptionValue, len(availablePlayerTypes))
 	var startIdx int
-	for i := range playerTypes {
-		playerOpts[i] = components.OptionValue{IdxView: i + 1, NameView: playerTypes[i].String()}
-		if playerTypes[i] == cfg.Player {
+	for i := range availablePlayerTypes {
+		playerOpts[i] = OptionValue{IdxView: i + 1, NameView: availablePlayerTypes[i].String()}
+		if availablePlayerTypes[i] == cfg.Player {
 			startIdx = i
 		}
 	}
-	playerList := components.NewOptionList("Player (requires restart)", playerOpts, startIdx, s)
+	playerList := NewOptionList("Player (requires restart)", playerOpts, startIdx, s)
 	playerList.SetQuick(true)
 	playerList.DoneCallbackFn = func(i int) {
-		cfg.Player = playerTypes[i]
+		cfg.Player = availablePlayerTypes[i]
 		slog.Info("change player type", "i", i, "new type", cfg.Player.String())
 	}
-	playerDesc := getPlayerDescription(playerTypes)
-	inputs := []*components.FormElement{
-		components.NewFormElement(
-			components.WithTextInput(&historySaveMax),
-			components.WithDescription(descriptions[0])),
-		components.NewFormElement(
-			components.WithOptionList(&themeList),
-			components.WithDescription(descriptions[1])),
-		components.NewFormElement(
-			components.WithOptionList(&playerList),
-			components.WithDescription(playerDesc)),
+	playerDesc := getPlayerDescription(availablePlayerTypes)
+	inputs := []*FormElement{
+		NewFormElement(
+			WithTextInput(&historySaveMax),
+			WithDescription(descriptions[0])),
+		NewFormElement(
+			WithOptionList(&themeList),
+			WithDescription(descriptions[1])),
+		NewFormElement(
+			WithOptionList(&playerList),
+			WithDescription(playerDesc)),
 	}
-	if slices.Contains(playerTypes, config.MPD) {
+	if slices.Contains(availablePlayerTypes, config.MPD) {
 		mpdHost := s.NewInputModel("MPD hostname", "127.0.0.1", nil, nil, nil, nil)
-		inputs = append(inputs, components.NewFormElement(
-			components.WithTextInput(&mpdHost),
-			components.WithDescription(mpdSettingsDesc)),
+		inputs = append(inputs, NewFormElement(
+			WithTextInput(&mpdHost),
+			WithDescription(mpdSettingsDesc)),
 		)
 		mpdPort := s.NewInputModel("MPD port", "6600", nil, nil, nil, portValidator)
-		inputs = append(inputs, components.NewFormElement(
-			components.WithTextInput(&mpdPort),
-			components.WithDescription(mpdSettingsDesc)),
+		inputs = append(inputs, NewFormElement(
+			WithTextInput(&mpdPort),
+			WithDescription(mpdSettingsDesc)),
 		)
 		mpdPass := s.NewInputModel("MPD password", "---", nil, nil, nil, nil)
 		mpdPass.EchoMode = textinput.EchoPassword
-		inputs = append(inputs, components.NewFormElement(
-			components.WithTextInput(&mpdPass),
-			components.WithDescription(mpdSettingsDesc)),
+		inputs = append(inputs, NewFormElement(
+			WithTextInput(&mpdPass),
+			WithDescription(mpdSettingsDesc)),
 		)
 	}
 
@@ -255,7 +252,7 @@ func (s *settingsTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		availableHeight := msg.Height - m.headerHeight
 		s.setSize(msg.Width, availableHeight)
 
-	case components.OptionMsg:
+	case OptionMsg:
 		var idx int
 		if msg.Done {
 			idx = msg.SelIdx

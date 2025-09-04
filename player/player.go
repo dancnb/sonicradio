@@ -8,6 +8,7 @@ import (
 
 	"github.com/dancnb/sonicradio/config"
 	"github.com/dancnb/sonicradio/player/ffplay"
+	"github.com/dancnb/sonicradio/player/internal"
 	"github.com/dancnb/sonicradio/player/model"
 	"github.com/dancnb/sonicradio/player/mpd"
 	"github.com/dancnb/sonicradio/player/mplayer"
@@ -21,7 +22,6 @@ type Player struct {
 }
 
 type backendPlayer interface {
-	GetType() config.PlayerType
 	Play(url string) error
 	Pause(value bool) error
 	Stop() error
@@ -45,13 +45,15 @@ type backendPlayer interface {
 
 func NewPlayer(ctx context.Context, cfg *config.Value) (*Player, error) {
 	p := new(Player)
-	err := p.checkPlayerType(cfg)
+	err := p.checkAvailablePlayers(cfg)
 	if err != nil {
 		return nil, err
 	}
 
 	vol := cfg.GetVolume()
 	switch cfg.Player {
+	case config.Internal:
+		p.delegate = internal.New(ctx, clampVolume(vol))
 	case config.Mpv:
 		mpvPlayer, err := mpv.NewMPVSocket(ctx)
 		if err != nil {
@@ -94,7 +96,7 @@ func NewPlayer(ctx context.Context, cfg *config.Value) (*Player, error) {
 
 var errNoPlayerAvailable = errors.New("No available player found. Must have at least one of the following in PATH: mpv, ffplay, vlc.")
 
-func (p *Player) checkPlayerType(cfg *config.Value) error {
+func (p *Player) checkAvailablePlayers(cfg *config.Value) error {
 	p.available = make(map[config.PlayerType]struct{}, len(config.Players))
 	var firstAvailable *config.PlayerType
 	for _, v := range config.Players {
@@ -109,10 +111,12 @@ func (p *Player) checkPlayerType(cfg *config.Value) error {
 	if len(p.available) == 0 {
 		return errNoPlayerAvailable
 	}
+	// if config file player not available anymore, default to first available player type
 	if _, ok := p.available[cfg.Player]; !ok {
 		cfg.Player = *firstAvailable
 	}
-	slog.Info("Player.checkPlayerType", "value", cfg.Player)
+	slog.Info("Player.checkAvailablePlayers", "available", p.available)
+	slog.Info("Player.checkAvailablePlayers", "config player", cfg.Player)
 	return nil
 }
 
@@ -125,6 +129,9 @@ var baseCmds = map[config.PlayerType]func() string{
 }
 
 func checkAvailablePlayer(p config.PlayerType) bool {
+	if p == config.Internal {
+		return true
+	}
 	baseCmdFn, ok := baseCmds[p]
 	if !ok {
 		return false
@@ -138,7 +145,7 @@ func checkAvailablePlayer(p config.PlayerType) bool {
 	return true
 }
 
-func (p *Player) PlayerTypes() []config.PlayerType {
+func (p *Player) AvailablePlayerTypes() []config.PlayerType {
 	var res []config.PlayerType
 	for _, v := range config.Players {
 		if _, ok := p.available[v]; ok {

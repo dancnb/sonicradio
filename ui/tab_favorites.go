@@ -5,14 +5,13 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/dancnb/sonicradio/browser"
-	"github.com/dancnb/sonicradio/ui/styles"
 )
 
 type favoritesTab struct {
 	stationsTabBase
 }
 
-func newFavoritesTab(infoModel *infoModel, s *styles.Style) *favoritesTab {
+func newFavoritesTab(infoModel *infoModel, s *Style) *favoritesTab {
 	k := newListKeymap()
 
 	m := &favoritesTab{

@@ -316,10 +316,6 @@ func (m *Mpd) Close() (err error) {
 	return nil
 }
 
-func (m *Mpd) GetType() config.PlayerType {
-	return config.MPD
-}
-
 const wrongPermission = "you don't have permission for"
 
 var errWrongPermission = errors.New("MPD permission error")

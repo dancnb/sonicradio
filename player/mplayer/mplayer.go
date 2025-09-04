@@ -11,7 +11,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/dancnb/sonicradio/config"
 	"github.com/dancnb/sonicradio/player/model"
 	playerutils "github.com/dancnb/sonicradio/player/utils"
 )
@@ -65,7 +64,7 @@ type Mplayer struct {
 
 func New(ctx context.Context, volume int) (*Mplayer, error) {
 	p := &Mplayer{
-		pt: &playerutils.PlaybackTime{},
+		pt: playerutils.NewPlaybackTime(),
 	}
 	err := p.getCmd(ctx, volume)
 	if err != nil {
@@ -141,10 +140,6 @@ func (m *Mplayer) parseOutputLine(logger *slog.Logger, output string) {
 			m.title = &titleS
 		}
 	}
-}
-
-func (m *Mplayer) GetType() config.PlayerType {
-	return config.MPlayer
 }
 
 func (m *Mplayer) Pause(value bool) error {

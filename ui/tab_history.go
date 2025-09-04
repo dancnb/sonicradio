@@ -9,9 +9,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/dancnb/sonicradio/ui/components"
-	"github.com/dancnb/sonicradio/ui/styles"
-
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -25,14 +22,14 @@ const (
 
 type historyTab struct {
 	cfg     *config.Value
-	style   *styles.Style
+	style   *Style
 	viewMsg string
-	jump    components.JumpInfo
+	jump    JumpInfo
 	list    list.Model
 	keymap  historyKeymap
 }
 
-func newHistoryTab(ctx context.Context, cfg *config.Value, s *styles.Style) *historyTab {
+func newHistoryTab(ctx context.Context, cfg *config.Value, s *Style) *historyTab {
 	t := &historyTab{
 		cfg:   cfg,
 		style: s,
@@ -294,7 +291,7 @@ func (t *historyTab) View() string {
 type historyEntryDelegate struct {
 	defaultDelegate list.DefaultDelegate
 	keymap          *historyKeymap
-	style           *styles.Style
+	style           *Style
 }
 
 func (d *historyEntryDelegate) ShortHelp() []key.Binding {
@@ -335,7 +332,7 @@ func (d *historyEntryDelegate) Render(w io.Writer, m list.Model, index int, item
 
 	prefixRender := d.style.PrefixStyle.Render(prefix)
 	res.WriteString(prefixRender)
-	maxWidth := max(listWidth-lipgloss.Width(prefixRender)-styles.HeaderPadDist, 0)
+	maxWidth := max(listWidth-lipgloss.Width(prefixRender)-HeaderPadDist, 0)
 
 	itStyle := d.style.SecondaryColorStyle
 	descStyle := d.style.HistoryDescStyle
@@ -349,7 +346,7 @@ func (d *historyEntryDelegate) Render(w io.Writer, m list.Model, index int, item
 	}
 	nameRender := itStyle.Render(station)
 	res.WriteString(nameRender)
-	hFill := max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(nameRender)-styles.HeaderPadDist, 0)
+	hFill := max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(nameRender)-HeaderPadDist, 0)
 	res.WriteString(itStyle.Render(strings.Repeat(" ", hFill)))
 	res.WriteString("\n")
 
@@ -360,7 +357,7 @@ func (d *historyEntryDelegate) Render(w io.Writer, m list.Model, index int, item
 	}
 	descRender := descStyle.Render(desc)
 	res.WriteString(descRender)
-	hFill = max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(descRender)-styles.HeaderPadDist, 0)
+	hFill = max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(descRender)-HeaderPadDist, 0)
 	res.WriteString(descStyle.Render(strings.Repeat(" ", hFill)))
 
 	str := res.String()

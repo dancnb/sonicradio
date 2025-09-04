@@ -8,8 +8,6 @@ import (
 	"sync"
 	"unicode/utf8"
 
-	"github.com/dancnb/sonicradio/ui/styles"
-
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -21,7 +19,7 @@ import (
 
 const startWaitMillis = 500 * 3
 
-func newStationDelegate(cfg *config.Value, s *styles.Style, p *player.Player, b *browser.Api) *stationDelegate {
+func newStationDelegate(cfg *config.Value, s *Style, p *player.Player, b *browser.Api) *stationDelegate {
 	keymap := newDelegateKeyMap()
 
 	d := list.NewDefaultDelegate()
@@ -42,7 +40,7 @@ type stationDelegate struct {
 	player *player.Player
 	b      *browser.Api
 	cfg    *config.Value
-	style  *styles.Style
+	style  *Style
 
 	playingMtx  sync.RWMutex
 	prevPlaying *browser.Station
@@ -224,7 +222,7 @@ func (d *stationDelegate) playCmd(s browser.Station) tea.Cmd {
 		if err != nil {
 			errMsg := fmt.Sprintf("error playing station %s: %s", s.Name, err.Error())
 			log.Error(errMsg)
-			return playRespMsg{fmt.Sprintf("Could not start playback for %s [%s]: %s", s.Name, s.URL, err.Error())}
+			return playRespMsg{fmt.Sprintf("Could not start playback for %s: %s", s.Name, err.Error())}
 		}
 		d.prevPlaying = d.currPlaying
 		d.currPlaying = &s
@@ -243,10 +241,10 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 	}
 	name := s.Name
 	if d.cfg.IsFavorite(s.Stationuuid) {
-		name += styles.FavChar
+		name += FavChar
 	}
 	if d.cfg.AutoplayFavorite == s.Stationuuid {
-		name += d.style.BaseBold.Render(styles.AutoplayChar)
+		name += d.style.BaseBold.Render(AutoplayChar)
 	}
 
 	isSel := index == m.Index()
@@ -258,7 +256,7 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 	isPrev := d.currPlaying == nil && d.prevPlaying != nil && d.prevPlaying.Stationuuid == s.Stationuuid
 	var str string
 
-	prefix := styles.IndexString(index + 1)
+	prefix := IndexString(index + 1)
 
 	listWidth := m.Width()
 	if isCurr || isPrev {
@@ -325,14 +323,14 @@ func (d *stationDelegate) renderDefaultView(
 	var res strings.Builder
 	prefixRender := prefixStyle.Render(prefix)
 	res.WriteString(prefixRender)
-	maxWidth := max(listWidth-lipgloss.Width(prefixRender)-styles.HeaderPadDist-widthOffset, 0)
+	maxWidth := max(listWidth-lipgloss.Width(prefixRender)-HeaderPadDist-widthOffset, 0)
 
 	for lipgloss.Width(itStyle.Render(name)) > maxWidth-widthOffset && len(name) > 0 {
 		name = name[:len(name)-1]
 	}
 	nameRender := itStyle.Render(name)
 	res.WriteString(nameRender)
-	hFill := max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(nameRender)-styles.HeaderPadDist-widthOffset, 0)
+	hFill := max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(nameRender)-HeaderPadDist-widthOffset, 0)
 	res.WriteString(itStyle.Render(strings.Repeat(" ", hFill)))
 	res.WriteString("\n")
 
@@ -342,7 +340,7 @@ func (d *stationDelegate) renderDefaultView(
 	}
 	descRender := descStyle.Render(desc)
 	res.WriteString(descRender)
-	hFill = max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(descRender)-styles.HeaderPadDist-widthOffset, 0)
+	hFill = max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(descRender)-HeaderPadDist-widthOffset, 0)
 	res.WriteString(descStyle.Render(strings.Repeat(" ", hFill)))
 
 	return res.String()
@@ -361,7 +359,7 @@ func (d *stationDelegate) renderCompactView(
 	var res strings.Builder
 	prefixRender := prefixStyle.Render(prefix)
 	res.WriteString(prefixRender)
-	maxWidth := max(listWidth-lipgloss.Width(prefixRender)-styles.HeaderPadDist-widthOffset, 0)
+	maxWidth := max(listWidth-lipgloss.Width(prefixRender)-HeaderPadDist-widthOffset, 0)
 	width1 := 45
 	width2 := maxWidth - width1
 
@@ -397,14 +395,14 @@ func (d *stationDelegate) renderMinimalView(
 	var res strings.Builder
 	prefixRender := prefixStyle.Render(prefix)
 	res.WriteString(prefixRender)
-	maxWidth := max(listWidth-lipgloss.Width(prefixRender)-styles.HeaderPadDist, 0)
+	maxWidth := max(listWidth-lipgloss.Width(prefixRender)-HeaderPadDist, 0)
 
 	for lipgloss.Width(itStyle.Render(name)) > maxWidth-widthOffset && len(name) > 0 {
 		name = name[:len(name)-1]
 	}
 	nameRender := itStyle.Render(name)
 	res.WriteString(nameRender)
-	hFill := max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(nameRender)-styles.HeaderPadDist-widthOffset, 0)
+	hFill := max(listWidth-lipgloss.Width(prefixRender)-lipgloss.Width(nameRender)-HeaderPadDist-widthOffset, 0)
 	res.WriteString(itStyle.Render(strings.Repeat(" ", hFill)))
 
 	return res.String()

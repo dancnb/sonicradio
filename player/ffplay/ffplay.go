@@ -10,7 +10,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/dancnb/sonicradio/config"
 	"github.com/dancnb/sonicradio/player/model"
 	playerutils "github.com/dancnb/sonicradio/player/utils"
 )
@@ -49,12 +48,8 @@ type FFPlay struct {
 
 func NewFFPlay(ctx context.Context) (*FFPlay, error) {
 	return &FFPlay{
-		pt: &playerutils.PlaybackTime{},
+		pt: playerutils.NewPlaybackTime(),
 	}, nil
-}
-
-func (f *FFPlay) GetType() config.PlayerType {
-	return config.FFPlay
 }
 
 var errplay = errors.New("FFplay command error")
