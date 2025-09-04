@@ -18,7 +18,7 @@ import (
 
 type Player struct {
 	delegate  backendPlayer
-	available map[config.ExternalPlayerType]struct{}
+	available map[config.PlayerType]struct{}
 }
 
 type backendPlayer interface {
@@ -44,18 +44,16 @@ type backendPlayer interface {
 }
 
 func NewPlayer(ctx context.Context, cfg *config.Value) (*Player, error) {
-	if cfg.IsStandalone {
-		return newStandalonePlayer(ctx, cfg)
-	}
-
 	p := new(Player)
-	err := p.checkPlayerType(cfg)
+	err := p.checkAvailablePlayers(cfg)
 	if err != nil {
 		return nil, err
 	}
 
 	vol := cfg.GetVolume()
 	switch cfg.Player {
+	case config.Internal:
+		return newStandalonePlayer(ctx, cfg)
 	case config.Mpv:
 		mpvPlayer, err := mpv.NewMPVSocket(ctx)
 		if err != nil {
@@ -106,10 +104,10 @@ func newStandalonePlayer(ctx context.Context, cfg *config.Value) (*Player, error
 
 var errNoPlayerAvailable = errors.New("No available player found. Must have at least one of the following in PATH: mpv, ffplay, vlc.")
 
-func (p *Player) checkPlayerType(cfg *config.Value) error {
-	p.available = make(map[config.ExternalPlayerType]struct{}, len(config.ExternalPlayers))
-	var firstAvailable *config.ExternalPlayerType
-	for _, v := range config.ExternalPlayers {
+func (p *Player) checkAvailablePlayers(cfg *config.Value) error {
+	p.available = make(map[config.PlayerType]struct{}, len(config.Players))
+	var firstAvailable *config.PlayerType
+	for _, v := range config.Players {
 		if ok := checkAvailablePlayer(v); !ok {
 			continue
 		}
@@ -125,11 +123,11 @@ func (p *Player) checkPlayerType(cfg *config.Value) error {
 	if _, ok := p.available[cfg.Player]; !ok {
 		cfg.Player = *firstAvailable
 	}
-	slog.Info("Player.checkPlayerType", "value", cfg.Player)
+	slog.Info("Player.checkAvailablePlayers", "value", cfg.Player)
 	return nil
 }
 
-var baseCmds = map[config.ExternalPlayerType]func() string{
+var baseCmds = map[config.PlayerType]func() string{
 	config.Mpv:     mpv.GetBaseCmd,
 	config.FFPlay:  ffplay.GetBaseCmd,
 	config.Vlc:     vlc.GetBaseCmd,
@@ -137,7 +135,10 @@ var baseCmds = map[config.ExternalPlayerType]func() string{
 	config.MPD:     mpd.GetBaseCmd,
 }
 
-func checkAvailablePlayer(p config.ExternalPlayerType) bool {
+func checkAvailablePlayer(p config.PlayerType) bool {
+	if p == config.Internal {
+		return true
+	}
 	baseCmdFn, ok := baseCmds[p]
 	if !ok {
 		return false
@@ -151,9 +152,9 @@ func checkAvailablePlayer(p config.ExternalPlayerType) bool {
 	return true
 }
 
-func (p *Player) AvailablePlayerTypes() []config.ExternalPlayerType {
-	var res []config.ExternalPlayerType
-	for _, v := range config.ExternalPlayers {
+func (p *Player) AvailablePlayerTypes() []config.PlayerType {
+	var res []config.PlayerType
+	for _, v := range config.Players {
 		if _, ok := p.available[v]; ok {
 			res = append(res, v)
 		}
