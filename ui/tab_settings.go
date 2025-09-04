@@ -45,7 +45,7 @@ var (
 	descriptions = []string{
 		`Maximum number of entries displayed in "History" tab.`,
 		`Preview and select a theme.`,
-		`Choose one of the available backend players (only those found in PATH are displayed): Mpv, FFplay, VLC, MPlayer, MPD. The choice will take effect after a restart.`,
+		"Select a backend player (only those in PATH are shown: Mpv, FFplay, VLC, MPlayer, MPD), or use the experimental Internal player.\nChanges take effect after restart.\n",
 	}
 	ffplayDesc  = "\nFFplay does not allow changing the volume during playback or seeking backward/forward."
 	vlcDesc     = "\nFor VLC, pausing or seeking backward/forward may result in an invalid song title being displayed."

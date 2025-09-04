@@ -53,7 +53,7 @@ func NewPlayer(ctx context.Context, cfg *config.Value) (*Player, error) {
 	vol := cfg.GetVolume()
 	switch cfg.Player {
 	case config.Internal:
-		return newStandalonePlayer(ctx, cfg)
+		p.delegate = internal.New(ctx, clampVolume(vol))
 	case config.Mpv:
 		mpvPlayer, err := mpv.NewMPVSocket(ctx)
 		if err != nil {
@@ -94,14 +94,6 @@ func NewPlayer(ctx context.Context, cfg *config.Value) (*Player, error) {
 	return p, nil
 }
 
-func newStandalonePlayer(ctx context.Context, cfg *config.Value) (*Player, error) {
-	vol := cfg.GetVolume()
-	p := &Player{
-		delegate: internal.New(ctx, clampVolume(vol)),
-	}
-	return p, nil
-}
-
 var errNoPlayerAvailable = errors.New("No available player found. Must have at least one of the following in PATH: mpv, ffplay, vlc.")
 
 func (p *Player) checkAvailablePlayers(cfg *config.Value) error {
@@ -123,7 +115,8 @@ func (p *Player) checkAvailablePlayers(cfg *config.Value) error {
 	if _, ok := p.available[cfg.Player]; !ok {
 		cfg.Player = *firstAvailable
 	}
-	slog.Info("Player.checkAvailablePlayers", "value", cfg.Player)
+	slog.Info("Player.checkAvailablePlayers", "available", p.available)
+	slog.Info("Player.checkAvailablePlayers", "config player", cfg.Player)
 	return nil
 }
 
