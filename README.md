@@ -13,7 +13,7 @@ A stylish TUI radio player making use of [Radio Browser API](https://www.radio-b
   ```
 - ### Clone this repository and build from source.
 
-  Some additional prerequisites are need based on the platform (ex: CGO required for non-Windows), since this project uses <https://github.com/gopxl/beep>, respectively <https://github.com/ebitengine/oto> for the internal player implementation.
+  Some additional prerequisites are needed based on the platform (ex: CGO required for non-Windows), since this project uses <https://github.com/gopxl/beep>, respectively <https://github.com/ebitengine/oto> for the internal player implementation.
 
 - ### Optional third-party backend players:
 
