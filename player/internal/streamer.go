@@ -28,6 +28,7 @@ const (
 	contentTypePls  = "audio/x-scpls"
 	contentTypeMpeg = "audio/mpeg"
 	contentTypeOgg  = "audio/ogg"
+	contentTypeOgg2 = "application/ogg"
 	contentTypeAac  = "audio/aac"
 	contentTypeAacp = "audio/aacp"
 )
@@ -378,7 +379,7 @@ func getDecoder(contentType string) (
 	switch contentType {
 	case contentTypeMpeg:
 		return mp3.Decode, nil
-	case contentTypeOgg:
+	case contentTypeOgg,contentTypeOgg2:
 		return vorbis.Decode, nil
 	case contentTypeAac, contentTypeAacp:
 		return nil, errAACNotAvailable
