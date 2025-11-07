@@ -22,20 +22,35 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: stable
+
       # More assembly might be required: Docker logins, GPG, etc.
       # It all depends on your needs.
-      - name: Install system dependencies
+
+      - name: Install osxcross and Mac SDK
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc libasound2-dev
+          sudo apt-get install -y clang cmake bison curl git pkg-config cpio
+          git clone https://github.com/tpoechtrager/osxcross.git /tmp/osxcross
+          cd /tmp/osxcross
+          # Download and extract a public macOS SDK (e.g. 10.15)
+          curl -L https://github.com/phracker/MacOSX-SDKs/releases/download/10.15/MacOSX10.15.sdk.tar.xz -o tarballs/MacOSX10.15.sdk.tar.xz
+          UNATTENDED=1 ./build.sh
+          echo "::add-path::$(pwd)/target/bin"
+
+      - name: Verify osxcross installation
+        run: o64-clang --version
+
+      - name: Install system dependencies
+        run: sudo apt-get install -y libasound2-dev
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
-          # either 'goreleaser' (default) or 'goreleaser-pro'
           distribution: goreleaser
           # 'latest', 'nightly', or a semver
           version: "~> v2"

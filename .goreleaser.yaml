@@ -1,19 +1,8 @@
-# This is an example .goreleaser.yml file with some sensible defaults.
-# Make sure to check the documentation at https://goreleaser.com
-
-# The lines below are called `modelines`. See `:help modeline`
-# Feel free to remove those if you don't want/need to use them.
-# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
-# vim: set ts=2 sw=2 tw=0 fo=cnqoj
-
 version: 2
 
 before:
   hooks:
-    # You may remove this if you don't use go modules.
     - go mod tidy
-    # you may remove this if you don't need go generate
-    # - go generate ./...
 
 builds:
   - id: linux
@@ -28,41 +17,18 @@ builds:
     gcflags:
       - all=-trimpath
 
-  # - id: linux_arm64
-  #   goos: [linux]
-  #   goarch: [ arm64]
-  #   env:
-  #     - CGO_ENABLED=1
-  #     - CC=aarch64-linux-gnu-gcc
-  #   ldflags:
-  #     - -s -w
-  #     - "-X main.version={{ .Version }}"
-  #   gcflags:
-  #     - all=-trimpath
-
-  # - id: darwin
-  #   goos: [darwin]
-  #   goarch: [amd64]
-  #   env:
-  #     - CGO_ENABLED=1
-  #     - CC=gcc
-  #   ldflags:
-  #     - -s -w
-  #     - "-X main.version={{ .Version }}"
-  #   gcflags:
-  #     - all=-trimpath
-
-  # - id: darwin_arm64
-  #   goos: [darwin]
-  #   goarch: [arm64]
-  #   env:
-  #     - CGO_ENABLED=1
-  #     - CC=aarch64-linux-gnu-gcc
-  #   ldflags:
-  #     - -s -w
-  #     - "-X main.version={{ .Version }}"
-  #   gcflags:
-  #     - all=-trimpath
+  - id: darwin
+    goos: [darwin]
+    goarch: [amd64]
+    env:
+      - CGO_ENABLED=1
+      - CC=o64-clang
+      - CXX=o64-clang++
+    ldflags:
+      - -s -w
+      - "-X main.version={{ .Version }}"
+    gcflags:
+      - all=-trimpath
 
   - id: windows
     goos: [windows]
