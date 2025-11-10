@@ -7,8 +7,12 @@ import (
 	"io"
 	"log"
 	"log/slog"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"path/filepath"
+	"runtime"
+	"runtime/pprof"
 	"time"
 
 	"github.com/dancnb/sonicradio/browser"
@@ -19,15 +23,55 @@ import (
 
 var (
 	version = "0.8.5"
+
+	cpuProfile  = flag.String("cpuprofile", "", "-cpuprofile=<filename>")
+	memProfile  = flag.String("memprofile", "", "-memprofile=<filename>")
+	httpProfile = flag.Bool("httpprofile", false, "-httpprofile")
 )
 
 func main() {
-	run()
+	flag.Parse()
+
+	if cpuProfile != nil && *cpuProfile != "" {
+		f, err := os.Create(fmt.Sprintf("%s_%d", *cpuProfile, time.Now().Unix()))
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer f.Close()
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+
+		run()
+
+	} else if memProfile != nil && *memProfile != "" {
+		f, err := os.Create(fmt.Sprintf("%s_%d", *memProfile, time.Now().Unix()))
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer f.Close()
+
+		runtime.MemProfileRate = 1
+
+		run()
+
+		runtime.GC()
+		if err := pprof.WriteHeapProfile(f); err != nil {
+			log.Fatal("could not write memory profile: ", err)
+		}
+
+	} else if httpProfile != nil && *httpProfile {
+		go func() {
+			log.Println(http.ListenAndServe(":6060", nil))
+		}()
+
+		run()
+
+	} else {
+		run()
+	}
 }
 
 func run() {
-	flag.Parse()
-
 	logWC := createLogger()
 	defer func() {
 		_ = logWC.Close()

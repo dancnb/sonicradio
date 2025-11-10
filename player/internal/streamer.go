@@ -139,12 +139,7 @@ func newBufferedStreamer(
 		return nil, err
 	}
 
-	if bs.bufferSeconds > 0 {
-		readBackTime := time.Duration(bs.bufferSeconds) * time.Second
-		buffLen := bs.format.SampleRate.N(readBackTime)
-		slog.Info("", "bufferSeconds", bs.bufferSeconds, "buffLen", buffLen, "size", float64(buffLen*2*8)/1000000)
-		bs.data = make([][2]float64, buffLen)
-	}
+	initBuffer(bs)
 
 	bs.wg.Add(1)
 	go func() {
@@ -172,6 +167,15 @@ func newBufferedStreamer(
 	speaker.Play(bs.volume)
 
 	return bs, nil
+}
+
+func initBuffer(bs *bufferedStreamer) {
+	if bs.bufferSeconds > 0 {
+		readBackTime := time.Duration(bs.bufferSeconds) * time.Second
+		buffLen := bs.format.SampleRate.N(readBackTime)
+		slog.Info("", "bufferSeconds", bs.bufferSeconds, "buffLen", buffLen, "size", float64(buffLen*2*8)/1000000)
+		bs.data = make([][2]float64, buffLen)
+	}
 }
 
 func (bs *bufferedStreamer) readDecodedSamples(ctx context.Context) {
