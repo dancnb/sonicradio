@@ -22,7 +22,7 @@ import (
 )
 
 var (
-	version = "0.8.5"
+	version = "0.8.8"
 
 	cpuProfile  = flag.String("cpuprofile", "", "-cpuprofile=<filename>")
 	memProfile  = flag.String("memprofile", "", "-memprofile=<filename>")
