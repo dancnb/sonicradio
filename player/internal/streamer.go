@@ -10,7 +10,9 @@ import (
 	"log/slog"
 	"math"
 	"net/http"
+	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gopxl/beep/v2"
@@ -21,9 +23,8 @@ import (
 )
 
 const (
-	defNetworkChunkSize = 4096
-	defBufferChunkSize  = 4096
-	defBufferSize       = 16384
+	networkReadSize = 4096
+	beepReadSize    = 4096
 
 	contentTypePls  = "audio/x-scpls"
 	contentTypeMpeg = "audio/mpeg"
@@ -35,19 +36,40 @@ const (
 
 type bufferedStreamer struct {
 	url   string
-	title string
+	title map[int64]string
+	wg    sync.WaitGroup
 
-	samples chan [2]float64
-	closed  bool
+	ch   chan [2]float64
+	data [][2]float64
+	//
+	// write index: where next decoded sample will be written
+	wx int64
 
-	beepStreamer beep.StreamSeekCloser
-	format       beep.Format
-	ctrl         *beep.Ctrl
-	resampler    *beep.Resampler
+	rbSync sync.Mutex
+	// read back offset relative to write index;
+	// values < 0 means it has remaining data from buffer to play
+	rbx       int
+	streamPos int64
+	done      chan struct{}
+
+	beepStreamer beep.StreamSeekCloser // used for getPositionSeconds
+	format       beep.Format           // used for getPositionSeconds
+	ctrl         *beep.Ctrl            // used for togglePause
 	volume       *effects.Volume
+
+	bufferSeconds int
 }
 
-func newBufferedStreamer(ctx context.Context, url string, volume int) (*bufferedStreamer, error) {
+func newBufferedStreamer(
+	ctx context.Context,
+	url string,
+	volume int,
+	bufferSeconds int,
+) (*bufferedStreamer, error) {
+	log := slog.With("caller", "newBufferedStreamer", "url", url)
+	log.Info("start")
+	defer func() { log.Info("end") }()
+
 	// -- Network read
 	resp, metaInfo, err := openStream(ctx, url)
 	if err != nil {
@@ -74,100 +96,199 @@ func newBufferedStreamer(ctx context.Context, url string, volume int) (*buffered
 		if plsUrl == "" {
 			return nil, fmt.Errorf("could not parse URL from playlist file [%s]", url)
 		}
-		return newBufferedStreamer(ctx, plsUrl, volume)
+		return newBufferedStreamer(ctx, plsUrl, volume, bufferSeconds)
+	}
+
+	bs := &bufferedStreamer{
+		url:           url,
+		title:         make(map[int64]string),
+		ch:            make(chan [2]float64),
+		done:          make(chan struct{}),
+		bufferSeconds: bufferSeconds,
 	}
 
 	audioPipeR, audioPipeW := io.Pipe()
+
 	titleCh := make(chan string, 1)
-	go readStream(ctx, url, audioPipeW, resp.Body, int64(metaInfo.Metaint), titleCh)
-
-	// -- Decode
-	decoderFn, err := getDecoder(metaInfo.ContentType)
-	if err != nil {
-		return nil, err
-	}
-	beepStreamer, format, err := decoderFn(audioPipeR)
-	if err != nil {
-		return nil, err
-	}
-	go func() {
-		<-ctx.Done()
-		slog.With("caller", "newBufferedStreamer", "url", url).
-			Info("===  CANCEL 1 (beepStreamer close) ===")
-		beepStreamer.Close()
-	}()
-	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
-
-	// -- Buffer
-	bufStreamer := &bufferedStreamer{
-		url:          url,
-		samples:      make(chan [2]float64, defBufferSize),
-		beepStreamer: beepStreamer,
-		format:       format,
-	}
-	go bufStreamer.doBuffer(beepStreamer)
 	go func() {
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case t := <-titleCh:
-				bufStreamer.title = t
+				bs.title[bs.streamPos] = t
 			}
 		}
 	}()
 
+	bs.wg.Add(1)
+	go readStream(ctx, &bs.wg, url, audioPipeW, resp.Body, int64(metaInfo.Metaint), titleCh)
+
+	// -- Decode
+	// beep.Decode takes a ReadCloser containing audio data in MP3 format and returns a StreamSeekCloser,
+	// which streams that audio. The Seek method will panic if rc is not io.Seeker.
+	//
+	// Do not close the supplied ReadSeekCloser, instead, use the Close method of the returned
+	// StreamSeekCloser when you want to release the resources.
+	decoderFn, err := getDecoder(metaInfo.ContentType)
+	if err != nil {
+		return nil, err
+	}
+	bs.beepStreamer, bs.format, err = decoderFn(audioPipeR)
+	if err != nil {
+		return nil, err
+	}
+
+	if bs.bufferSeconds > 0 {
+		readBackTime := time.Duration(bs.bufferSeconds) * time.Second
+		buffLen := bs.format.SampleRate.N(readBackTime)
+		slog.Info("", "bufferSeconds", bs.bufferSeconds, "buffLen", buffLen, "size", float64(buffLen*2*8)/1000000)
+		bs.data = make([][2]float64, buffLen)
+	}
+
+	bs.wg.Add(1)
+	go func() {
+		<-ctx.Done()
+		bs.Close()
+		bs.wg.Done()
+		log.Info("===  CANCEL 1 (bufferedStreamer closed) ===")
+	}()
+
+	speaker.Init(bs.format.SampleRate, bs.format.SampleRate.N(time.Second/10))
+
+	// -- Buffer
+	bs.wg.Add(1)
+	go bs.readDecodedSamples(ctx)
+
 	// -- Play
-	bufStreamer.ctrl = &beep.Ctrl{Streamer: bufStreamer, Paused: false}
-	bufStreamer.resampler = beep.ResampleRatio(4, 1, bufStreamer.ctrl)
+	bs.ctrl = &beep.Ctrl{Streamer: bs, Paused: false}
 	expVolume := percentToExponent(float64(volume))
-	bufStreamer.volume = &effects.Volume{
-		Streamer: bufStreamer.resampler,
+	bs.volume = &effects.Volume{
+		Streamer: bs.ctrl,
 		Base:     2,
 		Volume:   expVolume,
 		Silent:   false,
 	}
-	speaker.Play(bufStreamer.volume)
+	speaker.Play(bs.volume)
 
-	return bufStreamer, nil
+	return bs, nil
 }
 
-func (bs *bufferedStreamer) doBuffer(beepStreamer beep.StreamSeekCloser) {
-	log := slog.With("method", "bufferedStreamer.doBuffer", "url", bs.url)
+func (bs *bufferedStreamer) readDecodedSamples(ctx context.Context) {
+	log := slog.With("method", "readDecodedSamples", "url", bs.url)
 	defer func() {
-		log.Info("===  CANCEL 3 (bufStreamer close) ===")
-		bs.Close()
+		close(bs.ch)
+		bs.wg.Done()
+		log.Info("===  CANCEL 2 (bs.wCh closed) ===")
 	}()
 
-	samples := make([][2]float64, defBufferChunkSize)
+	decodedSamples := make([][2]float64, beepReadSize)
 	for {
-		n, more := beepStreamer.Stream(samples)
-		log.Info(fmt.Sprintf("beepStreamer ---> %d samples, more=%v ---> bufferedStreamer", n, more))
+		n, more := bs.beepStreamer.Stream(decodedSamples)
 		if !more {
-			log.Info("===  CANCEL 2 (no more samples in beepStreamer) ===")
-			if err := beepStreamer.Err(); err != nil {
+			log.Info("===  CANCEL 2.1 (no more samples in beepStreamer) ===")
+			if err := bs.beepStreamer.Err(); err != nil {
 				log.Info(fmt.Sprintf("beepStreamer error: %#v", err))
 			}
-			break
+			return
 		}
 		for i := range n {
-			bs.samples <- samples[i]
-			// log.Info(fmt.Sprintf("beepStreamer -> sample %d -> bufferedStreamer", i))
+			select {
+			case <-ctx.Done():
+				log.Info("ctx done")
+				return
+			case bs.ch <- decodedSamples[i]:
+				if bs.bufferSeconds > 0 {
+					wIdx := bs.wx % int64(len(bs.data))
+					bs.data[wIdx] = decodedSamples[i]
+					bs.wx++
+				}
+			}
 		}
 	}
 }
 
+// Stream: while Ctrl is paused, this call is not reached
 func (bs *bufferedStreamer) Stream(samples [][2]float64) (n int, ok bool) {
-	log := slog.With("method", "bufferedStreamer.doBuffer", "url", bs.url)
-	for i := range samples {
-		val, more := <-bs.samples
+	bs.rbSync.Lock()
+	defer bs.rbSync.Unlock()
+
+	log := slog.With("method", "Stream", "url", bs.url)
+
+	i := 0
+
+	if bs.bufferSeconds > 0 {
+		// first check for remaining buffered samples
+		for bs.rbx < 0 && i < len(samples) {
+			select {
+			case <-bs.done:
+				log.Info("===  CANCEL 3.2 (bs.done) ===")
+				return 0, false
+			default:
+				n := int64(len(bs.data))
+				idx := (bs.wx + int64(bs.rbx) + n) % n
+				bs.rbx++
+				//skip empty buffer data
+				if idx >= bs.wx {
+					continue
+				}
+				val := bs.data[idx]
+				samples[i] = val
+				i++
+			}
+		}
+		// filled samples completely from buffered data
+		if i == len(samples) {
+			return i, true
+		}
+	}
+
+	// fill remaining from decoded channel
+	for i < len(samples) {
+		val, more := <-bs.ch
 		if !more {
-			log.Info("===  CANCEL 4 (no more samples in bufferedStreamer) ===")
 			return i, i > 0
 		}
 		samples[i] = val
+		i++
 	}
-	return len(samples), true
+
+	return len(samples), len(samples) > 0
+}
+
+func (bs *bufferedStreamer) seekSec(amtSec int) {
+	if bs.bufferSeconds == 0 {
+		return
+	}
+
+	bs.rbSync.Lock()
+	defer bs.rbSync.Unlock()
+
+	log := slog.With("method", "bufferedStreamer.seekSec", "url", bs.url)
+
+	pos, delta := bs.rbx, 0
+	log.Info("", "currPos", pos)
+	if amtSec > 0 {
+		delta = bs.secondsToSamples(amtSec)
+	} else {
+		delta = -bs.secondsToSamples(-amtSec)
+	}
+	pos += delta
+	log.Info("", "newPos unclamped", pos)
+	// clamp the position
+	pos = max(pos, -len(bs.data))
+	pos = min(pos, 0)
+	log.Info("", "newPos clamped", pos)
+
+	bs.rbx = pos
+}
+
+func (bs *bufferedStreamer) secondsToSamples(sec int) int {
+	return bs.format.SampleRate.N(time.Second * time.Duration(sec))
+}
+
+func (bs *bufferedStreamer) samplesToSeconds(s int) int {
+	return int(bs.format.SampleRate.D(s).Round(time.Second).Seconds())
 }
 
 func (bs *bufferedStreamer) togglePause() {
@@ -179,51 +300,75 @@ func (bs *bufferedStreamer) togglePause() {
 	speaker.Unlock()
 }
 
+func (bs *bufferedStreamer) getTitle(posSec int64) string {
+	ts := make([]int64, len(bs.title))
+	i := 0
+	for k := range bs.title {
+		ts[i] = k
+		i++
+	}
+	slices.Sort(ts)
+	for i := len(ts) - 1; i >= 0; i-- {
+		if ts[i] > posSec {
+			continue
+		}
+		return bs.title[ts[i]]
+	}
+	return ""
+}
+
 func (bs *bufferedStreamer) getPositionSeconds() *int64 {
 	if bs == nil {
 		return nil
 	}
+
+	// bs.rbSync.Lock()
+	// defer bs.rbSync.Unlock()
+
+	if bs.rbx == 0 {
+		bs.streamPos = bs.getStreamPosition()
+		return &bs.streamPos
+	}
+
+	backSec := bs.samplesToSeconds(-bs.rbx)
+	backPos := bs.streamPos - int64(backSec)
+	backPos = max(0, backPos)
+	slog.Info("", "stream position", bs.streamPos, "back position", backPos)
+	return &backPos
+}
+
+func (bs *bufferedStreamer) getStreamPosition() int64 {
 	speaker.Lock()
 	pos := bs.beepStreamer.Position()
 	posD := bs.format.SampleRate.D(pos)
 	speaker.Unlock()
 	posSec := int64(posD.Round(time.Second).Seconds())
-	slog.Info("", "pos", pos, "posD", posD)
-	return &posSec
+	slog.Info("", "stream position", posSec)
+	return posSec
 }
+
 func (bs *bufferedStreamer) setVolumeFromPercentage(value int) {
 	if bs == nil {
 		return
 	}
-	log := slog.With("method", "bufferedStreamer.setVolumeFromPercentage")
 	speaker.Lock()
 	expValue := percentToExponent(float64(value))
 	bs.volume.Volume = expValue
 	speaker.Unlock()
-	log.Info("", "perc", value, "exp", expValue)
-}
-
-func percentToExponent(p float64) float64 {
-	minExp := -10.0
-	curve := 0.5
-	if p <= 0 {
-		return minExp
-	}
-	if p >= 100 {
-		return 0
-	}
-	n := p / 100.0
-	adjusted := math.Pow(n, curve)
-	return (1.0 - adjusted) * minExp
 }
 
 func (bs *bufferedStreamer) Err() error { return nil }
 
-func (bs *bufferedStreamer) Close() {
-	if !bs.closed {
-		close(bs.samples)
-		bs.closed = true
+func (bs *bufferedStreamer) Close() error {
+	close(bs.done)
+
+	if bs.beepStreamer == nil {
+		return nil
 	}
+	if err := bs.beepStreamer.Close(); err != nil {
+		return fmt.Errorf("beepStreamer close err: %w", err)
+	}
+	return nil
 }
 
 // metaInfo contains icy headers.  Example(https://icecast.walmradio.com:8443/otr_opus):
@@ -264,6 +409,15 @@ func openStream(
 	metaInfo metaInfo,
 	err error,
 ) {
+	log := slog.With("caller", "openStream")
+	log.Info("start")
+	defer func() {
+		log.Info("end")
+		if err != nil {
+			log.Info(fmt.Sprintf("end err=%v", err))
+		}
+	}()
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return
@@ -297,6 +451,7 @@ func openStream(
 
 func readStream(
 	ctx context.Context,
+	wg *sync.WaitGroup,
 	url string,
 	wc io.WriteCloser,
 	respBody io.ReadCloser,
@@ -304,34 +459,34 @@ func readStream(
 	titleCh chan string,
 ) {
 	log := slog.With("caller", "readStream", "url", url)
-	bufReader := bufio.NewReader(respBody)
-
+	log.Info("start")
 	defer func() {
 		err := respBody.Close()
 		log.Info(fmt.Sprintf("http response body close err: %#v", err))
 		err = wc.Close()
 		log.Info(fmt.Sprintf("audio pipe writer body close err: %#v", err))
 		close(titleCh)
+		wg.Done()
+		log.Info("end")
 	}()
 
 	chunkByteSize := metaInt
 	if chunkByteSize == 0 {
-		chunkByteSize = defNetworkChunkSize
+		chunkByteSize = networkReadSize
 	}
-
+	bufReader := bufio.NewReader(respBody)
 	for {
 		select {
 		case <-ctx.Done():
-			log.Info("read stream cancelled")
+			log.Info("ctx cancelled")
 			return
 
 		default:
-			n, err := io.CopyN(wc, bufReader, chunkByteSize)
+			_, err := io.CopyN(wc, bufReader, chunkByteSize)
 			if err != nil {
 				log.Error(fmt.Sprintf("read from stream audio data err: %v", err.Error()))
 				return
 			}
-			log.Info(fmt.Sprintf("network ---> copied %d bytes ---> audio pipe (beepStreamer)", n))
 			if metaInt == 0 {
 				continue
 			}
@@ -379,7 +534,7 @@ func getDecoder(contentType string) (
 	switch contentType {
 	case contentTypeMpeg:
 		return mp3.Decode, nil
-	case contentTypeOgg,contentTypeOgg2:
+	case contentTypeOgg, contentTypeOgg2:
 		return vorbis.Decode, nil
 	case contentTypeAac, contentTypeAacp:
 		return nil, errAACNotAvailable
@@ -388,4 +543,18 @@ func getDecoder(contentType string) (
 	default:
 		return nil, fmt.Errorf("Stream content-type not supported: %s", contentType)
 	}
+}
+
+func percentToExponent(p float64) float64 {
+	minExp := -10.0
+	curve := 0.5
+	if p <= 0 {
+		return minExp
+	}
+	if p >= 100 {
+		return 0
+	}
+	n := p / 100.0
+	adjusted := math.Pow(n, curve)
+	return (1.0 - adjusted) * minExp
 }

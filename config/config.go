@@ -39,6 +39,8 @@ const (
 
 	DefMpdHost = ""
 	DefMpdPort = 6600
+
+	DefInternalBufferSeconds = 0
 )
 
 type Value struct {
@@ -54,12 +56,18 @@ type Value struct {
 	MpdPassword    *string    `json:"mpdPassword,omitempty"`
 	mpdEnvPassword *string    `json:"-"`
 
+	Internal InternalPlayer `json:"internal"`
+
 	historyMtx     sync.Mutex          `json:"-"`
 	History        []HistoryEntry      `json:"history,omitempty"`
 	HistorySaveMax *int                `json:"historySaveMax,omitempty"`
 	HistoryChan    chan []HistoryEntry `json:"-"`
 
 	AutoplayFavorite string `json:"autoplayFavorite"`
+}
+
+type InternalPlayer struct {
+	BufferSeconds int `json:"bufferSeconds"`
 }
 
 type PlayerType uint8

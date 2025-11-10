@@ -36,6 +36,7 @@ const (
 	historySaveMaxIdx settingsInputIdx = iota
 	themesIdx
 	playerTypeIdx
+	internalBufferSecIdx
 	mpdHostIdx
 	mpdPortIdx
 	mpdPassIdx
@@ -46,6 +47,7 @@ var (
 		`Maximum number of entries displayed in "History" tab.`,
 		`Preview and select a theme.`,
 		"Select a backend player (only those in PATH are shown: Mpv, FFplay, VLC, MPlayer, MPD), or use the experimental Internal player.\nChanges take effect after restart.\n",
+		"Duration in seconds of the internal player's buffered samples (up to 5 minutes). Set to 0 to disable buffering and seeking.\nTakes effect for the next played station.",
 	}
 	ffplayDesc  = "\nFFplay does not allow changing the volume during playback or seeking backward/forward."
 	vlcDesc     = "\nFor VLC, pausing or seeking backward/forward may result in an invalid song title being displayed."
@@ -97,6 +99,10 @@ func newSettingsTab(
 		slog.Info("change player type", "i", i, "new type", cfg.Player.String())
 	}
 	playerDesc := getPlayerDescription(availablePlayerTypes)
+
+	//internal player settings
+	internalBufferSec := s.NewInputModel("Internal buffer (seconds)", "0", nil, nil, nil, bufferDurationValidator)
+
 	inputs := []*FormElement{
 		NewFormElement(
 			WithTextInput(&historySaveMax),
@@ -107,6 +113,9 @@ func newSettingsTab(
 		NewFormElement(
 			WithOptionList(&playerList),
 			WithDescription(playerDesc)),
+		NewFormElement(
+			WithTextInput(&internalBufferSec),
+			WithDescription(descriptions[3])),
 	}
 	if slices.Contains(availablePlayerTypes, config.MPD) {
 		mpdHost := s.NewInputModel("MPD hostname", "127.0.0.1", nil, nil, nil, nil)
@@ -171,7 +180,9 @@ func getPlayerDescription(playerTypes []config.PlayerType) string {
 func (s *settingsTab) loadConfig() {
 	s.inputs[historySaveMaxIdx].SetValue(fmt.Sprintf("%d", *s.cfg.HistorySaveMax))
 
-	if len(s.inputs) > int(playerTypeIdx)+1 {
+	s.inputs[internalBufferSecIdx].SetValue(fmt.Sprintf("%d", s.cfg.Internal.BufferSeconds))
+
+	if len(s.inputs) > int(internalBufferSecIdx)+1 {
 		s.inputs[mpdHostIdx].SetValue(s.cfg.MpdHost)
 		s.inputs[mpdPortIdx].SetValue(fmt.Sprintf("%d", s.cfg.MpdPort))
 		if s.cfg.MpdPassword != nil {
@@ -218,7 +229,15 @@ func (s *settingsTab) updateConfig() {
 		s.cfg.HistorySaveMax = &intVal
 	}
 
-	if len(s.inputs) > int(playerTypeIdx)+1 {
+	internalBufferSecVal := s.inputs[internalBufferSecIdx].Value()
+	bIntVal, err := strconv.Atoi(internalBufferSecVal)
+	if err != nil {
+		log.Info(fmt.Sprintf("invalid internalBufferSec input value: %v", err))
+	} else {
+		s.cfg.Internal.BufferSeconds = bIntVal
+	}
+
+	if len(s.inputs) > int(internalBufferSecIdx)+1 {
 		mpdHost := strings.TrimSpace(s.inputs[mpdHostIdx].Value())
 		s.cfg.MpdHost = mpdHost
 
@@ -330,7 +349,11 @@ func (s *settingsTab) resetSettings() {
 	val := strconv.Itoa(defHistorySaveMax)
 	s.inputs[historySaveMaxIdx].SetValue(val)
 
-	if len(s.inputs) > int(playerTypeIdx)+1 {
+	s.cfg.Internal.BufferSeconds = config.DefInternalBufferSeconds
+	bVal := strconv.Itoa(config.DefInternalBufferSeconds)
+	s.inputs[internalBufferSecIdx].SetValue(bVal)
+
+	if len(s.inputs) > int(internalBufferSecIdx)+1 {
 		s.cfg.MpdHost = config.DefMpdHost
 		s.inputs[mpdHostIdx].SetValue(config.DefMpdHost)
 
@@ -491,4 +514,15 @@ func (k *settingsKeymap) FullHelp() [][]key.Binding {
 		{k.prevTab, k.nextTab, k.favoritesTab, k.browseTab, k.historyTab},
 		{k.quit, k.closeFullHelp},
 	}
+}
+
+func bufferDurationValidator(s string) error {
+	val, err := strconv.Atoi(s)
+	if err != nil {
+		return err
+	}
+	if val < 0 || val > 300 {
+		return fmt.Errorf("buffer duration out of bonds: %d", val)
+	}
+	return nil
 }
