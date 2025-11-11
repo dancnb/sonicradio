@@ -46,7 +46,7 @@ Available options:
 | Key(s)      |                Action |
 | :---------- | --------------------: |
 | ↑/k         |                    up |
-| │↓/j        |                  down |
+| ↓/j         |                  down |
 | ctrl+f/pgdn |             next page |
 | ctrl+b/pgup |             prev page |
 | g/home      |           go to start |
