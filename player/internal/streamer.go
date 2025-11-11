@@ -26,12 +26,13 @@ const (
 	networkReadSize = 4096
 	beepReadSize    = 4096
 
-	contentTypePls  = "audio/x-scpls"
-	contentTypeMpeg = "audio/mpeg"
-	contentTypeOgg  = "audio/ogg"
-	contentTypeOgg2 = "application/ogg"
-	contentTypeAac  = "audio/aac"
-	contentTypeAacp = "audio/aacp"
+	contentTypePls   = "audio/x-scpls"
+	contentTypeMpeg  = "audio/mpeg"
+	contentTypeMpeg2 = "audio/x-mpegurl"
+	contentTypeOgg   = "audio/ogg"
+	contentTypeOgg2  = "application/ogg"
+	contentTypeAac   = "audio/aac"
+	contentTypeAacp  = "audio/aacp"
 )
 
 type bufferedStreamer struct {
@@ -56,15 +57,13 @@ type bufferedStreamer struct {
 	format       beep.Format           // used for getPositionSeconds
 	ctrl         *beep.Ctrl            // used for togglePause
 	volume       *effects.Volume
-
-	bufferSeconds int
 }
 
 func newBufferedStreamer(
 	ctx context.Context,
 	url string,
 	volume int,
-	bufferSeconds int,
+	buffer [][2]float64,
 ) (*bufferedStreamer, error) {
 	log := slog.With("caller", "newBufferedStreamer", "url", url)
 	log.Info("start")
@@ -96,15 +95,15 @@ func newBufferedStreamer(
 		if plsUrl == "" {
 			return nil, fmt.Errorf("could not parse URL from playlist file [%s]", url)
 		}
-		return newBufferedStreamer(ctx, plsUrl, volume, bufferSeconds)
+		return newBufferedStreamer(ctx, plsUrl, volume, buffer)
 	}
 
 	bs := &bufferedStreamer{
-		url:           url,
-		title:         make(map[int64]string),
-		ch:            make(chan [2]float64),
-		done:          make(chan struct{}),
-		bufferSeconds: bufferSeconds,
+		url:   url,
+		title: make(map[int64]string),
+		ch:    make(chan [2]float64),
+		done:  make(chan struct{}),
+		data:  buffer,
 	}
 
 	audioPipeR, audioPipeW := io.Pipe()
@@ -138,8 +137,7 @@ func newBufferedStreamer(
 	if err != nil {
 		return nil, err
 	}
-
-	initBuffer(bs)
+	slog.Info("", "sampleRate", bs.format.SampleRate)
 
 	bs.wg.Add(1)
 	go func() {
@@ -169,15 +167,6 @@ func newBufferedStreamer(
 	return bs, nil
 }
 
-func initBuffer(bs *bufferedStreamer) {
-	if bs.bufferSeconds > 0 {
-		readBackTime := time.Duration(bs.bufferSeconds) * time.Second
-		buffLen := bs.format.SampleRate.N(readBackTime)
-		slog.Info("", "bufferSeconds", bs.bufferSeconds, "buffLen", buffLen, "size", float64(buffLen*2*8)/1000000)
-		bs.data = make([][2]float64, buffLen)
-	}
-}
-
 func (bs *bufferedStreamer) readDecodedSamples(ctx context.Context) {
 	log := slog.With("method", "readDecodedSamples", "url", bs.url)
 	defer func() {
@@ -202,7 +191,7 @@ func (bs *bufferedStreamer) readDecodedSamples(ctx context.Context) {
 				log.Info("ctx done")
 				return
 			case bs.ch <- decodedSamples[i]:
-				if bs.bufferSeconds > 0 {
+				if len(bs.data) > 0 {
 					wIdx := bs.wx % int64(len(bs.data))
 					bs.data[wIdx] = decodedSamples[i]
 					bs.wx++
@@ -221,7 +210,7 @@ func (bs *bufferedStreamer) Stream(samples [][2]float64) (n int, ok bool) {
 
 	i := 0
 
-	if bs.bufferSeconds > 0 {
+	if len(bs.data) > 0 {
 		// first check for remaining buffered samples
 		for bs.rbx < 0 && i < len(samples) {
 			select {
@@ -261,7 +250,7 @@ func (bs *bufferedStreamer) Stream(samples [][2]float64) (n int, ok bool) {
 }
 
 func (bs *bufferedStreamer) seekSec(amtSec int) {
-	if bs.bufferSeconds == 0 {
+	if len(bs.data) == 0 {
 		return
 	}
 
@@ -536,7 +525,7 @@ func getDecoder(contentType string) (
 	error,
 ) {
 	switch contentType {
-	case contentTypeMpeg:
+	case contentTypeMpeg, contentTypeMpeg2:
 		return mp3.Decode, nil
 	case contentTypeOgg, contentTypeOgg2:
 		return vorbis.Decode, nil

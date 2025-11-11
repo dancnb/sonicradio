@@ -47,7 +47,7 @@ var (
 		`Maximum number of entries displayed in "History" tab.`,
 		`Preview and select a theme.`,
 		"Select a backend player (only those in PATH are shown: Mpv, FFplay, VLC, MPlayer, MPD), or use the experimental Internal player.\nChanges take effect after restart.\n",
-		"Duration in seconds of the internal player's buffered samples (up to 5 minutes, but will increase memory usage). Set to 0 to disable buffering and seeking.\nTakes effect for the next played station.",
+		"Duration in seconds of the internal player's buffered samples (up to 5 minutes, but will increase memory usage). Set to 0 to disable buffering and seeking.\nChanges take effect after restart.",
 	}
 	ffplayDesc  = "\nFFplay does not allow changing the volume during playback or seeking backward/forward."
 	vlcDesc     = "\nFor VLC, pausing or seeking backward/forward may result in an invalid song title being displayed."

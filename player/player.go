@@ -53,7 +53,7 @@ func NewPlayer(ctx context.Context, cfg *config.Value) (*Player, error) {
 	vol := cfg.GetVolume()
 	switch cfg.Player {
 	case config.Internal:
-		p.delegate = internal.New(ctx, clampVolume(vol), &cfg.Internal)
+		p.delegate = internal.New(ctx, clampVolume(vol), cfg.Internal)
 	case config.Mpv:
 		mpvPlayer, err := mpv.NewMPVSocket(ctx)
 		if err != nil {
