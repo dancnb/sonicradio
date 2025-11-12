@@ -72,13 +72,6 @@ Available options:
 | ?           |           toggle help |
 | q           |                  quit |
 
-## TODO
-
-- [x] Search stations section
-- [x] Display rich station information
-- [x] Playback history tab
-- [x] Settings tab
-- [x] Standalone mode
 
 ## License
 
