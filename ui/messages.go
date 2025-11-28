@@ -50,6 +50,11 @@ type (
 		cancelled bool
 	}
 
+	customStationRespMsg struct {
+		station   *smodel.Station
+		cancelled bool
+	}
+
 	toggleFavoriteMsg struct {
 		added   bool
 		station smodel.Station

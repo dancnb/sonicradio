@@ -8,6 +8,10 @@ func newListKeymap() listKeymap {
 			key.WithKeys("s"),
 			key.WithHelp("s", "search"),
 		),
+		addCustomFavorite: key.NewBinding(
+			key.WithKeys("A"),
+			key.WithHelp("A", "add custom favorite"),
+		),
 		toNowPlaying: key.NewBinding(
 			key.WithKeys("esc"),
 			key.WithHelp("esc", "go to now playing"),
@@ -61,21 +65,23 @@ func newListKeymap() listKeymap {
 }
 
 type listKeymap struct {
-	search       key.Binding
-	toNowPlaying key.Binding
-	nextTab      key.Binding
-	prevTab      key.Binding
-	favoritesTab key.Binding
-	browseTab    key.Binding
-	historyTab   key.Binding
-	settingsTab  key.Binding
-	stationView  key.Binding
-	digits       []key.Binding
-	digitHelp    key.Binding
+	search            key.Binding
+	addCustomFavorite key.Binding
+	toNowPlaying      key.Binding
+	nextTab           key.Binding
+	prevTab           key.Binding
+	favoritesTab      key.Binding
+	browseTab         key.Binding
+	historyTab        key.Binding
+	settingsTab       key.Binding
+	stationView       key.Binding
+	digits            []key.Binding
+	digitHelp         key.Binding
 }
 
 func (k *listKeymap) setEnabled(v bool) {
 	k.search.SetEnabled(v)
+	k.addCustomFavorite.SetEnabled(v)
 	k.toNowPlaying.SetEnabled(v)
 	k.nextTab.SetEnabled(v)
 	k.prevTab.SetEnabled(v)

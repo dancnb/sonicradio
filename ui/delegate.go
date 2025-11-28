@@ -215,7 +215,9 @@ func (d *stationDelegate) playCmd(s model.Station) tea.Cmd {
 		defer d.playingMtx.Unlock()
 
 		log.Info("playing", "id", s.Stationuuid)
-		go d.increaseCounter(s)
+		if !s.IsCustom {
+			go d.increaseCounter(s)
+		}
 
 		err := d.player.Play(s.URL)
 		if err != nil {

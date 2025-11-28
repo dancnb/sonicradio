@@ -171,6 +171,10 @@ func (v *Value) SetFavorites(l []model.Station) {
 	v.Favorites.list = l
 }
 
+func (v *Value) AddFavorite(s model.Station) {
+	v.Favorites.list = append(v.Favorites.list, s)
+}
+
 func (v *Value) FavoritesCacheEnabled() bool {
 	return !v.Favorites.RefreshOnStart
 }

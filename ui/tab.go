@@ -53,6 +53,7 @@ type stationTab interface {
 	filteringTab
 	Stations() *stationsTabBase
 	IsSearchEnabled() bool
+	IsCustomStationEnabled() bool
 	IsInfoEnabled() bool
 	createList(delegate *stationDelegate, width int, height int) list.Model
 }
@@ -134,6 +135,10 @@ func (t *stationsTabBase) toNowPlaying(m *Model) {
 }
 
 func (t *stationsTabBase) IsSearchEnabled() bool {
+	return false
+}
+
+func (t *stationsTabBase) IsCustomStationEnabled() bool {
 	return false
 }
 

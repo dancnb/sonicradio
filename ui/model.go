@@ -70,7 +70,7 @@ func newModel(ctx context.Context, cfg *config.Value, b *browser.API, p *player.
 		volumeBar: getVolumeBar(style.GetSecondColor()),
 	}
 	m.tabs = []uiTab{
-		newFavoritesTab(infoModel, style),
+		newFavoritesTab(cfg, infoModel, b, style),
 		newBrowseTab(ctx, b, infoModel, style),
 		newHistoryTab(ctx, cfg, style),
 		newSettingsTab(ctx, cfg, style, p.AvailablePlayerTypes(), m.changeTheme),
@@ -223,6 +223,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case topStationsRespMsg, searchRespMsg:
 		return m.tabs[browseTabIx].Update(m, msg)
 
+	case customStationRespMsg:
+		return m.tabs[favoriteTabIx].Update(m, msg)
+
 	case favoritesStationRespMsg:
 		return m.tabs[favoriteTabIx].Update(m, msg)
 
@@ -250,7 +253,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		} else if activeTab, ok := activeTab.(filteringTab); ok && activeTab.IsFiltering() {
 			break
-		} else if activeTab, ok := activeTab.(stationTab); ok && (activeTab.IsSearchEnabled() || activeTab.IsFiltering()) {
+		} else if activeTab, ok := activeTab.(stationTab); ok &&
+			(activeTab.IsSearchEnabled() || activeTab.IsFiltering() || activeTab.IsCustomStationEnabled()) {
 			break
 		}
 
@@ -625,6 +629,13 @@ func (m *Model) changeTheme(themeIdx int) {
 					input.PromptStyle = m.style.PromptStyle
 				}
 				browse.searchModel.help.Styles = helpStyle
+			} else if favorites, ok := t.(*favoritesTab); ok {
+				for iIdx := range favorites.customStationModel.textInputs {
+					input := favorites.customStationModel.textInputs[iIdx].TextInput()
+					m.style.TextInputSyle(input, input.Prompt, input.Placeholder)
+					input.PromptStyle = m.style.PromptStyle
+				}
+				favorites.customStationModel.help.Styles = helpStyle
 			}
 
 		} else if ht, ok := m.tabs[i].(*historyTab); ok {
@@ -661,7 +672,7 @@ func trapSignal(p *tea.Program) {
 func logTeaMsg(msg tea.Msg, tag string) {
 	log := slog.With("method", tag)
 	switch msg.(type) {
-	case favoritesStationRespMsg, topStationsRespMsg, searchRespMsg, toggleInfoMsg:
+	case favoritesStationRespMsg, topStationsRespMsg, searchRespMsg, customStationRespMsg, toggleInfoMsg:
 		log.Info("tea.Msg", "type", fmt.Sprintf("%T", msg))
 	case cursor.BlinkMsg, spinner.TickMsg, list.FilterMatchesMsg:
 		break
