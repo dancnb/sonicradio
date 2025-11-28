@@ -19,17 +19,17 @@ type searchModel struct {
 
 	style *Style
 
-	browser   *browser.Api
+	browser   *browser.API
 	countries []string
 	languages []string
 
-	inputs []FormElement
-	idx    inputIdx
+	textInputs []FormElement
+	idx        inputIdx
 
 	orderOptions OptionList
 	oIdx         orderIx
 
-	reverse bool
+	reverse FormElement
 
 	keymap searchKeymap
 	help   help.Model
@@ -92,7 +92,7 @@ var orderView = []OptionValue{
 	{IdxView: 0, NameView: "Random           "},
 }
 
-func newSearchModel(ctx context.Context, browser *browser.Api, s *Style) *searchModel {
+func newSearchModel(ctx context.Context, browser *browser.API, s *Style) *searchModel {
 	k := newSearchKeymap()
 	inputs := []textinput.Model{
 		s.NewInputModel("Name          ", "leave empty for all", &k.prevSugg, &k.nextSugg, &k.acceptSugg, nil),
@@ -112,13 +112,15 @@ func newSearchModel(ctx context.Context, browser *browser.Api, s *Style) *search
 
 	orderOpts := NewOptionList("Order by", orderView, 0, s)
 	orderOpts.SetQuick(true)
+	reverseCheckbox := NewFormElement(WithCheckbox(NewCheckbox("Reverse       ", true, s)))
 	sm := &searchModel{
 		browser:      browser,
 		keymap:       k,
 		help:         h,
-		inputs:       formElems,
+		textInputs:   formElems,
 		orderOptions: orderOpts,
 		style:        s,
+		reverse:      *reverseCheckbox,
 	}
 	go sm.getSuggestions()
 	return sm
@@ -130,8 +132,8 @@ func (s *searchModel) getSuggestions() {
 		for i := range countries {
 			s.countries = append(s.countries, countries[i].Name)
 		}
-		s.inputs[country].TextInput().ShowSuggestions = true
-		s.inputs[country].TextInput().SetSuggestions(s.countries)
+		s.textInputs[country].TextInput().ShowSuggestions = true
+		s.textInputs[country].TextInput().SetSuggestions(s.countries)
 	}
 
 	langs, err := s.browser.GetLanguages()
@@ -139,8 +141,8 @@ func (s *searchModel) getSuggestions() {
 		for i := range langs {
 			s.languages = append(s.languages, langs[i].Name)
 		}
-		s.inputs[language].TextInput().ShowSuggestions = true
-		s.inputs[language].TextInput().SetSuggestions(s.languages)
+		s.textInputs[language].TextInput().ShowSuggestions = true
+		s.textInputs[language].TextInput().SetSuggestions(s.languages)
 	}
 }
 
@@ -148,7 +150,7 @@ func (s *searchModel) Init() tea.Cmd {
 	s.setEnabled(true)
 	s.keymap.prevInput.SetHelp("↑/ctrl+k", "prev input")
 	s.keymap.nextInput.SetHelp("↓/ctrl+j", "next input")
-	return s.inputs[0].Focus()
+	return s.textInputs[0].Focus()
 }
 
 func (s *searchModel) setSize(width, height int) {
@@ -166,16 +168,16 @@ func (s *searchModel) isEnabled() bool {
 func (s *searchModel) setEnabled(v bool) {
 	s.enabled = v
 	s.idx = name
-	for i := range s.inputs {
-		s.inputs[i].Blur()
-		s.inputs[i].TextInput().Reset()
+	for i := range s.textInputs {
+		s.textInputs[i].Blur()
+		s.textInputs[i].TextInput().Reset()
 	}
-	s.inputs[limit].SetValue(fmt.Sprintf("%d", browser.DefLimit))
+	s.textInputs[limit].SetValue(fmt.Sprintf("%d", browser.DefLimit))
 	if !v {
 		s.orderOptions.SetIdx(0)
 	}
 	s.oIdx = orderVotes
-	s.reverse = true
+	s.reverse.SetValue(true)
 	showAll := false
 	s.help.ShowAll = showAll
 	s.keymap.setEnable(v, showAll)
@@ -226,7 +228,7 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return s, tea.Batch(cmds...)
 
 		case key.Matches(msg, s.keymap.reverse):
-			s.reverse = !s.reverse
+			s.reverse.Checkbox().Toggle()
 
 		case key.Matches(msg, s.keymap.cancel):
 			return s, func() tea.Msg {
@@ -239,16 +241,16 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				defer s.setEnabled(false)
 
 				params := browser.DefaultSearchParams()
-				params.Name = strings.TrimSpace(s.inputs[name].Value())
-				params.TagList = strings.TrimSpace(s.inputs[tags].Value())
-				params.Country = strings.Title(strings.TrimSpace(s.inputs[country].Value()))
-				params.Language = strings.TrimSpace(s.inputs[language].Value())
-				limit, err := strconv.Atoi(strings.TrimSpace(s.inputs[limit].Value()))
+				params.Name = strings.TrimSpace(s.textInputs[name].Value())
+				params.TagList = strings.TrimSpace(s.textInputs[tags].Value())
+				params.Country = strings.Title(strings.TrimSpace(s.textInputs[country].Value()))
+				params.Language = strings.TrimSpace(s.textInputs[language].Value())
+				limit, err := strconv.Atoi(strings.TrimSpace(s.textInputs[limit].Value()))
 				if err == nil {
 					params.Limit = limit
 				}
 				params.Order = s.oIdx.toSearchOrder()
-				params.Reverse = s.reverse
+				params.Reverse = s.reverse.Checkbox().Value()
 
 				stations, err := s.browser.Search(params)
 				res := searchRespMsg{stations: stations}
@@ -261,12 +263,12 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case key.Matches(msg, s.keymap.nextInput):
-			if msg.String() == "tab" && strings.TrimSpace(s.inputs[s.idx].Value()) != "" && s.inputs[s.idx].TextInput().ShowSuggestions {
-				s.inputs[s.idx].SetValue(s.inputs[s.idx].TextInput().CurrentSuggestion())
-				s.inputs[s.idx].TextInput().CursorEnd()
+			if msg.String() == "tab" && strings.TrimSpace(s.textInputs[s.idx].Value()) != "" && s.textInputs[s.idx].TextInput().ShowSuggestions {
+				s.textInputs[s.idx].SetValue(s.textInputs[s.idx].TextInput().CurrentSuggestion())
+				s.textInputs[s.idx].TextInput().CursorEnd()
 			}
 			s.idx++
-			s.idx = s.idx % inputIdx(len(s.inputs))
+			s.idx = s.idx % inputIdx(len(s.textInputs))
 			cmds = s.updateInputs(cmds)
 		case key.Matches(msg, s.keymap.prevInput):
 			if s.idx == 0 {
@@ -277,10 +279,10 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	for i := range s.inputs {
+	for i := range s.textInputs {
 		var cmd tea.Cmd
-		fEl, cmd := s.inputs[i].Update(msg)
-		s.inputs[i] = *fEl
+		fEl, cmd := s.textInputs[i].Update(msg)
+		s.textInputs[i] = *fEl
 		cmds = append(cmds, cmd)
 	}
 
@@ -288,20 +290,20 @@ func (s *searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (s *searchModel) updateInputs(cmds []tea.Cmd) []tea.Cmd {
-	for i := range s.inputs {
+	for i := range s.textInputs {
 		if !s.orderOptions.IsActive() && i == int(s.idx) {
-			cmds = append(cmds, s.inputs[i].Focus())
+			cmds = append(cmds, s.textInputs[i].Focus())
 			continue
 		}
-		s.inputs[i].Blur()
+		s.textInputs[i].Blur()
 	}
 	return cmds
 }
 
 func (s *searchModel) View() string {
 	var b strings.Builder
-	for i := range s.inputs {
-		b.WriteString(s.inputs[i].View())
+	for i := range s.textInputs {
+		b.WriteString(s.textInputs[i].View())
 		b.WriteRune('\n')
 	}
 	b.WriteRune('\n')
@@ -310,12 +312,7 @@ func (s *searchModel) View() string {
 	b.WriteRune('\n')
 	b.WriteRune('\n')
 
-	b.WriteString(s.style.PromptStyle.Render(PadFieldName("Reverse       ", nil)))
-	rev := "off"
-	if s.reverse {
-		rev = "on"
-	}
-	b.WriteString(s.style.PrimaryColorStyle.Render(rev))
+	b.WriteString(s.reverse.View())
 
 	availHeight := s.height
 	var help string

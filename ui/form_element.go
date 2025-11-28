@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"strconv"
+
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -11,6 +13,8 @@ type FormElement struct {
 	inputLastVal string
 
 	optionList *OptionList
+
+	checkbox *Checkbox
 
 	description string
 }
@@ -35,6 +39,12 @@ func WithOptionList(o *OptionList) FormElementOpt {
 	}
 }
 
+func WithCheckbox(c *Checkbox) FormElementOpt {
+	return func(f *FormElement) {
+		f.checkbox = c
+	}
+}
+
 func NewFormElement(opts ...FormElementOpt) *FormElement {
 	f := &FormElement{}
 	for _, opt := range opts {
@@ -45,6 +55,10 @@ func NewFormElement(opts ...FormElementOpt) *FormElement {
 
 func (e *FormElement) TextInput() *textinput.Model {
 	return e.input
+}
+
+func (e *FormElement) Checkbox() *Checkbox {
+	return e.checkbox
 }
 
 func (e *FormElement) Update(msg tea.Msg) (*FormElement, tea.Cmd) {
@@ -65,6 +79,10 @@ func (e *FormElement) Update(msg tea.Msg) (*FormElement, tea.Cmd) {
 		var opt tea.Model
 		opt, cmd = e.optionList.Update(msg)
 		e.optionList = opt.(*OptionList)
+	case e.checkbox != nil:
+		var c tea.Model
+		c, cmd = e.checkbox.Update(msg)
+		e.checkbox = c.(*Checkbox)
 	}
 	return e, cmd
 }
@@ -79,6 +97,8 @@ func (e *FormElement) Focus() tea.Cmd {
 		cmd = e.input.Focus()
 	case e.optionList != nil:
 		e.optionList.SetFocused(true)
+	case e.checkbox != nil:
+		e.checkbox.SetFocused(true)
 	}
 	return cmd
 }
@@ -92,6 +112,8 @@ func (e *FormElement) SetActive() {
 		break
 	case e.optionList != nil:
 		e.optionList.SetActive(true)
+	case e.checkbox != nil:
+		e.checkbox.Toggle()
 	}
 }
 
@@ -101,6 +123,8 @@ func (e *FormElement) IsActive() bool {
 		return e.input.Focused()
 	case e.optionList != nil:
 		return e.optionList.IsActive()
+	case e.checkbox != nil:
+		return e.checkbox.IsFocused()
 	}
 	return false
 }
@@ -112,6 +136,8 @@ func (e *FormElement) Blur() {
 	case e.optionList != nil:
 		e.optionList.SetActive(false)
 		e.optionList.SetFocused(false)
+	case e.checkbox != nil:
+		e.checkbox.SetFocused(false)
 	}
 }
 
@@ -121,6 +147,8 @@ func (e *FormElement) View() string {
 		return e.input.View()
 	case e.optionList != nil:
 		return e.optionList.View()
+	case e.checkbox != nil:
+		return e.checkbox.View()
 	}
 	return ""
 }
@@ -131,6 +159,9 @@ func (e *FormElement) Value() string {
 		return e.input.Value()
 	case e.optionList != nil:
 		// not used
+	case e.checkbox != nil:
+		cval := e.checkbox.Value()
+		return strconv.FormatBool(cval)
 	}
 	return ""
 }
@@ -141,6 +172,8 @@ func (e *FormElement) SetValue(v any) {
 		e.input.SetValue(v.(string))
 	case e.optionList != nil:
 		e.optionList.SetIdx(v.(int))
+	case e.checkbox != nil:
+		e.checkbox.SetValue(v.(bool))
 	}
 }
 
@@ -150,6 +183,8 @@ func (e *FormElement) Keymap() help.KeyMap {
 		return nil
 	case e.optionList != nil:
 		return &e.optionList.Keymap
+	case e.checkbox != nil:
+		return nil
 	}
 	return nil
 }

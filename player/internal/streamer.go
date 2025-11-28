@@ -76,26 +76,28 @@ func newBufferedStreamer(
 	}
 
 	if strings.ToLower(metaInfo.ContentType) == contentTypePls {
-		defer resp.Body.Close()
+		defer func() {
+			_ = resp.Body.Close()
+		}()
 		b, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read pls file: %w", err)
 		}
 		scanner := bufio.NewScanner(bytes.NewReader(b))
-		var plsUrl string
+		var plsURL string
 		for scanner.Scan() {
 			l := scanner.Text()
 			if strings.Contains(strings.ToLower(l), "file1") {
 				if p := strings.Split(l, "="); len(p) == 2 {
-					plsUrl = strings.TrimSpace(p[1])
+					plsURL = strings.TrimSpace(p[1])
 					break
 				}
 			}
 		}
-		if plsUrl == "" {
+		if plsURL == "" {
 			return nil, fmt.Errorf("could not parse URL from playlist file [%s]", url)
 		}
-		return newBufferedStreamer(ctx, plsUrl, volume, buffer)
+		return newBufferedStreamer(ctx, plsURL, volume, buffer)
 	}
 
 	bs := &bufferedStreamer{
@@ -142,12 +144,12 @@ func newBufferedStreamer(
 	bs.wg.Add(1)
 	go func() {
 		<-ctx.Done()
-		bs.Close()
+		_ = bs.Close()
 		bs.wg.Done()
 		log.Info("===  CANCEL 1 (bufferedStreamer closed) ===")
 	}()
 
-	speaker.Init(bs.format.SampleRate, bs.format.SampleRate.N(time.Second/10))
+	_ = speaker.Init(bs.format.SampleRate, bs.format.SampleRate.N(time.Second/10))
 
 	// -- Buffer
 	bs.wg.Add(1)
@@ -221,7 +223,7 @@ func (bs *bufferedStreamer) Stream(samples [][2]float64) (n int, ok bool) {
 				n := int64(len(bs.data))
 				idx := (bs.wx + int64(bs.rbx) + n) % n
 				bs.rbx++
-				//skip empty buffer data
+				// skip empty buffer data
 				if idx >= bs.wx {
 					continue
 				}
@@ -421,16 +423,16 @@ func openStream(
 		return
 	}
 	if val := resp.Header.Get("icy-metaint"); val != "" {
-		fmt.Sscanf(val, "%d", &metaInfo.Metaint)
+		_, _ = fmt.Sscanf(val, "%d", &metaInfo.Metaint)
 	}
 	if val := resp.Header.Get("icy-sr"); val != "" {
-		fmt.Sscanf(val, "%d", &metaInfo.Sr)
+		_, _ = fmt.Sscanf(val, "%d", &metaInfo.Sr)
 	} else if val := resp.Header.Get("ice-audio-info"); val != "" {
 		fields := strings.Split(val, ";")
 		for _, f := range fields {
 			if strings.Contains(f, "samplerate") {
 				if p := strings.Split(f, "="); len(p) == 2 {
-					fmt.Sscanf(p[1], "%d", &metaInfo.Sr)
+					_, _ = fmt.Sscanf(p[1], "%d", &metaInfo.Sr)
 					break
 				}
 			}
@@ -516,9 +518,7 @@ func readStream(
 	}
 }
 
-var (
-	errAACNotAvailable = errors.New("AAC streams are not supported")
-)
+var errAACNotAvailable = errors.New("AAC streams are not supported")
 
 func getDecoder(contentType string) (
 	func(rc io.ReadCloser) (s beep.StreamSeekCloser, format beep.Format, err error),

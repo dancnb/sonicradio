@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/dancnb/sonicradio/browser"
+	"github.com/dancnb/sonicradio/model"
 )
 
 const (
@@ -123,7 +123,7 @@ func (t *stationsTabBase) toNowPlaying(m *Model) {
 	selIndex := -1
 	items := t.list.VisibleItems()
 	for ix := range items {
-		if items[ix].(browser.Station).Stationuuid == uuid {
+		if items[ix].(model.Station).Stationuuid == uuid {
 			selIndex = ix
 			break
 		}
@@ -153,11 +153,11 @@ func (t *stationsTabBase) initInfoModel(m *Model, msg toggleInfoMsg) tea.Cmd {
 	return t.infoModel.Init(msg.station)
 }
 
-func (t *stationsTabBase) getListStationByUuid(uuid string) (*browser.Station, *int) {
-	var s *browser.Station
+func (t *stationsTabBase) getListStationByUUID(uuid string) (*model.Station, *int) {
+	var s *model.Station
 	var idx *int
 	for i := range t.list.Items() {
-		itS, ok := t.list.Items()[i].(browser.Station)
+		itS, ok := t.list.Items()[i].(model.Station)
 		if ok && itS.Stationuuid == uuid {
 			idx = &i
 			s = &itS

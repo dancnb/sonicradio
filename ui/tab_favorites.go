@@ -1,10 +1,12 @@
 package ui
 
 import (
+	"slices"
+
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/dancnb/sonicradio/browser"
+	"github.com/dancnb/sonicradio/model"
 )
 
 type favoritesTab struct {
@@ -71,42 +73,40 @@ func (t *favoritesTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	case favoritesStationRespMsg:
 		t.viewMsg = string(msg.viewMsg)
 		items := make([]list.Item, 0)
-		var autoplayUuid *browser.Station
+		var autoplayUUID *model.Station
 		var autoplayIdx int
-		var notFound []string
-		for j := 0; j < len(m.cfg.Favorites); j++ {
-			found := false
-			for i := 0; i < len(msg.stations); i++ {
-				if msg.stations[i].Stationuuid == m.cfg.Favorites[j] {
-					items = append(items, msg.stations[i])
 
-					if m.cfg.AutoplayFavorite == msg.stations[i].Stationuuid {
-						autoplayUuid = &msg.stations[i]
-						autoplayIdx = len(items) - 1
-					}
-
-					found = true
-					break
-				}
-			}
-			if !found {
-				notFound = append(notFound, m.cfg.Favorites[j])
+		for i := range msg.stations {
+			items = append(items, msg.stations[i])
+			if m.cfg.AutoplayFavorite == msg.stations[i].Stationuuid {
+				autoplayUUID = &msg.stations[i]
+				autoplayIdx = len(items) - 1
 			}
 		}
+
+		favoritesV1 := m.cfg.GetFavoritesV1()
+		notAllfound := false
+		for j := range favoritesV1 {
+			notAllfound = notAllfound || !slices.ContainsFunc(
+				msg.stations,
+				func(el model.Station) bool { return el.Stationuuid == favoritesV1[j] },
+			)
+		}
+
 		sm := msg.statusMsg
-		if sm == "" && len(notFound) > 0 {
+		if sm == "" && notAllfound {
 			sm = statusMsg(missingFavorites)
 		}
 		m.updateStatus(string(sm))
 		cmd := t.list.SetItems(items)
 		cmds = append(cmds, cmd)
-		if autoplayUuid != nil {
+		if autoplayUUID != nil {
 			t.list.Select(autoplayIdx)
-			cmds = append(cmds, m.playStationCmd(*autoplayUuid))
+			cmds = append(cmds, m.playStationCmd(*autoplayUUID))
 		}
 
 	case playHistoryEntryMsg:
-		s, idx := t.getListStationByUuid(msg.uuid)
+		s, idx := t.getListStationByUUID(msg.uuid)
 		if s != nil {
 			t.list.Select(*idx)
 			return m, m.playStationCmd(*s)
@@ -119,7 +119,7 @@ func (t *favoritesTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			its := t.list.Items()
 			for i := range its {
-				s := its[i].(browser.Station)
+				s := its[i].(model.Station)
 				if s.Stationuuid == msg.station.Stationuuid {
 					t.list.RemoveItem(i)
 					break
@@ -160,13 +160,13 @@ func (t *favoritesTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case key.Matches(msg, m.delegate.keymap.delete):
-			selStation, ok := t.list.SelectedItem().(browser.Station)
+			selStation, ok := t.list.SelectedItem().(model.Station)
 			if !ok {
 				break
 			}
-			m.cfg.DeleteFavorite(selStation.Stationuuid)
+			m.cfg.DeleteFavorite(selStation)
 			t.viewMsg = ""
-			if len(m.cfg.Favorites) == 0 {
+			if !m.cfg.HasFavorites() {
 				t.viewMsg = noFavoritesAddedMsg
 			}
 
@@ -175,11 +175,11 @@ func (t *favoritesTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 				break
 			}
 			idx := t.list.Index()
-			if len(m.cfg.Favorites) > 0 {
+			if m.cfg.HasFavorites() {
 				idx++
 			}
-			m.cfg.InsertFavorite(m.delegate.deleted.Stationuuid, idx)
-			if len(m.cfg.Favorites) > 0 {
+			m.cfg.InsertFavorite(*m.delegate.deleted, idx)
+			if m.cfg.HasFavorites() {
 				t.viewMsg = ""
 			}
 
@@ -188,8 +188,8 @@ func (t *favoritesTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 				break
 			}
 			idx := t.list.Index()
-			m.cfg.InsertFavorite(m.delegate.deleted.Stationuuid, idx)
-			if len(m.cfg.Favorites) > 0 {
+			m.cfg.InsertFavorite(*m.delegate.deleted, idx)
+			if m.cfg.HasFavorites() {
 				t.viewMsg = ""
 			}
 

@@ -7,15 +7,16 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/dancnb/sonicradio/browser"
+	"github.com/dancnb/sonicradio/model"
 )
 
 type browseTab struct {
 	stationsTabBase
-	defTopStations []browser.Station
+	defTopStations []model.Station
 	searchModel    *searchModel
 }
 
-func newBrowseTab(ctx context.Context, browser *browser.Api, infoModel *infoModel, s *Style) *browseTab {
+func newBrowseTab(ctx context.Context, browser *browser.API, infoModel *infoModel, s *Style) *browseTab {
 	k := newListKeymap()
 
 	m := &browseTab{
@@ -89,14 +90,14 @@ func (t *browseTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 
 	case playHistoryEntryMsg:
-		s, idx := t.getListStationByUuid(msg.uuid)
+		s, idx := t.getListStationByUUID(msg.uuid)
 		if s != nil {
 			t.list.Select(*idx)
 			return m, m.playStationCmd(*s)
 		} else {
-			return m, m.playUuidCmd(msg.uuid)
+			return m, m.playUUIDCmd(msg.uuid)
 		}
-	case playUuidRespMsg:
+	case playUUIDRespMsg:
 		m.updateStatus(string(msg.statusMsg))
 		t.viewMsg = string(msg.viewMsg)
 		if len(msg.stations) > 0 {
@@ -175,9 +176,9 @@ func (t *browseTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (t *browseTab) setStations(stations []browser.Station) tea.Cmd {
+func (t *browseTab) setStations(stations []model.Station) tea.Cmd {
 	items := make([]list.Item, len(stations))
-	for i := 0; i < len(stations); i++ {
+	for i := range stations {
 		items[i] = stations[i]
 	}
 	cmd := t.list.SetItems(items)

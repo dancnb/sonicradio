@@ -33,7 +33,8 @@ type settingsTab struct {
 type settingsInputIdx byte
 
 const (
-	historySaveMaxIdx settingsInputIdx = iota
+	favoritesRefreshIdx settingsInputIdx = iota
+	historySaveMaxIdx
 	themesIdx
 	playerTypeIdx
 	internalBufferSecIdx
@@ -48,6 +49,7 @@ var (
 		`Preview and select a theme.`,
 		"Select a backend player (only those in PATH are shown: Mpv, FFplay, VLC, MPlayer, MPD), or use the experimental Internal player.\nChanges take effect after restart.\n",
 		"Duration in seconds of the internal player's buffered samples (up to 5 minutes, but will increase memory usage). Set to 0 to disable buffering and seeking.\nChanges take effect after restart.",
+		"If enabled, it will retrieve favorite station metadata on each start.\nBy default, it will use the metadata cached in the local playlist file (see $XDG_CONFIG_HOME/sonicRadio/favorites.pls).",
 	}
 	ffplayDesc  = "\nFFplay does not allow changing the volume during playback or seeking backward/forward."
 	vlcDesc     = "\nFor VLC, pausing or seeking backward/forward may result in an invalid song title being displayed."
@@ -68,6 +70,9 @@ func newSettingsTab(
 	h.ShowAll = false
 	h.ShortSeparator = "   "
 	h.Styles = s.HelpStyles()
+
+	// refreshFavorites checkbox
+	c := NewCheckbox("Re-fetch favorites", cfg.Favorites.RefreshOnStart, s)
 
 	// history max entries
 	historySaveMax := s.NewInputModel("History max entries", "---", nil, nil, nil, NrInputValidator)
@@ -100,10 +105,13 @@ func newSettingsTab(
 	}
 	playerDesc := getPlayerDescription(availablePlayerTypes)
 
-	//internal player settings
+	// internal player settings
 	internalBufferSec := s.NewInputModel("Internal buffer (seconds)", "0", nil, nil, nil, bufferDurationValidator)
 
 	inputs := []*FormElement{
+		NewFormElement(
+			WithCheckbox(c),
+			WithDescription(descriptions[4])),
 		NewFormElement(
 			WithTextInput(&historySaveMax),
 			WithDescription(descriptions[0])),
@@ -178,6 +186,8 @@ func getPlayerDescription(playerTypes []config.PlayerType) string {
 }
 
 func (s *settingsTab) loadConfig() {
+	s.inputs[favoritesRefreshIdx].SetValue(s.cfg.Favorites.RefreshOnStart)
+
 	s.inputs[historySaveMaxIdx].SetValue(fmt.Sprintf("%d", *s.cfg.HistorySaveMax))
 
 	s.inputs[internalBufferSecIdx].SetValue(fmt.Sprintf("%d", s.cfg.Internal.BufferSeconds))
@@ -208,7 +218,7 @@ func (s *settingsTab) onEnter() tea.Cmd {
 
 	s.loadConfig()
 
-	return s.inputs[historySaveMaxIdx].Focus()
+	return s.inputs[favoritesRefreshIdx].Focus()
 }
 
 func (s *settingsTab) onExit() {
@@ -220,6 +230,14 @@ func (s *settingsTab) onExit() {
 
 func (s *settingsTab) updateConfig() {
 	log := slog.With("method", "settingsTab.saveConfig")
+
+	favoritesRefreshVal := s.inputs[favoritesRefreshIdx].Value()
+	favoritesRefreshBoolVal, err := strconv.ParseBool(favoritesRefreshVal)
+	if err != nil {
+		log.Info(fmt.Sprintf("invalid value for config Favorites.RefreshOnStart (%v) err: %v", favoritesRefreshVal, err))
+	} else {
+		s.cfg.Favorites.RefreshOnStart = favoritesRefreshBoolVal
+	}
 
 	historySaveMaxval := s.inputs[historySaveMaxIdx].Value()
 	intVal, err := strconv.Atoi(historySaveMaxval)
@@ -344,6 +362,10 @@ func (s *settingsTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (s *settingsTab) resetSettings() {
+	defFavoritesRefresh := config.DefFavoritesRefreshOnStart
+	s.cfg.Favorites.RefreshOnStart = defFavoritesRefresh
+	s.inputs[favoritesRefreshIdx].SetValue(defFavoritesRefresh)
+
 	defHistorySaveMax := config.DefHistorySaveMax
 	s.cfg.HistorySaveMax = &defHistorySaveMax
 	val := strconv.Itoa(defHistorySaveMax)

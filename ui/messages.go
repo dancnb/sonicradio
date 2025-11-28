@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dancnb/sonicradio/browser"
+	smodel "github.com/dancnb/sonicradio/model"
 	"github.com/dancnb/sonicradio/player/model"
 )
 
@@ -15,7 +15,7 @@ type (
 
 	// song title
 	metadataMsg struct {
-		stationUuid  string
+		stationUUID  string
 		stationName  string
 		songTitle    string
 		playbackTime *time.Duration
@@ -34,30 +34,30 @@ type (
 	favoritesStationRespMsg struct {
 		viewMsg
 		statusMsg
-		stations []browser.Station
+		stations []smodel.Station
 	}
 
 	topStationsRespMsg struct {
 		viewMsg
 		statusMsg
-		stations []browser.Station
+		stations []smodel.Station
 	}
 
 	searchRespMsg struct {
 		viewMsg
 		statusMsg
-		stations  []browser.Station
+		stations  []smodel.Station
 		cancelled bool
 	}
 
 	toggleFavoriteMsg struct {
 		added   bool
-		station browser.Station
+		station smodel.Station
 	}
 
 	toggleInfoMsg struct {
 		enable  bool
-		station browser.Station
+		station smodel.Station
 	}
 
 	playRespMsg struct {
@@ -72,16 +72,16 @@ type (
 		uuid string
 	}
 
-	playUuidRespMsg struct {
+	playUUIDRespMsg struct {
 		viewMsg
 		statusMsg
-		stations []browser.Station
+		stations []smodel.Station
 	}
 )
 
-func getMetadataMsg(s browser.Station, m model.Metadata) metadataMsg {
+func getMetadataMsg(s smodel.Station, m model.Metadata) metadataMsg {
 	msg := metadataMsg{
-		stationUuid: s.Stationuuid,
+		stationUUID: s.Stationuuid,
 		stationName: s.Name,
 		songTitle:   m.Title,
 	}
@@ -98,5 +98,5 @@ func (m metadataMsg) String() string {
 		pt = *m.playbackTime
 	}
 	return fmt.Sprintf("{uuid=%s, name=%s, title=%s, playbackTime=%d}",
-		m.stationUuid, m.stationName, m.songTitle, int(pt.Seconds()))
+		m.stationUUID, m.stationName, m.songTitle, int(pt.Seconds()))
 }

@@ -6,6 +6,6 @@ const (
 	urlClickCount     = "/json/url/"
 	urlCountries      = "/json/countries"
 	urlLangs          = "/json/languages"
-	urlTags           = "/json/tags "
-	urlVote           = "/json/vote/"
+	// urlTags           = "/json/tags "
+	urlVote = "/json/vote/"
 )

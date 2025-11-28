@@ -22,7 +22,7 @@ import (
 )
 
 var (
-	version = "0.8.9"
+	version = "0.8.10"
 
 	cpuProfile  = flag.String("cpuprofile", "", "-cpuprofile=<filename>")
 	memProfile  = flag.String("memprofile", "", "-memprofile=<filename>")
@@ -37,8 +37,8 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		defer f.Close()
-		pprof.StartCPUProfile(f)
+		defer func() { _ = f.Close() }()
+		_ = pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
 
 		run()
@@ -48,7 +48,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 
 		runtime.MemProfileRate = 1
 
@@ -104,7 +104,7 @@ func run() {
 
 	slog.Info("loaded", "config", cfg.String())
 
-	b, err := browser.NewApi(ctx, cfg)
+	b, err := browser.NewAPI(ctx, cfg)
 	if err != nil {
 		panic(err)
 	}

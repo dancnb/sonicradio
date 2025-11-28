@@ -14,12 +14,11 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dancnb/sonicradio/browser"
 	"github.com/dancnb/sonicradio/config"
+	"github.com/dancnb/sonicradio/model"
 	"github.com/dancnb/sonicradio/player"
 )
 
-const startWaitMillis = 500 * 3
-
-func newStationDelegate(cfg *config.Value, s *Style, p *player.Player, b *browser.Api) *stationDelegate {
+func newStationDelegate(cfg *config.Value, s *Style, p *player.Player, b *browser.API) *stationDelegate {
 	keymap := newDelegateKeyMap()
 
 	d := list.NewDefaultDelegate()
@@ -38,15 +37,15 @@ func newStationDelegate(cfg *config.Value, s *Style, p *player.Player, b *browse
 
 type stationDelegate struct {
 	player *player.Player
-	b      *browser.Api
+	b      *browser.API
 	cfg    *config.Value
 	style  *Style
 
 	playingMtx  sync.RWMutex
-	prevPlaying *browser.Station
-	currPlaying *browser.Station
+	prevPlaying *model.Station
+	currPlaying *model.Station
 
-	deleted *browser.Station
+	deleted *model.Station
 
 	keymap *delegateKeyMap
 
@@ -77,7 +76,7 @@ func (d *stationDelegate) Spacing() int {
 
 func (d *stationDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	logTeaMsg(msg, "ui.stationDelegate.Update")
-	selStation, isSel := m.SelectedItem().(browser.Station)
+	selStation, isSel := m.SelectedItem().(model.Station)
 
 	switch msg := msg.(type) {
 	case toggleInfoMsg:
@@ -98,7 +97,7 @@ func (d *stationDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 			if !isSel {
 				break
 			}
-			added := d.cfg.ToggleFavorite(selStation.Stationuuid)
+			added := d.cfg.ToggleFavorite(selStation)
 			return func() tea.Msg { return toggleFavoriteMsg{added, selStation} }
 		case key.Matches(msg, d.keymap.toggleAutoplay):
 			if !isSel {
@@ -152,7 +151,7 @@ func (d *stationDelegate) shouldPaste(m *list.Model) bool {
 	its := m.Items()
 	dupl := false
 	for ii := range its {
-		if d.deleted.Stationuuid == its[ii].(browser.Station).Stationuuid {
+		if d.deleted.Stationuuid == its[ii].(model.Station).Stationuuid {
 			dupl = true
 			break
 		}
@@ -206,7 +205,7 @@ func (d *stationDelegate) resumeCmd() tea.Cmd {
 	}
 }
 
-func (d *stationDelegate) playCmd(s browser.Station) tea.Cmd {
+func (d *stationDelegate) playCmd(s model.Station) tea.Cmd {
 	return func() tea.Msg {
 		log := slog.With("method", "ui.stationDelegate.playCmd")
 		log.Info("begin")
@@ -230,12 +229,12 @@ func (d *stationDelegate) playCmd(s browser.Station) tea.Cmd {
 	}
 }
 
-func (d *stationDelegate) increaseCounter(station browser.Station) {
-	d.b.StationCounter(station.Stationuuid)
+func (d *stationDelegate) increaseCounter(station model.Station) {
+	_ = d.b.StationCounter(station.Stationuuid)
 }
 
 func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	s, ok := listItem.(browser.Station)
+	s, ok := listItem.(model.Station)
 	if !ok {
 		return
 	}
@@ -285,7 +284,7 @@ func (d *stationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		str = d.renderStationView(prefix, name, s.Description(), listWidth, widthOffset, prefixStyle, itStyle, descStyle)
 	}
 
-	fmt.Fprint(w, str)
+	_, _ = fmt.Fprint(w, str)
 }
 
 func (d *stationDelegate) renderStationView(

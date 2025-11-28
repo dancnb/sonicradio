@@ -35,7 +35,7 @@ func (i *Internal) Play(url string) error {
 	log.Info("start")
 	defer func() { log.Info("end") }()
 
-	i.Stop()
+	_ = i.Stop()
 
 	var ctx context.Context
 	ctx, cancelFn := context.WithCancel(context.Background())

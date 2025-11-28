@@ -3,24 +3,59 @@ package ui
 import (
 	"fmt"
 	"log/slog"
+	"slices"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/dancnb/sonicradio/browser"
 	"github.com/dancnb/sonicradio/config"
+	"github.com/dancnb/sonicradio/model"
 )
 
 func (m *Model) favoritesReqCmd() tea.Msg {
-	if len(m.cfg.Favorites) == 0 {
+	if !m.cfg.HasFavorites() && !m.cfg.HasFavoritesV1() {
 		return favoritesStationRespMsg{
 			viewMsg: noFavoritesAddedMsg,
 		}
 	}
 
-	stations, err := m.browser.GetStations(m.cfg.Favorites)
-	res := favoritesStationRespMsg{stations: stations}
+	var reqList []string
+	favorites := m.cfg.GetFavorites()
+	slog.Info(fmt.Sprintf("cached favorites len: %#v", len(favorites)))
+	for _, s := range favorites {
+		if m.cfg.FavoritesCacheEnabled() || s.IsCustom {
+			continue
+		}
+		reqList = append(reqList, s.Stationuuid)
+	}
+	reqList = append(reqList, m.cfg.GetFavoritesV1()...)
+	slices.Sort(reqList)
+	reqList = slices.Compact(reqList)
+	slog.Info(fmt.Sprintf("favorites request list: %#v", reqList))
+	if len(reqList) == 0 {
+		return favoritesStationRespMsg{stations: favorites}
+	}
+
+	newStations, err := m.browser.GetStations(reqList)
+	for i := range newStations {
+		found := false
+		for j := range favorites {
+			if favorites[j].Stationuuid != newStations[i].Stationuuid {
+				continue
+			}
+			found = true
+			favorites[j] = newStations[i]
+			break
+		}
+		if !found {
+			favorites = append(favorites, newStations[i])
+		}
+	}
+	m.cfg.SetFavorites(favorites)
+	slog.Info(fmt.Sprintf("updated favorites len: %#v", len(favorites)))
+
+	res := favoritesStationRespMsg{stations: favorites}
 	if err != nil {
 		res.statusMsg = statusMsg(err.Error())
-	} else if len(stations) == 0 {
+	} else if len(favorites) == 0 {
 		res.viewMsg = noStationsFound
 	}
 	return res
@@ -62,7 +97,7 @@ func (m *Model) seekCmd(amtSec int) tea.Cmd {
 		m.delegate.playingMtx.RLock()
 		defer m.delegate.playingMtx.RUnlock()
 
-		var s *browser.Station
+		var s *model.Station
 		if m.delegate.currPlaying != nil {
 			s = m.delegate.currPlaying
 		} else if m.delegate.prevPlaying != nil {
@@ -82,7 +117,7 @@ func (m *Model) seekCmd(amtSec int) tea.Cmd {
 	}
 }
 
-func (m *Model) playStationCmd(selStation browser.Station) tea.Cmd {
+func (m *Model) playStationCmd(selStation model.Station) tea.Cmd {
 	m.songTitle = ""
 	m.playbackTime = 0
 	m.updateStatus(fmt.Sprintf("Connecting to %s...", selStation.Name))
@@ -90,10 +125,10 @@ func (m *Model) playStationCmd(selStation browser.Station) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-func (m *Model) playUuidCmd(uuid string) tea.Cmd {
+func (m *Model) playUUIDCmd(uuid string) tea.Cmd {
 	return func() tea.Msg {
 		stations, err := m.browser.GetStations([]string{uuid})
-		res := playUuidRespMsg{stations: stations}
+		res := playUUIDRespMsg{stations: stations}
 		if err != nil {
 			res.statusMsg = statusMsg(err.Error())
 		} else if len(stations) == 0 {

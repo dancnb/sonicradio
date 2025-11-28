@@ -8,9 +8,9 @@ import (
 )
 
 const (
-	recentlyPlayed = 2 * time.Minute
-	tsFormat       = "15:04 02.01.2006"
-	separator      = "|"
+	recentlyPlayed     = 2 * time.Minute
+	tsFormat           = "15:04 02.01.2006"
+	histTitleSeparator = "|"
 )
 
 type HistoryEntry struct {
@@ -26,7 +26,7 @@ func (e HistoryEntry) FilterValue() string {
 
 func (e HistoryEntry) Title() string {
 	ts := e.Timestamp.Format(tsFormat)
-	return fmt.Sprintf("%s %s %s", ts, separator, e.Station)
+	return fmt.Sprintf("%s %s %s", ts, histTitleSeparator, e.Station)
 }
 
 func (e HistoryEntry) Description() string { return e.Song }

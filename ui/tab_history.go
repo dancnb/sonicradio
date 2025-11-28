@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"slices"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -226,7 +225,7 @@ func (t *historyTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, t.keymap.play):
 			e, _ := t.list.SelectedItem().(config.HistoryEntry)
-			if slices.Contains(m.cfg.Favorites, e.Uuid) {
+			if m.cfg.IsFavorite(e.Uuid) {
 				m.toFavoritesTab()
 				return m.tabs[favoriteTabIx].Update(m, playHistoryEntryMsg{e.Uuid})
 			}
@@ -361,7 +360,7 @@ func (d *historyEntryDelegate) Render(w io.Writer, m list.Model, index int, item
 	res.WriteString(descStyle.Render(strings.Repeat(" ", hFill)))
 
 	str := res.String()
-	fmt.Fprint(w, str)
+	_, _ = fmt.Fprint(w, str)
 }
 
 type historyKeymap struct {

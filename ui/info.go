@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dancnb/sonicradio/browser"
+	"github.com/dancnb/sonicradio/model"
 )
 
 type infoModel struct {
@@ -16,8 +17,8 @@ type infoModel struct {
 
 	style *Style
 
-	b       *browser.Api
-	station browser.Station
+	b       *browser.API
+	station model.Station
 
 	keymap infoKeymap
 	help   help.Model
@@ -25,7 +26,7 @@ type infoModel struct {
 	height int
 }
 
-func newInfoModel(b *browser.Api, s *Style) *infoModel {
+func newInfoModel(b *browser.API, s *Style) *infoModel {
 	k := newInfoKeymap()
 
 	h := help.New()
@@ -41,7 +42,7 @@ func newInfoModel(b *browser.Api, s *Style) *infoModel {
 	}
 }
 
-func (i *infoModel) Init(s browser.Station) tea.Cmd {
+func (i *infoModel) Init(s model.Station) tea.Cmd {
 	i.station = s
 	i.setEnabled(true)
 	return nil

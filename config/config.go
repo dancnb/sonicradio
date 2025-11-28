@@ -14,13 +14,16 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"text/template"
 	"time"
+
+	"github.com/dancnb/sonicradio/model"
 )
 
 var debug = flag.Bool("debug", false, "use -debug arg to log to a file")
 
 const (
-	ApiReqTimeout     = 10 * time.Second
+	APIReqTimeout     = 10 * time.Second
 	MpvIpcConnTimeout = 10 * time.Second
 	MpdConnTimeout    = 10 * time.Second
 	VlcConnTimeout    = 10 * time.Millisecond
@@ -31,11 +34,38 @@ const (
 	cfgSubDir       = "sonicRadio"
 	cfgFilename     = "config.json"
 	historyFilename = "history.json"
+
+	favoritesFilename = "favorites.pls"
+	favoritesTmpl     = `[playlist]
+NumberOfEntries={{len .List}}
+Version=2
+
+{{range $index, $station := .List}}File{{add $index 1}}={{.URL}}
+Title{{add $index 1}}={{.Name}}
+Length{{add $index 1}}=-1
+SR_uuid{{add $index 1}}={{.Stationuuid}}
+SR_bitrate{{add $index 1}}={{.Bitrate}}
+SR_countrycode{{add $index 1}}={{.Countrycode}}
+SR_state{{add $index 1}}={{.State}}
+SR_language{{add $index 1}}={{.Language}}
+SR_tags{{add $index 1}}={{.Tags}}
+SR_homepage{{add $index 1}}={{.Homepage}}
+SR_country{{add $index 1}}={{.Country}}
+SR_votes{{add $index 1}}={{.Votes}}
+SR_codec{{add $index 1}}={{.Codec}}
+SR_lastcheckoktime{{add $index 1}}={{.Lastcheckoktime}}
+SR_clickcount{{add $index 1}}={{.Clickcount}}
+SR_clicktrend{{add $index 1}}={{.Clicktrend}}
+SR_geo_lat{{add $index 1}}={{.GeoLat}}
+SR_geo_long{{add $index 1}}={{.GeoLong}}
+
+{{end}}`
 )
 
 const (
-	DefVolume         = 100
-	DefHistorySaveMax = 100
+	DefVolume                  = 100
+	DefHistorySaveMax          = 100
+	DefFavoritesRefreshOnStart = false
 
 	DefMpdHost = ""
 	DefMpdPort = 6600
@@ -45,7 +75,8 @@ const (
 
 type Value struct {
 	Version     string      `json:"-"`
-	Favorites   []string    `json:"favorites,omitempty"` // Ordered station UUID's for user favorites
+	FavoritesV1 []string    `json:"favorites,omitempty"` // Ordered station UUID's for user favorites
+	Favorites   Favorites   `json:"favoritesv2"`
 	Volume      *int        `json:"volume,omitempty"`
 	Theme       int         `json:"theme"`
 	StationView StationView `json:"stationView"`
@@ -64,6 +95,13 @@ type Value struct {
 	HistoryChan    chan []HistoryEntry `json:"-"`
 
 	AutoplayFavorite string `json:"autoplayFavorite"`
+
+	favTmpl *template.Template
+}
+
+type Favorites struct {
+	RefreshOnStart bool `json:"refreshOnStart"`
+	list           []model.Station
 }
 
 type InternalPlayer struct {
@@ -108,38 +146,72 @@ func (v *Value) SetVolume(value int) {
 }
 
 func (v *Value) IsFavorite(uuid string) bool {
-	return slices.Contains(v.Favorites, uuid)
+	return slices.ContainsFunc(v.Favorites.list, func(e model.Station) bool {
+		return e.Stationuuid == uuid
+	})
 }
 
-// ToggleFavorite return true if uuid was added, false if it was removed
-func (v *Value) ToggleFavorite(uuid string) bool {
-	l1 := len(v.Favorites)
-	v.Favorites = slices.DeleteFunc(v.Favorites, func(el string) bool { return el == uuid })
-	l2 := len(v.Favorites)
+func (v *Value) HasFavoritesV1() bool {
+	return len(v.FavoritesV1) > 0
+}
+
+func (v *Value) GetFavoritesV1() []string {
+	return v.FavoritesV1
+}
+
+func (v *Value) HasFavorites() bool {
+	return len(v.Favorites.list) > 0
+}
+
+func (v *Value) GetFavorites() []model.Station {
+	return v.Favorites.list
+}
+
+func (v *Value) SetFavorites(l []model.Station) {
+	v.Favorites.list = l
+}
+
+func (v *Value) FavoritesCacheEnabled() bool {
+	return !v.Favorites.RefreshOnStart
+}
+
+// ToggleFavorite return true if station was added, false if it was removed
+func (v *Value) ToggleFavorite(s model.Station) bool {
+	l1 := len(v.Favorites.list)
+	v.Favorites.list = slices.DeleteFunc(
+		v.Favorites.list,
+		func(el model.Station) bool { return el.Stationuuid == s.Stationuuid },
+	)
+	l2 := len(v.Favorites.list)
 	if l2 == l1 {
-		v.Favorites = append(v.Favorites, uuid)
+		v.Favorites.list = append(v.Favorites.list, s)
 		return true
 	}
 	return false
 }
 
-// DeleteFavorite returns true if uuid was removed, false if not
-func (v *Value) DeleteFavorite(uuid string) bool {
-	l1 := len(v.Favorites)
-	v.Favorites = slices.DeleteFunc(v.Favorites, func(el string) bool { return el == uuid })
-	l2 := len(v.Favorites)
+// DeleteFavorite returns true if station was removed, false if not
+func (v *Value) DeleteFavorite(s model.Station) bool {
+	l1 := len(v.Favorites.list)
+	v.Favorites.list = slices.DeleteFunc(
+		v.Favorites.list,
+		func(el model.Station) bool { return el.Stationuuid == s.Stationuuid },
+	)
+	l2 := len(v.Favorites.list)
 	return l2 != l1
 }
 
-func (v *Value) InsertFavorite(uuid string, idx int) bool {
-	if slices.Contains(v.Favorites, uuid) {
+func (v *Value) InsertFavorite(s model.Station, idx int) bool {
+	if slices.ContainsFunc(v.Favorites.list, func(el model.Station) bool {
+		return el.Stationuuid == s.Stationuuid
+	}) {
 		return false
 	}
-	if idx >= len(v.Favorites) {
-		v.Favorites = append(v.Favorites, uuid)
+	if idx >= len(v.Favorites.list) {
+		v.Favorites.list = append(v.Favorites.list, s)
 		return true
 	}
-	v.Favorites = slices.Insert(v.Favorites, idx, uuid)
+	v.Favorites.list = slices.Insert(v.Favorites.list, idx, s)
 	return true
 }
 
@@ -149,7 +221,7 @@ func (v *Value) String() string {
 		vol = *v.Volume
 	}
 	return fmt.Sprintf("{version:%q,   favorites=%d, volume=%d, history=%d, historySaveMax=%v}",
-		v.Version, len(v.Favorites), vol, len(v.History), v.HistorySaveMax)
+		v.Version, len(v.Favorites.list), vol, len(v.History), v.HistorySaveMax)
 }
 
 // Load must return a non-nil config Value and an error specifying why it could not read the config file:
@@ -191,6 +263,8 @@ func Load(version string) (cfg *Value, err error) {
 	if cfg.Volume == nil {
 		cfg.Volume = &defVolume
 	}
+
+	// history
 	if cfg.HistorySaveMax == nil {
 		cfg.HistorySaveMax = &defHistorySaveMax
 	}
@@ -201,6 +275,18 @@ func Load(version string) (cfg *Value, err error) {
 	if len(cfg.History) > *cfg.HistorySaveMax {
 		cfg.History = cfg.History[len(cfg.History)-*cfg.HistorySaveMax:]
 	}
+
+	// favorites
+	cfg.Favorites.list, err = parsePlsFile(filepath.Join(cfgDirPath, favoritesFilename))
+	if err != nil {
+		return
+	}
+	cfg.favTmpl = template.Must(
+		template.New("favorites").
+			Funcs(template.FuncMap{
+				"add": func(i, j int) int { return i + j },
+			}).
+			Parse(favoritesTmpl))
 
 	// environment variables overwrite config file
 	if v, ok := os.LookupEnv("MPD_HOST"); ok && v != "" {
@@ -271,11 +357,39 @@ func (v *Value) Save() error {
 	if err != nil {
 		return err
 	}
+
+	if err := v.saveFavorites(filepath.Join(cfgDirPath, favoritesFilename)); err != nil {
+		return err
+	}
+	v.FavoritesV1 = nil
+
 	entries, err := v.saveCfgFile(cfgDirPath)
 	if err != nil {
 		return err
 	}
+
 	return v.saveHistoryFile(cfgDirPath, entries)
+}
+
+func (v *Value) saveFavorites(filename string) (err error) {
+	favFile, err := os.Create(filename)
+	if err != nil {
+		return
+	}
+	defer func() {
+		closeErr := favFile.Close()
+		if closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
+	list := struct{ List []model.Station }{
+		List: v.Favorites.list,
+	}
+	err = v.favTmpl.Execute(favFile, list)
+	if err != nil {
+		return
+	}
+	return
 }
 
 func (v *Value) saveCfgFile(cfgDirPath string) (entries []HistoryEntry, err error) {

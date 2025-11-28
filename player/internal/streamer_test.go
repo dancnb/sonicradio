@@ -60,7 +60,7 @@ func Test_playStream(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if _, err := newBufferedStreamer(ctx, url, 100, 0); err != nil {
+	if _, err := newBufferedStreamer(ctx, url, 100, nil); err != nil {
 		t.Error(err)
 	}
 }

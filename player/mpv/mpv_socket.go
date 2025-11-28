@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"math/rand/v2"
 	"net"
@@ -86,7 +87,7 @@ loop:
 		case <-time.After(socketTimeout):
 			return nil, ErrSocketFileTimeout
 		default:
-			if _, err := os.Stat(mpv.sockFile); os.IsNotExist(err) {
+			if _, err := os.Stat(mpv.sockFile); errors.Is(err, fs.ErrNotExist) {
 				time.Sleep(socketSleepRetry)
 			} else {
 				break loop

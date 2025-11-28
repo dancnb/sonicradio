@@ -16,22 +16,23 @@ import (
 	"time"
 
 	"github.com/dancnb/sonicradio/config"
+	"github.com/dancnb/sonicradio/model"
 )
 
 const (
 	HOST              = "radio-browser.info"
-	backup_server     = "https://de1.api.radio-browser.info/json/servers"
+	backupServer      = "https://de1.api.radio-browser.info/json/servers"
 	serverMaxRetry    = 5
 	serverRetryMillis = 200
 	voteTimeout       = 10 * time.Minute
 )
 
-var ErrServerMsg = errors.New("Server response not available")
+var ErrServerMsg = errors.New("server response not available")
 
-func NewApi(ctx context.Context, cfg *config.Value) (*Api, error) {
-	api := Api{
+func NewAPI(ctx context.Context, cfg *config.Value) (*API, error) {
+	api := API{
 		cfg:           cfg,
-		stationsCache: make(map[string][]Station),
+		stationsCache: make(map[string][]model.Station),
 		stationVotes:  make(map[string]time.Time),
 	}
 	res, err := api.getServers(ctx, HOST)
@@ -53,31 +54,31 @@ func NewApi(ctx context.Context, cfg *config.Value) (*Api, error) {
 	return &api, nil
 }
 
-type Api struct {
+type API struct {
 	cfg       *config.Value
 	servers   []string
-	countries []Country
-	langs     []Language
+	countries []model.Country
+	langs     []model.Language
 
 	stationsMtx   sync.Mutex
-	stationsCache map[string][]Station
+	stationsCache map[string][]model.Station
 
 	stationVotes map[string]time.Time
 }
 
-func (a *Api) GetLanguages() ([]Language, error) {
+func (a *API) GetLanguages() ([]model.Language, error) {
 	if len(a.langs) > 0 {
 		return a.langs, nil
 	}
 	log := slog.With("method", "Api.GetLanguages")
-	for i := 0; i < serverMaxRetry; i++ {
+	for range serverMaxRetry {
 		res, err := a.doServerRequest(http.MethodGet, urlLangs, nil)
 		if err != nil {
 			log.Error("", "request error", err)
 			time.Sleep(serverRetryMillis * time.Millisecond)
 			continue
 		}
-		var languages []Language
+		var languages []model.Language
 		err = json.Unmarshal(res, &languages)
 		if err != nil {
 			log.Error("", "unmarshal error", err)
@@ -90,22 +91,22 @@ func (a *Api) GetLanguages() ([]Language, error) {
 		return languages, nil
 	}
 	log.Warn("exceeded max retries")
-	return nil, ErrServerMsg
+	return nil, fmt.Errorf("Get languages: %w", ErrServerMsg)
 }
 
-func (a *Api) GetCountries() ([]Country, error) {
+func (a *API) GetCountries() ([]model.Country, error) {
 	if len(a.countries) > 0 {
 		return a.countries, nil
 	}
 	log := slog.With("method", "Api.GetCountries")
-	for i := 0; i < serverMaxRetry; i++ {
+	for range serverMaxRetry {
 		res, err := a.doServerRequest(http.MethodGet, urlCountries, nil)
 		if err != nil {
 			log.Error("", "request error", err)
 			time.Sleep(serverRetryMillis * time.Millisecond)
 			continue
 		}
-		var countries []Country
+		var countries []model.Country
 		err = json.Unmarshal(res, &countries)
 		if err != nil {
 			log.Error("", "unmarshal error", err)
@@ -118,19 +119,19 @@ func (a *Api) GetCountries() ([]Country, error) {
 		return countries, nil
 	}
 	log.Warn("exceeded max retries")
-	return nil, ErrServerMsg
+	return nil, fmt.Errorf("Get countries: %w", ErrServerMsg)
 }
 
-func (a *Api) Search(s SearchParams) ([]Station, error) {
+func (a *API) Search(s SearchParams) ([]model.Station, error) {
 	return a.stationSearch(s)
 }
 
-func (a *Api) TopStations() ([]Station, error) {
+func (a *API) TopStations() ([]model.Station, error) {
 	s := DefaultSearchParams()
 	return a.stationSearch(s)
 }
 
-func (a *Api) stationSearch(s SearchParams) ([]Station, error) {
+func (a *API) stationSearch(s SearchParams) ([]model.Station, error) {
 	body := s.toFormData()
 	log := slog.With("method", "Api.stationSearch")
 	log.Info("", "request", body)
@@ -145,7 +146,7 @@ func (a *Api) stationSearch(s SearchParams) ([]Station, error) {
 	log.Info("stations cache miss")
 
 	var err error
-	for i := 0; i < serverMaxRetry; i++ {
+	for range serverMaxRetry {
 		var res []byte
 		res, err = a.doServerRequest(http.MethodPost, urlStations, []byte(body))
 		if err != nil {
@@ -153,7 +154,7 @@ func (a *Api) stationSearch(s SearchParams) ([]Station, error) {
 			time.Sleep(serverRetryMillis * time.Millisecond)
 			continue
 		}
-		var stations []Station
+		var stations []model.Station
 		err = json.Unmarshal(res, &stations)
 		if err != nil {
 			log.Error("", "unmarshal error", err)
@@ -171,10 +172,10 @@ func (a *Api) stationSearch(s SearchParams) ([]Station, error) {
 		return stations, nil
 	}
 	log.Warn("exceeded max retries")
-	return nil, ErrServerMsg
+	return nil, fmt.Errorf("Get stations: %w", ErrServerMsg)
 }
 
-func (a *Api) GetStations(uuids []string) ([]Station, error) {
+func (a *API) GetStations(uuids []string) ([]model.Station, error) {
 	if len(uuids) == 0 {
 		return nil, nil
 	}
@@ -188,14 +189,14 @@ func (a *Api) GetStations(uuids []string) ([]Station, error) {
 		}
 	}
 	x := reqBody.String()
-	for i := 0; i < serverMaxRetry; i++ {
+	for range serverMaxRetry {
 		res, err := a.doServerRequest(http.MethodPost, urlStationsByUUID, []byte(x))
 		if err != nil {
 			log.Error("", "request error", err)
 			time.Sleep(serverRetryMillis * time.Millisecond)
 			continue
 		}
-		var stations []Station
+		var stations []model.Station
 		err = json.Unmarshal(res, &stations)
 		if err != nil {
 			log.Error("", "unmarshal error", err)
@@ -208,10 +209,10 @@ func (a *Api) GetStations(uuids []string) ([]Station, error) {
 	}
 
 	log.Warn("exceeded max retries")
-	return nil, ErrServerMsg
+	return nil, fmt.Errorf("Get stations: %w", ErrServerMsg)
 }
 
-func (a *Api) StationCounter(uuid string) error {
+func (a *API) StationCounter(uuid string) error {
 	log := slog.With("method", "Api.StationCounter")
 	url := urlClickCount + uuid
 	res, err := a.doServerRequest(http.MethodPost, url, nil)
@@ -229,7 +230,7 @@ var (
 	errVoteOften   = errors.New("You are voting for the same station too often")
 )
 
-func (a *Api) StationVote(uuid string) error {
+func (a *API) StationVote(uuid string) error {
 	log := slog.With("method", "Api.StationVote")
 
 	if voteTime, ok := a.stationVotes[uuid]; ok && time.Now().Before(voteTime.Add(voteTimeout)) {
@@ -258,14 +259,14 @@ func (a *Api) StationVote(uuid string) error {
 	return nil
 }
 
-func (a *Api) doServerRequest(method string, path string, body []byte) ([]byte, error) {
+func (a *API) doServerRequest(method string, path string, body []byte) ([]byte, error) {
 	ix := rand.IntN(len(a.servers))
 	host := a.servers[ix]
 	url := fmt.Sprintf("http://%s%s", host, path)
 	return a.doRequest(method, url, body)
 }
 
-func (a *Api) getServers(ctx context.Context, name string) ([]string, error) {
+func (a *API) getServers(ctx context.Context, name string) ([]string, error) {
 	_, hosts, err := net.DefaultResolver.LookupSRV(ctx, "api", "tcp", name)
 	if err != nil {
 		return nil, err
@@ -277,12 +278,12 @@ func (a *Api) getServers(ctx context.Context, name string) ([]string, error) {
 	return res, nil
 }
 
-func (a *Api) getServerMirrors() ([]string, error) {
-	res, err := a.doRequest(http.MethodGet, backup_server, nil)
+func (a *API) getServerMirrors() ([]string, error) {
+	res, err := a.doRequest(http.MethodGet, backupServer, nil)
 	if err != nil {
 		return nil, err
 	}
-	var srv []ServerMirror
+	var srv []model.ServerMirror
 	err = json.Unmarshal(res, &srv)
 	if err != nil {
 		return nil, err
@@ -298,10 +299,10 @@ func (a *Api) getServerMirrors() ([]string, error) {
 	return ips, err
 }
 
-func (a *Api) doRequest(method string, url string, body []byte) ([]byte, error) {
+func (a *API) doRequest(method string, url string, body []byte) ([]byte, error) {
 	log := slog.With("method", "Api.doRequest")
 
-	ctx, cancel := context.WithTimeout(context.Background(), config.ApiReqTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), config.APIReqTimeout)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(body))
@@ -318,7 +319,7 @@ func (a *Api) doRequest(method string, url string, body []byte) ([]byte, error) 
 		log.Error("do browser request", slog.String("error", err.Error()))
 		return nil, err
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	b, err := io.ReadAll(res.Body)
 	if err != nil {
