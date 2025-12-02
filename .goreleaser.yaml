@@ -52,17 +52,17 @@ builds:
   #   gcflags:
   #     - all=-trimpath
 
-  # - id: darwin_arm64
-  #   goos: [darwin]
-  #   goarch: [arm64]
-  #   env:
-  #     - CGO_ENABLED=1
+  - id: darwin_arm64
+    goos: [darwin]
+    goarch: [arm64]
+    env:
+      - CGO_ENABLED=1
   #     - CC=aarch64-linux-gnu-gcc
-  #   ldflags:
-  #     - -s -w
-  #     - "-X main.version={{ .Version }}"
-  #   gcflags:
-  #     - all=-trimpath
+    ldflags:
+      - -s -w
+      - "-X main.version={{ .Version }}"
+    gcflags:
+      - all=-trimpath
 
   - id: windows
     goos: [windows]
