@@ -60,6 +60,7 @@ Available options:
 | i           |          station info |
 | f           |      favorite station |
 | a           |      autoplay station |
+| A           |    add custom station |
 | d           |        delete station |
 | p/shift+p   | paste deleted station |
 | /           |        filter results |
