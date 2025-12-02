@@ -76,7 +76,7 @@ func newModel(ctx context.Context, cfg *config.Value, b *browser.API, p *player.
 		newSettingsTab(ctx, cfg, style, p.AvailablePlayerTypes(), m.changeTheme),
 	}
 
-	if cfg.HasFavorites() || cfg.HasFavoritesV1() {
+	if cfg.HasFavorites() {
 		m.toFavoritesTab()
 	} else {
 		m.toBrowseTab()

@@ -11,11 +11,6 @@ import (
 )
 
 func (m *Model) favoritesReqCmd() tea.Msg {
-	if !m.cfg.HasFavorites() && !m.cfg.HasFavoritesV1() {
-		return favoritesStationRespMsg{
-			viewMsg: noFavoritesAddedMsg,
-		}
-	}
 
 	var reqList []string
 	favorites := m.cfg.GetFavorites()
@@ -26,7 +21,6 @@ func (m *Model) favoritesReqCmd() tea.Msg {
 		}
 		reqList = append(reqList, s.Stationuuid)
 	}
-	reqList = append(reqList, m.cfg.GetFavoritesV1()...)
 	slices.Sort(reqList)
 	reqList = slices.Compact(reqList)
 	slog.Info(fmt.Sprintf("favorites request list: %#v", reqList))

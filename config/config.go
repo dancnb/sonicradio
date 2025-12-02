@@ -14,7 +14,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"text/template"
 	"time"
 
 	"github.com/dancnb/sonicradio/model"
@@ -31,35 +30,10 @@ const (
 	VolumeStep  = 5
 	SeekStepSec = 10
 
-	cfgSubDir       = "sonicRadio"
-	cfgFilename     = "config.json"
-	historyFilename = "history.json"
-
-	favoritesFilename = "favorites.pls"
-	favoritesTmpl     = `[playlist]
-NumberOfEntries={{len .List}}
-Version=2
-
-{{range $index, $station := .List}}File{{add $index 1}}={{.URL}}
-Title{{add $index 1}}={{.Name}}
-Length{{add $index 1}}=-1
-SR_uuid{{add $index 1}}={{.Stationuuid}}
-SR_bitrate{{add $index 1}}={{.Bitrate}}
-SR_countrycode{{add $index 1}}={{.Countrycode}}
-SR_state{{add $index 1}}={{.State}}
-SR_language{{add $index 1}}={{.Language}}
-SR_tags{{add $index 1}}={{.Tags}}
-SR_homepage{{add $index 1}}={{.Homepage}}
-SR_country{{add $index 1}}={{.Country}}
-SR_votes{{add $index 1}}={{.Votes}}
-SR_codec{{add $index 1}}={{.Codec}}
-SR_lastcheckoktime{{add $index 1}}={{.Lastcheckoktime}}
-SR_clickcount{{add $index 1}}={{.Clickcount}}
-SR_clicktrend{{add $index 1}}={{.Clicktrend}}
-SR_geo_lat{{add $index 1}}={{.GeoLat}}
-SR_geo_long{{add $index 1}}={{.GeoLong}}
-
-{{end}}`
+	cfgSubDir         = "sonicRadio"
+	cfgFilename       = "config.json"
+	historyFilename   = "history.json"
+	favoritesFilename = "favorites.json"
 )
 
 const (
@@ -75,7 +49,6 @@ const (
 
 type Value struct {
 	Version     string      `json:"-"`
-	FavoritesV1 []string    `json:"favorites,omitempty"` // Ordered station UUID's for user favorites
 	Favorites   Favorites   `json:"favoritesv2"`
 	Volume      *int        `json:"volume,omitempty"`
 	Theme       int         `json:"theme"`
@@ -95,13 +68,11 @@ type Value struct {
 	HistoryChan    chan []HistoryEntry `json:"-"`
 
 	AutoplayFavorite string `json:"autoplayFavorite"`
-
-	favTmpl *template.Template
 }
 
 type Favorites struct {
-	RefreshOnStart bool `json:"refreshOnStart"`
-	list           []model.Station
+	RefreshOnStart bool            `json:"refreshOnStart"`
+	List           []model.Station `json:"-"`
 }
 
 type InternalPlayer struct {
@@ -146,33 +117,25 @@ func (v *Value) SetVolume(value int) {
 }
 
 func (v *Value) IsFavorite(uuid string) bool {
-	return slices.ContainsFunc(v.Favorites.list, func(e model.Station) bool {
+	return slices.ContainsFunc(v.Favorites.List, func(e model.Station) bool {
 		return e.Stationuuid == uuid
 	})
 }
 
-func (v *Value) HasFavoritesV1() bool {
-	return len(v.FavoritesV1) > 0
-}
-
-func (v *Value) GetFavoritesV1() []string {
-	return v.FavoritesV1
-}
-
 func (v *Value) HasFavorites() bool {
-	return len(v.Favorites.list) > 0
+	return len(v.Favorites.List) > 0
 }
 
 func (v *Value) GetFavorites() []model.Station {
-	return v.Favorites.list
+	return v.Favorites.List
 }
 
 func (v *Value) SetFavorites(l []model.Station) {
-	v.Favorites.list = l
+	v.Favorites.List = l
 }
 
 func (v *Value) AddFavorite(s model.Station) {
-	v.Favorites.list = append(v.Favorites.list, s)
+	v.Favorites.List = append(v.Favorites.List, s)
 }
 
 func (v *Value) FavoritesCacheEnabled() bool {
@@ -181,14 +144,14 @@ func (v *Value) FavoritesCacheEnabled() bool {
 
 // ToggleFavorite return true if station was added, false if it was removed
 func (v *Value) ToggleFavorite(s model.Station) bool {
-	l1 := len(v.Favorites.list)
-	v.Favorites.list = slices.DeleteFunc(
-		v.Favorites.list,
+	l1 := len(v.Favorites.List)
+	v.Favorites.List = slices.DeleteFunc(
+		v.Favorites.List,
 		func(el model.Station) bool { return el.Stationuuid == s.Stationuuid },
 	)
-	l2 := len(v.Favorites.list)
+	l2 := len(v.Favorites.List)
 	if l2 == l1 {
-		v.Favorites.list = append(v.Favorites.list, s)
+		v.Favorites.List = append(v.Favorites.List, s)
 		return true
 	}
 	return false
@@ -196,26 +159,26 @@ func (v *Value) ToggleFavorite(s model.Station) bool {
 
 // DeleteFavorite returns true if station was removed, false if not
 func (v *Value) DeleteFavorite(s model.Station) bool {
-	l1 := len(v.Favorites.list)
-	v.Favorites.list = slices.DeleteFunc(
-		v.Favorites.list,
+	l1 := len(v.Favorites.List)
+	v.Favorites.List = slices.DeleteFunc(
+		v.Favorites.List,
 		func(el model.Station) bool { return el.Stationuuid == s.Stationuuid },
 	)
-	l2 := len(v.Favorites.list)
+	l2 := len(v.Favorites.List)
 	return l2 != l1
 }
 
 func (v *Value) InsertFavorite(s model.Station, idx int) bool {
-	if slices.ContainsFunc(v.Favorites.list, func(el model.Station) bool {
+	if slices.ContainsFunc(v.Favorites.List, func(el model.Station) bool {
 		return el.Stationuuid == s.Stationuuid
 	}) {
 		return false
 	}
-	if idx >= len(v.Favorites.list) {
-		v.Favorites.list = append(v.Favorites.list, s)
+	if idx >= len(v.Favorites.List) {
+		v.Favorites.List = append(v.Favorites.List, s)
 		return true
 	}
-	v.Favorites.list = slices.Insert(v.Favorites.list, idx, s)
+	v.Favorites.List = slices.Insert(v.Favorites.List, idx, s)
 	return true
 }
 
@@ -225,7 +188,7 @@ func (v *Value) String() string {
 		vol = *v.Volume
 	}
 	return fmt.Sprintf("{version:%q,   favorites=%d, volume=%d, history=%d, historySaveMax=%v}",
-		v.Version, len(v.Favorites.list), vol, len(v.History), v.HistorySaveMax)
+		v.Version, len(v.Favorites.List), vol, len(v.History), v.HistorySaveMax)
 }
 
 // Load must return a non-nil config Value and an error specifying why it could not read the config file:
@@ -281,16 +244,10 @@ func Load(version string) (cfg *Value, err error) {
 	}
 
 	// favorites
-	cfg.Favorites.list, err = parsePlsFile(filepath.Join(cfgDirPath, favoritesFilename))
+	err = cfg.loadFavorites(filepath.Join(cfgDirPath, favoritesFilename))
 	if err != nil {
 		return
 	}
-	cfg.favTmpl = template.Must(
-		template.New("favorites").
-			Funcs(template.FuncMap{
-				"add": func(i, j int) int { return i + j },
-			}).
-			Parse(favoritesTmpl))
 
 	// environment variables overwrite config file
 	if v, ok := os.LookupEnv("MPD_HOST"); ok && v != "" {
@@ -349,6 +306,42 @@ func (v *Value) loadHistory(historyFilePath string) (err error) {
 	return
 }
 
+func (v *Value) loadFavorites(favoritesFilePath string) (err error) {
+	// if favorites found in config file (older version)
+	if len(v.Favorites.List) > 0 {
+		return
+	}
+
+	_, err = os.Stat(favoritesFilePath)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+
+	hf, err := os.Open(favoritesFilePath)
+	if err != nil {
+		return
+	}
+	defer func() {
+		closeErr := hf.Close()
+		if closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
+
+	b, err := io.ReadAll(hf)
+	if err != nil {
+		return
+	}
+	var entries []model.Station
+	err = json.Unmarshal(b, &entries)
+	if err != nil {
+		return
+	}
+	v.Favorites.List = entries
+
+	return
+}
+
 func (v *Value) GetMpdPassword() *string {
 	if v.mpdEnvPassword != nil {
 		return v.mpdEnvPassword
@@ -362,10 +355,9 @@ func (v *Value) Save() error {
 		return err
 	}
 
-	if err := v.saveFavorites(filepath.Join(cfgDirPath, favoritesFilename)); err != nil {
+	if err := v.saveFavorites(cfgDirPath, v.Favorites.List); err != nil {
 		return err
 	}
-	v.FavoritesV1 = nil
 
 	entries, err := v.saveCfgFile(cfgDirPath)
 	if err != nil {
@@ -375,24 +367,22 @@ func (v *Value) Save() error {
 	return v.saveHistoryFile(cfgDirPath, entries)
 }
 
-func (v *Value) saveFavorites(filename string) (err error) {
-	favFile, err := os.Create(filename)
+func (v *Value) saveFavorites(cfgDirPath string, entries []model.Station) (err error) {
+	favoritesFile, err := os.Create(filepath.Join(cfgDirPath, favoritesFilename))
 	if err != nil {
-		return
+		return err
 	}
 	defer func() {
-		closeErr := favFile.Close()
+		closeErr := favoritesFile.Close()
 		if closeErr != nil && err == nil {
 			err = closeErr
 		}
 	}()
-	list := struct{ List []model.Station }{
-		List: v.Favorites.list,
-	}
-	err = v.favTmpl.Execute(favFile, list)
-	if err != nil {
-		return
-	}
+
+	enc := json.NewEncoder(favoritesFile)
+	enc.SetIndent("  ", "  ")
+	err = enc.Encode(entries)
+
 	return
 }
 

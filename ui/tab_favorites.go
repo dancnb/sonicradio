@@ -1,8 +1,6 @@
 package ui
 
 import (
-	"slices"
-
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -99,14 +97,7 @@ func (t *favoritesTab) Update(m *Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		favoritesV1 := m.cfg.GetFavoritesV1()
 		notAllfound := false
-		for j := range favoritesV1 {
-			notAllfound = notAllfound || !slices.ContainsFunc(
-				msg.stations,
-				func(el model.Station) bool { return el.Stationuuid == favoritesV1[j] },
-			)
-		}
 
 		sm := msg.statusMsg
 		if sm == "" && notAllfound {
