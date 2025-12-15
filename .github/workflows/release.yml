@@ -30,8 +30,10 @@ jobs:
       # It all depends on your needs.
       - name: Install system dependencies
         run: |
+          sudo dpkg --add-architecture arm64
           sudo apt-get update
           sudo apt-get install -y gcc libasound2-dev
+          sudo apt-get install -y libasound2-dev:arm64
           sudo apt install gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
