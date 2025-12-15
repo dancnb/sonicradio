@@ -28,6 +28,31 @@ builds:
     gcflags:
       - all=-trimpath
 
+  # - id: linux_arm
+  #   goos: [linux]
+  #   goarch: [arm]
+  #   goarm: [7]
+  #   env:
+  #   - CGO_ENABLED=1
+  #   - CC=arm-linux-gnueabihf-gcc
+  #   ldflags:
+  #   - -s -w
+  #   - "-X main.version={{ .Version }}"
+  #   gcflags:
+  #   - all=-trimpath
+
+  - id: linux_arm64
+    goos: [linux]
+    goarch: [arm64]
+    env:
+      - CGO_ENABLED=1
+      - CC=aarch64-linux-gnu-gcc
+    ldflags:
+      - -s -w
+      - "-X main.version={{ .Version }}"
+    gcflags:
+      - all=-trimpath
+
   # - id: linux_arm64
   #   goos: [linux]
   #   goarch: [ arm64]
