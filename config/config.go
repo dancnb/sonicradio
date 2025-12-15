@@ -285,13 +285,7 @@ func Load(version string) (cfg *Value, err error) {
 	if err != nil {
 		return
 	}
-	cfg.favTmpl = template.Must(
-		template.New("favorites").
-			Funcs(template.FuncMap{
-				"add": func(i, j int) int { return i + j },
-			}).
-			Parse(favoritesTmpl))
-
+	cfg.favTmpl = cfg.getFavTmpl()
 	// environment variables overwrite config file
 	if v, ok := os.LookupEnv("MPD_HOST"); ok && v != "" {
 		parts := strings.Split(v, "@")
@@ -311,6 +305,18 @@ func Load(version string) (cfg *Value, err error) {
 	}
 
 	return
+}
+
+func (v *Value) getFavTmpl() *template.Template {
+	if v.favTmpl == nil {
+		v.favTmpl = template.Must(
+			template.New("favorites").
+				Funcs(template.FuncMap{
+					"add": func(i, j int) int { return i + j },
+				}).
+				Parse(favoritesTmpl))
+	}
+	return v.favTmpl
 }
 
 func (v *Value) loadHistory(historyFilePath string) (err error) {
@@ -389,7 +395,8 @@ func (v *Value) saveFavorites(filename string) (err error) {
 	list := struct{ List []model.Station }{
 		List: v.Favorites.list,
 	}
-	err = v.favTmpl.Execute(favFile, list)
+	tmpl := v.getFavTmpl()
+	err = tmpl.Execute(favFile, list)
 	if err != nil {
 		return
 	}
