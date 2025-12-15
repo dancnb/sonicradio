@@ -32,6 +32,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc libasound2-dev
+          sudo apt install gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
