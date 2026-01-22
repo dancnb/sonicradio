@@ -94,7 +94,7 @@ func NewPlayer(ctx context.Context, cfg *config.Value) (*Player, error) {
 	return p, nil
 }
 
-var errNoPlayerAvailable = errors.New("No available player found. Must have at least one of the following in PATH: mpv, ffplay, vlc.")
+var errNoPlayerAvailable = errors.New("No available player found. Must have at least one of the following in PATH: mpv, ffplay, vlc, mplayer, mpd.")
 
 func (p *Player) checkAvailablePlayers(cfg *config.Value) error {
 	p.available = make(map[config.PlayerType]struct{}, len(config.Players))
