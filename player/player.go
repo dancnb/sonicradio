@@ -100,7 +100,7 @@ func (p *Player) checkAvailablePlayers(cfg *config.Value) error {
 	p.available = make(map[config.PlayerType]struct{}, len(config.Players))
 	var firstAvailable *config.PlayerType
 	for _, v := range config.Players {
-		if ok := checkAvailablePlayer(v); !ok {
+		if ok := checkAvailablePlayer(cfg.UseInternal, v); !ok {
 			continue
 		}
 		if firstAvailable == nil {
@@ -128,8 +128,8 @@ var baseCmds = map[config.PlayerType]func() string{
 	config.MPD:     mpd.GetBaseCmd,
 }
 
-func checkAvailablePlayer(p config.PlayerType) bool {
-	if p == config.Internal {
+func checkAvailablePlayer(useInternal *bool, p config.PlayerType) bool {
+	if p == config.Internal && useInternal != nil && *useInternal {
 		return true
 	}
 	baseCmdFn, ok := baseCmds[p]

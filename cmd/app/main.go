@@ -101,6 +101,8 @@ func run() {
 	if cfg == nil {
 		panic("could not get config")
 	}
+	useInternal := true
+	cfg.UseInternal = &useInternal
 
 	slog.Info("loaded", "config", cfg.String())
 

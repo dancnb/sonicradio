@@ -82,6 +82,7 @@ type Value struct {
 	StationView StationView `json:"stationView"`
 
 	Player         PlayerType `json:"playerType"`
+	UseInternal    *bool      `json:"-"`
 	MpdHost        string     `json:"mpdHost,omitempty"`
 	MpdPort        int        `json:"mpdPort,omitempty"`
 	MpdPassword    *string    `json:"mpdPassword,omitempty"`
