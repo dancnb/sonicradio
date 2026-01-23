@@ -53,6 +53,7 @@ builds:
   #     - all=-trimpath
 
   - id: darwin_arm64
+    main: ./cmd/app/main.go
     goos: [darwin]
     goarch: [arm64]
     env:

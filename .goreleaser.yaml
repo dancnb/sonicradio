@@ -17,6 +17,7 @@ before:
 
 builds:
   - id: linux
+    main: ./cmd/app/main.go
     goos: [linux]
     goarch: [amd64]
     env:
@@ -65,6 +66,7 @@ builds:
   #     - all=-trimpath
 
   - id: windows
+    main: ./cmd/app/main.go
     goos: [windows]
     goarch: [amd64]
     env:
