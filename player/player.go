@@ -8,7 +8,6 @@ import (
 
 	"github.com/dancnb/sonicradio/config"
 	"github.com/dancnb/sonicradio/player/ffplay"
-	"github.com/dancnb/sonicradio/player/internal"
 	"github.com/dancnb/sonicradio/player/model"
 	"github.com/dancnb/sonicradio/player/mpd"
 	"github.com/dancnb/sonicradio/player/mplayer"
@@ -17,11 +16,11 @@ import (
 )
 
 type Player struct {
-	delegate  backendPlayer
+	delegate  BackendPlayer
 	available map[config.PlayerType]struct{}
 }
 
-type backendPlayer interface {
+type BackendPlayer interface {
 	Play(url string) error
 	Pause(value bool) error
 	Stop() error
@@ -43,7 +42,7 @@ type backendPlayer interface {
 	Close() error
 }
 
-func NewPlayer(ctx context.Context, cfg *config.Value) (*Player, error) {
+func NewPlayer(ctx context.Context, cfg *config.Value, internalPlayer BackendPlayer) (*Player, error) {
 	p := new(Player)
 	err := p.checkAvailablePlayers(cfg)
 	if err != nil {
@@ -51,39 +50,42 @@ func NewPlayer(ctx context.Context, cfg *config.Value) (*Player, error) {
 	}
 
 	vol := cfg.GetVolume()
-	switch cfg.Player {
-	case config.Internal:
-		p.delegate = internal.New(ctx, clampVolume(vol), cfg.Internal)
-	case config.Mpv:
-		mpvPlayer, err := mpv.NewMPVSocket(ctx)
-		if err != nil {
-			return nil, err
+
+	if internalPlayer != nil {
+		p.delegate = internalPlayer
+	} else {
+		switch cfg.Player {
+		case config.Mpv:
+			mpvPlayer, err := mpv.NewMPVSocket(ctx)
+			if err != nil {
+				return nil, err
+			}
+			p.delegate = mpvPlayer
+		case config.FFPlay:
+			ffplayPlayer, err := ffplay.NewFFPlay(ctx)
+			if err != nil {
+				return nil, err
+			}
+			p.delegate = ffplayPlayer
+		case config.Vlc:
+			vlcPlayer, err := vlc.NewVlc(ctx)
+			if err != nil {
+				return nil, err
+			}
+			p.delegate = vlcPlayer
+		case config.MPlayer:
+			mplayer, err := mplayer.New(ctx, vol)
+			if err != nil {
+				return nil, err
+			}
+			p.delegate = mplayer
+		case config.MPD:
+			mpdp, err := mpd.New(ctx, cfg.MpdHost, cfg.MpdPort, cfg.GetMpdPassword())
+			if err != nil {
+				return nil, err
+			}
+			p.delegate = mpdp
 		}
-		p.delegate = mpvPlayer
-	case config.FFPlay:
-		ffplayPlayer, err := ffplay.NewFFPlay(ctx)
-		if err != nil {
-			return nil, err
-		}
-		p.delegate = ffplayPlayer
-	case config.Vlc:
-		vlcPlayer, err := vlc.NewVlc(ctx)
-		if err != nil {
-			return nil, err
-		}
-		p.delegate = vlcPlayer
-	case config.MPlayer:
-		mplayer, err := mplayer.New(ctx, vol)
-		if err != nil {
-			return nil, err
-		}
-		p.delegate = mplayer
-	case config.MPD:
-		mpdp, err := mpd.New(ctx, cfg.MpdHost, cfg.MpdPort, cfg.GetMpdPassword())
-		if err != nil {
-			return nil, err
-		}
-		p.delegate = mpdp
 	}
 
 	_, err = p.delegate.SetVolume(clampVolume(vol))

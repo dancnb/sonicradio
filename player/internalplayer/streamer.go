@@ -1,4 +1,4 @@
-package internal
+package internalplayer
 
 import (
 	"bufio"

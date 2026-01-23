@@ -110,7 +110,7 @@ func run() {
 	if err != nil {
 		panic(err)
 	}
-	p, err := player.NewPlayer(ctx, cfg)
+	p, err := player.NewPlayer(ctx, cfg, nil)
 	if err != nil {
 		panic(err)
 	}

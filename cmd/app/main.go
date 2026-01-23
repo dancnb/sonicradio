@@ -18,6 +18,7 @@ import (
 	"github.com/dancnb/sonicradio/browser"
 	"github.com/dancnb/sonicradio/config"
 	"github.com/dancnb/sonicradio/player"
+	"github.com/dancnb/sonicradio/player/internalplayer"
 	"github.com/dancnb/sonicradio/ui"
 )
 
@@ -110,7 +111,12 @@ func run() {
 	if err != nil {
 		panic(err)
 	}
-	p, err := player.NewPlayer(ctx, cfg)
+
+	var internalPlayer player.BackendPlayer
+	if cfg.Player == config.Internal {
+		internalPlayer = internalplayer.New(ctx, clampVolume(cfg.GetVolume()), cfg.Internal)
+	}
+	p, err := player.NewPlayer(ctx, cfg, internalPlayer)
 	if err != nil {
 		panic(err)
 	}
@@ -122,6 +128,15 @@ func run() {
 	if _, err := m.Progr.Run(); err != nil {
 		slog.Info(fmt.Sprintf("Error running program: %s", err.Error()))
 	}
+}
+
+func clampVolume(value int) int {
+	if value < 0 {
+		value = 0
+	} else if value > 100 {
+		value = 100
+	}
+	return value
 }
 
 type nopWriterCloser struct {
