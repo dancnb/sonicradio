@@ -41,6 +41,19 @@ builds:
     gcflags:
       - all=-trimpath
 
+  - id: linux_arm
+    main: ./cmd/sonicradio_external/main.go
+    goos: [linux]
+    goarch: [arm]
+    goarm: ["7"]
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+      - "-X main.version={{ .Version }}"
+    gcflags:
+      - all=-trimpath
+
   # - id: darwin
   #   goos: [darwin]
   #   goarch: [amd64]
