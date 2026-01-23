@@ -29,17 +29,17 @@ builds:
     gcflags:
       - all=-trimpath
 
-  # - id: linux_arm64
-  #   goos: [linux]
-  #   goarch: [ arm64]
-  #   env:
-  #     - CGO_ENABLED=1
-  #     - CC=aarch64-linux-gnu-gcc
-  #   ldflags:
-  #     - -s -w
-  #     - "-X main.version={{ .Version }}"
-  #   gcflags:
-  #     - all=-trimpath
+  - id: linux_arm64
+    main: ./cmd/app_external/main.go
+    goos: [linux]
+    goarch: [arm64]
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+      - "-X main.version={{ .Version }}"
+    gcflags:
+      - all=-trimpath
 
   # - id: darwin
   #   goos: [darwin]
