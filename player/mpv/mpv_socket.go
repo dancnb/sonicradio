@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dancnb/sonicradio/config"
@@ -61,6 +62,7 @@ var ipcCmds = map[ipcCmd]string{
 }
 
 type MpvSocket struct {
+	mu       sync.Mutex
 	sockFile string
 	conn     net.Conn
 
@@ -283,6 +285,8 @@ const (
 )
 
 func (mpv *MpvSocket) ipcRequest(command string) (any, error) {
+	mpv.mu.Lock()
+	defer mpv.mu.Unlock()
 	log := slog.With("method", "MpvSocket.ipcRequest")
 	id := rand.IntN(999) + 1
 	cmd := fmt.Sprintf("{ \"command\": %s, \"request_id\": %d }\n", command, id)
